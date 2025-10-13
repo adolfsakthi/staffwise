@@ -21,6 +21,15 @@ export type AttendanceRecord = {
   audit_notes?: string;
 };
 
+export type EmailLog = {
+    id?: string;
+    to: string;
+    subject: string;
+    body: string;
+    emailType: 'late_notice' | 'admin_report' | 'department_report';
+    sentAt?: Date;
+}
+
 // This can be fetched from a 'settings' collection in Firestore
 export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
 
@@ -37,7 +46,6 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch (error) {
         console.error("Error fetching attendance records: ", error);
-        // Re-throw the error to be caught by Next.js error boundaries
         if (error instanceof Error && 'code' in error && (error as any).code === 'permission-denied') {
              throw new Error("Firestore permission denied. Please check your security rules.");
         }
@@ -45,6 +53,16 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
     }
 }
 
+export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
+    if (recordIds.length === 0) {
+        return [];
+    }
+    const firestore = getFirestoreAdmin();
+    const recordsCol = firestore.collection('attendance_records');
+    // Firestore 'in' query is limited to 30 items. If you expect more, you'll need to batch requests.
+    const snapshot = await recordsCol.where('__name__', 'in', recordIds).get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+}
 
 export async function getAttendanceStats() {
     const firestore = getFirestoreAdmin();
@@ -124,6 +142,15 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
         batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
     });
     await batch.commit();
+}
+
+export async function logEmail(email: EmailLog): Promise<void> {
+    const firestore = getFirestoreAdmin();
+    const emailLogWithTimestamp = {
+        ...email,
+        sentAt: new Date(),
+    };
+    await firestore.collection('email_logs').add(emailLogWithTimestamp);
 }
 
 export async function getUsers() {
