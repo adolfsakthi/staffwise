@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AttendanceRecord } from '@/lib/data';
+import { getAttendanceRecords, getDepartments } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -23,21 +24,30 @@ import {
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
-const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
-    { id: '2', employee_name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales', shift_start: '09:00', shift_end: '18:00', entry_time: '08:55', exit_time: '18:30', date: '2024-05-27', is_late: false, late_by_minutes: 0, overtime_minutes: 30, is_audited: true },
-    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
-];
-const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
-
 export default function AttendanceTable() {
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredRecords = MOCK_RECORDS.filter(record => {
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const [recordsData, departmentsData] = await Promise.all([
+        getAttendanceRecords(),
+        getDepartments(),
+      ]);
+      setRecords(recordsData);
+      setDepartments(departmentsData);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const filteredRecords = records.filter(record => {
     const dateMatch = !dateFilter || record.date === dateFilter;
     const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
     return dateMatch && departmentMatch;
@@ -63,7 +73,7 @@ export default function AttendanceTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {MOCK_DEPARTMENTS.map((dept) => (
+              {departments.map((dept) => (
                 <SelectItem key={dept} value={dept}>
                   {dept}
                 </SelectItem>
@@ -73,7 +83,7 @@ export default function AttendanceTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -122,7 +132,9 @@ export default function AttendanceTable() {
                       )}
                     </TableCell>
                     <TableCell>
-                        {record.is_audited ? 'Yes' : 'No'}
+                        <Badge variant={record.is_audited ? 'secondary' : 'outline'}>
+                            {record.is_audited ? 'Yes' : 'No'}
+                        </Badge>
                     </TableCell>
                   </TableRow>
                 ))

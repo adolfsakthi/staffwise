@@ -1,4 +1,5 @@
-import { add, format, startOfWeek } from 'date-fns';
+import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
+import { initialAttendanceRecords, ATTENDANCE_RECORDS } from './attendance-data';
 
 export type AttendanceRecord = {
   id: string;
@@ -6,7 +7,7 @@ export type AttendanceRecord = {
   email: string;
   department: string;
   shift_start: string;
-  shift_end:string;
+  shift_end: string;
   entry_time: string;
   exit_time: string;
   date: string;
@@ -26,35 +27,62 @@ export type EmailLog = {
     sentAt?: Date;
 }
 
-const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
-    { id: '2', employee_name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales', shift_start: '09:00', shift_end: '18:00', entry_time: '08:55', exit_time: '18:30', date: '2024-05-27', is_late: false, late_by_minutes: 0, overtime_minutes: 30, is_audited: true },
-    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
-    { id: '4', employee_name: 'Sarah Lee', email: 'sarah.lee@example.com', department: 'HR', shift_start: '09:00', shift_end: '18:00', entry_time: '09:30', exit_time: '18:00', date: '2024-05-26', is_late: true, late_by_minutes: 30, overtime_minutes: 0, is_audited: false },
-];
-const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
+const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations', 'Support', 'Admin', 'Finance'];
+
+// Initialize with the provided data, but allow it to be modified.
+if (ATTENDANCE_RECORDS.length === 0) {
+  initialAttendanceRecords.forEach(record => ATTENDANCE_RECORDS.push(record));
+}
+
+export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id'>[]) {
+    const newRecords: AttendanceRecord[] = records.map((record, index) => {
+        const today = new Date();
+        const entryTime = parse(record.entry_time, 'HH:mm', today);
+        const shiftStart = parse(record.shift_start, 'HH:mm', today);
+        const exitTime = parse(record.exit_time, 'HH:mm', today);
+        const shiftEnd = parse(record.shift_end, 'HH:mm', today);
+
+        const lateByMinutes = differenceInMinutes(entryTime, shiftStart);
+        const overtimeMinutes = differenceInMinutes(exitTime, shiftEnd);
+
+        return {
+            ...record,
+            id: `rec_${Date.now()}_${index}`,
+            is_late: lateByMinutes > 0,
+            late_by_minutes: Math.max(0, lateByMinutes),
+            overtime_minutes: Math.max(0, overtimeMinutes),
+            is_audited: false,
+            date: format(new Date(), 'yyyy-MM-dd')
+        }
+    });
+
+    ATTENDANCE_RECORDS.unshift(...newRecords);
+    await new Promise(res => setTimeout(res, 300));
+    return newRecords;
+}
+
 
 export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
     await new Promise(res => setTimeout(res, 500));
-    return MOCK_RECORDS.filter(r => !r.is_audited);
+    return ATTENDANCE_RECORDS;
 }
 
 export async function getUnauditedRecords(): Promise<AttendanceRecord[]> {
     await new Promise(res => setTimeout(res, 500));
-    return MOCK_RECORDS.filter(r => !r.is_audited);
+    return ATTENDANCE_RECORDS.filter(r => !r.is_audited);
 }
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     await new Promise(res => setTimeout(res, 100));
-    return MOCK_RECORDS.filter(r => recordIds.includes(r.id));
+    return ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
 }
 
 export async function getAttendanceStats() {
     await new Promise(res => setTimeout(res, 500));
-    const totalRecords = MOCK_RECORDS.length;
-    const lateCount = MOCK_RECORDS.filter(r => r.is_late).length;
-    const totalOvertimeMinutes = MOCK_RECORDS.reduce((sum, r) => sum + r.overtime_minutes, 0);
-    const departmentCount = MOCK_DEPARTMENTS.length;
+    const totalRecords = ATTENDANCE_RECORDS.length;
+    const lateCount = ATTENDANCE_RECORDS.filter(r => r.is_late).length;
+    const totalOvertimeMinutes = ATTENDANCE_RECORDS.reduce((sum, r) => sum + r.overtime_minutes, 0);
+    const departmentCount = [...new Set(ATTENDANCE_RECORDS.map(r => r.department))].length;
     
     return {
         totalRecords,
@@ -74,10 +102,11 @@ export async function getWeeklyAttendance() {
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const data = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });
+        const recordsForDay = ATTENDANCE_RECORDS.filter(r => format(new Date(r.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
         return {
             name: format(date, 'EEE'),
-            onTime: Math.floor(Math.random() * 20) + 5,
-            late: Math.floor(Math.random() * 5),
+            onTime: recordsForDay.filter(r => !r.is_late).length,
+            late: recordsForDay.filter(r => r.is_late).length,
         };
     });
     await new Promise(res => setTimeout(res, 500));
@@ -86,8 +115,13 @@ export async function getWeeklyAttendance() {
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
     console.log('Simulating auditing of records:', recordIds, 'with notes:', auditNotes);
-    // In a real app, you would update these records in the database.
-    // For now, we don't need to change the mock data here as the component will filter its view.
+    recordIds.forEach(id => {
+        const record = ATTENDANCE_RECORDS.find(r => r.id === id);
+        if (record) {
+            record.is_audited = true;
+            record.audit_notes = auditNotes;
+        }
+    });
     await new Promise(res => setTimeout(res, 1000));
 }
 

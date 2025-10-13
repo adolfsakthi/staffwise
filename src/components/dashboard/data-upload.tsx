@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, FileCheck2, Users, FileClock, Download } from 'lucide-react';
+import { Upload, FileCheck2, Users, FileClock, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { uploadAttendance } from '@/app/actions';
 
 type UploadType = 'attendance' | 'employees' | 'punch_logs';
 
@@ -27,19 +28,19 @@ const uploadTypes = {
   attendance: {
     label: 'Bulk Attendance',
     icon: FileClock,
-    template: 'Employee Name,Email,Department,Shift Start,Shift End,Entry Time,Exit Time\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30',
+    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30',
     templateName: 'attendance_template.csv',
   },
   employees: {
     label: 'Employee Details',
     icon: Users,
-    template: 'Employee ID,Employee Name,Email,Department,Role\nEMP001,Jane Doe,jane@company.com,Sales,Employee',
+    template: 'employee_id,employee_name,email,department,role\nEMP001,Jane Doe,jane@company.com,Sales,Employee',
     templateName: 'employee_template.csv',
   },
   punch_logs: {
     label: 'Punch Logs',
     icon: FileClock,
-    template: 'Device ID,Employee ID,Punch Time\nDEV001,EMP001,2024-05-21 09:05:12',
+    template: 'device_id,employee_id,punch_time\nDEV001,EMP001,2024-05-21 09:05:12',
     templateName: 'punch_log_template.csv',
   },
 };
@@ -67,18 +68,32 @@ export default function DataUpload() {
     }
 
     setIsUploading(true);
-    // In a real app, you would use a server action here based on uploadType
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    console.log(`Simulating upload of ${uploadType}: ${file.name}`);
-    
-    toast({
-      title: 'Upload Successful',
-      description: `Successfully processed ${file.name}.`,
-      action: <FileCheck2 className="text-green-500" />,
-    });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('uploadType', uploadType);
+
+    const result = await uploadAttendance(formData);
+
+    if (result.success) {
+        toast({
+            title: 'Upload Successful',
+            description: result.message,
+            action: <FileCheck2 className="text-green-500" />,
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: result.message,
+        });
+    }
     
     setFile(null);
+    // Clear the file input visually
+    const fileInput = document.getElementById('data-file') as HTMLInputElement;
+    if(fileInput) fileInput.value = '';
+
     setIsUploading(false);
   };
   
@@ -129,7 +144,11 @@ export default function DataUpload() {
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
           <Button onClick={handleUpload} disabled={isUploading || !file} className="w-full">
-            <Upload className="mr-2" />
+            {isUploading ? (
+                <Loader2 className="mr-2 animate-spin" />
+            ) : (
+                <Upload className="mr-2" />
+            )}
             {isUploading ? 'Uploading...' : 'Upload & Process'}
           </Button>
           <Button onClick={handleDownloadTemplate} variant="outline" className="w-full">

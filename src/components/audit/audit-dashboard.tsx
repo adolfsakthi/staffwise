@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -23,23 +23,28 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import type { AttendanceRecord } from '@/lib/data';
-import { FileCheck2, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { getUnauditedRecords } from '@/lib/data';
+import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
 
-const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
-    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
-    { id: '4', employee_name: 'Sarah Lee', email: 'sarah.lee@example.com', department: 'HR', shift_start: '09:00', shift_end: '18:00', entry_time: '09:30', exit_time: '18:00', date: '2024-05-26', is_late: true, late_by_minutes: 30, overtime_minutes: 0, is_audited: false },
-];
-
 export default function AuditDashboard() {
-  const [records, setRecords] = useState(MOCK_RECORDS);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      setIsLoadingRecords(true);
+      const unauditedRecords = await getUnauditedRecords();
+      setRecords(unauditedRecords);
+      setIsLoadingRecords(false);
+    }
+    fetchRecords();
+  }, []);
 
   const handleSelectRecord = (id: string) => {
     setSelectedRecords((prev) =>
@@ -48,7 +53,7 @@ export default function AuditDashboard() {
   };
 
   const handleSelectAll = () => {
-    if (!records) return;
+    if (records.length === 0) return;
     if (selectedRecords.length === records.length) {
       setSelectedRecords([]);
     } else {
@@ -99,15 +104,15 @@ export default function AuditDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={records && records.length > 0 && selectedRecords.length === records.length}
+                      checked={records.length > 0 && selectedRecords.length === records.length}
                       onCheckedChange={handleSelectAll}
-                      disabled={!records || records.length === 0}
+                      disabled={records.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
@@ -123,7 +128,7 @@ export default function AuditDashboard() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : records && records.length > 0 ? (
+                ) : records.length > 0 ? (
                   records.map((record) => (
                     <TableRow
                       key={record.id}
