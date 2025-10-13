@@ -3,7 +3,7 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
@@ -36,19 +36,6 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   
-  // Automatically sign in the demo user in development
-  if (process.env.NODE_ENV === 'development' && !auth.currentUser) {
-      signInWithEmailAndPassword(auth, 'demo@staffwise.com', 'password').catch(error => {
-          // This might fail if the user doesn't exist, which is fine on first run.
-          // In a real app, you might want a more robust seeding or sign-up flow.
-          if(error.code === 'auth/user-not-found') {
-            console.log("Demo user not found. You may need to create it in the Firebase console or sign up.")
-          } else if (error.code !== 'auth/wrong-password') { // Ignore wrong password during dev hot reloads
-            console.warn("Demo user sign-in failed:", error.message);
-          }
-      });
-  }
-
   return {
     firebaseApp,
     auth,
