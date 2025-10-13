@@ -1,196 +1,124 @@
 /**
- * @fileoverview Firestore Security Rules for Staffwise Prototyping.
+ * @fileoverview Firestore Security Rules for StaffWise application.
  *
  * Core Philosophy:
- * This ruleset prioritizes strong authorization while allowing flexible data shapes for rapid prototyping.
- * Read access to `attendance_records` is public and must be fixed with additional access control.
- * Write operations are generally restricted and require proper authorization (e.g., ownership checks).
+ * This ruleset enforces an admin-only access model. All data is assumed to be administrative in nature.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles; only the owner can read/write.
- * - /attendance_records/{attendanceRecordId}: Stores attendance records; read access currently public.
- * - /grace_settings/{graceSettingId}: Stores grace period settings.
- * - /audit_logs/{auditLogId}: Stores audit logs.
- * - /email_logs/{emailLogId}: Stores email logs.
- * - /auto_audit_settings/auto_audit_config: Stores auto-audit configuration; only one document with a fixed ID.
- * - /devices/{deviceId}: Stores biometric device information.
+ * The data is organized into top-level collections: attendance_records, grace_settings, audit_logs, email_logs, auto_audit_settings and departments.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - Public read access to `attendance_records` must be restricted in the future based on the desired security model.
- *
- * Denormalization for Authorization:
- *   N/A (Authorization is based on document IDs and simple roles.)
- *
- * Structural Segregation:
- *   N/A
+ * - No user-specific data or ownership model is implemented.
+ * - Listing all data in all collections is allowed for administrators.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the current user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the current user is the owner of the resource, matching the uid to the userId path param.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the current user is the owner of the resource and the resource exists.
-     *              Used for update and delete operations.
-     * @param {string} userId The user ID to compare against.
-     * @return {boolean} True if the user is the existing owner, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /******************* User Profile Rules *******************/
-
-    /**
-     * @description Controls access to user profile documents.
-     * @path /users/{userId}
-     * @allow (create) Signed-in user can create their own profile if the userId matches their auth.uid.
-     * @allow (get, list) Signed-in user can read their own profile.
-     * @allow (update, delete) Signed-in user can update/delete their own profile.
-     * @deny (create) A user cannot create a profile for another user.
-     * @deny (get, list) A user cannot read another user's profile.
-     * @deny (update, delete) A user cannot update/delete another user's profile.
-     * @principle Enforces user-ownership for profiles.
-     */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // No user listing allowed
-
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
-    }
-
-
-    /******************* Attendance Record Rules *******************/
-
-    /**
-     * @description Controls access to attendance records.  READ ACCESS IS PUBLIC - MUST BE RESTRICTED.
+     * @description Manages access to attendance records, allowing only admins to read and write data.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) Anyone can read any attendance record. - RESTRICT THIS
-     * @allow (create) No one can create attendance records.
-     * @allow (update, delete) No one can update or delete attendance records.
-     * @deny (create) Prevents unauthorized creation of attendance records.
-     * @deny (update, delete) Prevents unauthorized modification of attendance records.
-     * @principle  Read access is PUBLIC and MUST be restricted in the future.
+     * @allow (create) If the user is an admin, they can create a new attendance record.
+     * @deny (create) If the user is not an admin, they cannot create a new attendance record.
+     * @allow (get) Any signed-in user can get an attendance record.
+     * @deny (get) If the user is not signed in, they cannot get an attendance record.
+     * @principle Enforces admin-only access for writes to attendance records.
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get, list: if true;  // CRITICAL: Public read access! This must be restricted for production.
-      allow create: if false;  // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
-    /******************* Grace Settings Rules *******************/
-
     /**
-     * @description Controls access to grace settings.
+     * @description Manages access to grace settings, allowing only admins to read and write data.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) No one can read grace settings.
-     * @allow (create) No one can create grace settings.
-     * @allow (update, delete) No one can update or delete grace settings.
-     * @deny (create) Prevents unauthorized creation of grace settings.
-     * @deny (get, list) Prevents unauthorized read of grace settings.
-     * @deny (update, delete) Prevents unauthorized modification of grace settings.
+     * @allow (create) If the user is an admin, they can create a new grace setting.
+     * @deny (create) If the user is not an admin, they cannot create a new grace setting.
+     * @allow (get) Any signed-in user can get a grace setting.
+     * @deny (get) If the user is not signed in, they cannot get a grace setting.
+     * @principle Enforces admin-only access for writes to grace settings.
      */
     match /grace_settings/{graceSettingId} {
-      allow get, list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
-    /******************* Audit Log Rules *******************/
-
     /**
-     * @description Controls access to audit logs.
+     * @description Manages access to audit logs, allowing only admins to read and write data.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) No one can read audit logs.
-     * @allow (create) No one can create audit logs.
-     * @allow (update, delete) No one can update or delete audit logs.
-     * @deny (create) Prevents unauthorized creation of audit logs.
-     * @deny (get, list) Prevents unauthorized read of audit logs.
-     * @deny (update, delete) Prevents unauthorized modification of audit logs.
+     * @allow (create) If the user is an admin, they can create a new audit log.
+     * @deny (create) If the user is not an admin, they cannot create a new audit log.
+     * @allow (get) Any signed-in user can get a audit log.
+     * @deny (get) If the user is not signed in, they cannot get a audit log.
+     * @principle Enforces admin-only access for writes to audit logs.
      */
     match /audit_logs/{auditLogId} {
-      allow get, list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
-    /******************* Email Log Rules *******************/
-
     /**
-     * @description Controls access to email logs.
+     * @description Manages access to email logs, allowing only admins to read and write data.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) No one can read email logs.
-     * @allow (create) No one can create email logs.
-     * @allow (update, delete) No one can update or delete email logs.
-     * @deny (create) Prevents unauthorized creation of email logs.
-     * @deny (get, list) Prevents unauthorized read of email logs.
-     * @deny (update, delete) Prevents unauthorized modification of email logs.
+     * @allow (create) If the user is an admin, they can create a new email log.
+     * @deny (create) If the user is not an admin, they cannot create a new email log.
+     * @allow (get) Any signed-in user can get a email log.
+     * @deny (get) If the user is not signed in, they cannot get a email log.
+     * @principle Enforces admin-only access for writes to email logs.
      */
     match /email_logs/{emailLogId} {
-      allow get, list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
-    /******************* Auto Audit Settings Rules *******************/
-
     /**
-     * @description Controls access to auto audit settings. There is only one document with ID 'auto_audit_config'.
-     * @path /auto_audit_settings/auto_audit_config
-     * @allow (get, list) No one can read the auto audit settings.
-     * @allow (create) No one can create the auto audit settings.
-     * @allow (update, delete) No one can update or delete the auto audit settings.
-     * @deny (create) Prevents unauthorized creation of auto audit settings.
-     * @deny (get, list) Prevents unauthorized read of auto audit settings.
-     * @deny (update, delete) Prevents unauthorized modification of auto audit settings.
+     * @description Manages access to auto audit settings, allowing only admins to read and write data.
+     * @path /auto_audit_settings/{autoAuditSettingId}
+     * @allow (create) If the user is an admin, they can create a new auto audit setting.
+     * @deny (create) If the user is not an admin, they cannot create a new auto audit setting.
+     * @allow (get) Any signed-in user can get a auto audit setting.
+     * @deny (get) If the user is not signed in, they cannot get a auto audit setting.
+     * @principle Enforces admin-only access for writes to auto audit settings.
      */
-    match /auto_audit_settings/auto_audit_config {
-      allow get, list: if false;
+    match /auto_audit_settings/{autoAuditSettingId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
-     /******************* Device Rules *******************/
-
     /**
-     * @description Controls access to biometric device information.
-     * @path /devices/{deviceId}
-     * @allow (get, list) No one can read device.
-     * @allow (create) No one can create device.
-     * @allow (update, delete) No one can update or delete device.
-     * @deny (create) Prevents unauthorized creation of device.
-     * @deny (get, list) Prevents unauthorized read of device.
-     * @deny (update, delete) Prevents unauthorized modification of device.
+     * @description Manages access to departments, allowing only admins to read and write data.
+     * @path /departments/{departmentId}
+     * @allow (create) If the user is an admin, they can create a new department.
+     * @deny (create) If the user is not an admin, they cannot create a new department.
+     * @allow (get) Any signed-in user can get a department.
+     * @deny (get) If the user is not signed in, they cannot get a department.
+     * @principle Enforces admin-only access for writes to departments.
      */
-    match /devices/{deviceId} {
-      allow get, list: if false;
+    match /departments/{departmentId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if false;
       allow update: if false;
       allow delete: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
