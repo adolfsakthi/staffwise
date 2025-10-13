@@ -1,7 +1,7 @@
 
 import { add, format, startOfWeek } from 'date-fns';
 import { getFirestoreAdmin } from '@/firebase/admin';
-import type { Query, DocumentReference } from 'firebase-admin/firestore';
+import type { Query } from 'firebase-admin/firestore';
 
 
 export type AttendanceRecord = {
@@ -33,13 +33,9 @@ export type EmailLog = {
 // This can be fetched from a 'settings' collection in Firestore
 export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
 
-export async function getAttendanceRecords(filters?: { audited?: boolean }): Promise<AttendanceRecord[]> {
+export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
     const firestore = getFirestoreAdmin();
     let recordsQuery: Query = firestore.collection('attendance_records');
-
-     if (filters?.audited !== undefined) {
-        recordsQuery = recordsQuery.where('is_audited', '==', filters.audited);
-    }
 
     try {
         const snapshot = await recordsQuery.get();
@@ -49,7 +45,7 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
         if (error instanceof Error && 'code' in error && (error as any).code === 'permission-denied') {
              throw new Error("Firestore permission denied. Please check your security rules.");
         }
-        throw error;
+        return []; // Return empty array on error
     }
 }
 
@@ -59,7 +55,6 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     }
     const firestore = getFirestoreAdmin();
     const recordsCol = firestore.collection('attendance_records');
-    // Firestore 'in' query is limited to 30 items. If you expect more, you'll need to batch requests.
     const snapshot = await recordsCol.where('__name__', 'in', recordIds).get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
 }
@@ -76,9 +71,8 @@ export async function getAttendanceStats() {
         const lateCount = records.filter(r => r.is_late).length;
         const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
 
-        const departmentsCol = firestore.collection('grace_settings'); // Assuming departments are managed via grace_settings
+        const departmentsCol = firestore.collection('grace_settings');
         const departmentsSnapshot = await departmentsCol.get();
-        // Exclude global setting from department count
         const departmentCount = departmentsSnapshot.docs.filter(d => d.id !== 'global').length;
         
         return {
@@ -99,7 +93,6 @@ export async function getDepartments(): Promise<string[]> {
         const departmentsCol = firestore.collection('grace_settings');
         const q = departmentsCol.where('department', '!=', null);
         const snapshot = await q.get();
-        // Using a Set to ensure uniqueness, as department name is the id
         const departments = new Set(snapshot.docs.map(doc => doc.data().department as string));
         return Array.from(departments);
     } catch (error) {
