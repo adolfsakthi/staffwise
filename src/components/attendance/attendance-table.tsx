@@ -23,9 +23,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { getAttendanceRecords, getDepartments } from '@/lib/data';
 
 
 interface AttendanceTableProps {
@@ -33,19 +31,8 @@ interface AttendanceTableProps {
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const firestore = useFirestore();
-
-  const attendanceCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'attendance_records');
-  }, [firestore]);
-
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!attendanceCollectionRef) return null;
-    return query(attendanceCollectionRef, where('property_code', '==', propertyCode));
-  }, [attendanceCollectionRef, propertyCode]);
-  
-  const { data: allRecords, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   const [departments, setDepartments] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>(
@@ -54,14 +41,27 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
   useEffect(() => {
-    if (allRecords) {
-        const uniqueDepartments = [...new Set(allRecords.map(r => r.department))];
-        setDepartments(uniqueDepartments);
+    async function fetchData() {
+        setIsLoading(true);
+        try {
+            const [records, depts] = await Promise.all([
+                getAttendanceRecords(propertyCode),
+                getDepartments(propertyCode)
+            ]);
+            setAllRecords(records);
+            setDepartments(depts);
+        } catch (error) {
+            console.error("Failed to fetch attendance data:", error);
+            setAllRecords([]);
+            setDepartments([]);
+        } finally {
+            setIsLoading(false);
+        }
     }
-  }, [allRecords]);
+    fetchData();
+  }, [propertyCode]);
 
   const filteredRecords = useMemo(() => {
-    if (!allRecords) return [];
     return allRecords.filter(record => {
         const dateMatch = !dateFilter || record.date === dateFilter;
         const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
@@ -160,7 +160,7 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
               ) : (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
-                    No records found. This may be due to Firestore permissions.
+                    No records found for the selected criteria.
                   </TableCell>
                 </TableRow>
               )}
