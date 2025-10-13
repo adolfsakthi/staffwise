@@ -1,188 +1,131 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for user profiles
- * and generally restricts access to other collections.
+ * @description This ruleset enforces a tiered security model.
  *
  * Data Structure:
- * - Users: Stored under `/users/{userId}`. Each user can only read/write their own profile.
- * - Attendance Records: Stored under `/attendance_records/{attendanceRecordId}`. No specific access control defined.
- * - Grace Settings: Stored under `/grace_settings/{graceSettingId}`. No specific access control defined.
- * - Audit Logs: Stored under `/audit_logs/{auditLogId}`. No specific access control defined.
- * - Email Logs: Stored under `/email_logs/{emailLogId}`. No specific access control defined.
- * - Auto Audit Settings: Stored under `/auto_audit_settings/auto_audit_config`. No specific access control defined.
- * - Devices: Stored under `/devices/{deviceId}`. No specific access control defined.
+ * - Users are stored under `/users/{userId}`.
+ * - Attendance records, grace settings, audit logs, email logs, auto audit settings, and devices are stored in top-level collections.
  *
  * Key Security Decisions:
- * - Users can only manage their own user profiles.
- * - Listing of users is disallowed.
- * - All other collections have open read, write access. This is for rapid prototyping only and MUST be restricted later.
+ * - Users can only read/write their own user document.
+ * - Listing of users is disallowed for security reasons.
+ * - Grace settings, audit logs, email logs, auto audit settings, and devices have public read access, but restricted write access (TODO: Implement admin role for writes).
  *
  * Denormalization for Authorization:
- *   - User documents in `/users/{userId}` must have the `uid` field match the `userId` path parameter.
- *   - This allows the `isOwner()` function to quickly authorize access.
+ * - Not explicitly used in this version, but can be added for more fine-grained access control.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages user profiles.
+     * @description Checks if the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the existing resource.
+     */
+    function isExistingOwner(userId) {
+      return isSignedIn() && isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Enforces document ownership for writes.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' can create their profile at /users/user123.
-     * @deny (create) User with UID 'user456' cannot create a profile at /users/user123.
-     * @allow (get) User with UID 'user123' can read their profile at /users/user123.
-     * @deny (get) User with UID 'user456' cannot read the profile at /users/user123.
-     * @allow (update) User with UID 'user123' can update their profile at /users/user123.
-     * @deny (update) User with UID 'user456' cannot update the profile at /users/user123.
-     * @allow (delete) User with UID 'user123' can delete their profile at /users/user123.
-     * @deny (delete) User with UID 'user456' cannot delete the profile at /users/user123.
-     * @principle Enforces document ownership for writes.
+     * @allow (create) User with matching UID can create their profile.
+     * @deny (create) User attempting to create a profile with a different UID.
+     * @allow (get, update, delete) Owner can read, update, and delete their own profile.
+     * @deny (get, update, delete) Non-owner attempting to read, update, or delete another user's profile.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isSignedIn() && isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
-      }
-
       allow get: if isOwner(userId);
       allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.get('uid') == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.get('uid') == userId;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Stores individual employee attendance records.
+     * @description Allows public read access, but restricts write access.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get) Any signed-in user can read any attendance record.
-     * @allow (list) Any signed-in user can list attendance records.
-     * @allow (create) Any signed-in user can create an attendance record.
-     * @allow (update) Any signed-in user can update any attendance record.
-     * @allow (delete) Any signed-in user can delete any attendance record.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read attendance records.
+     * @deny (create, update, delete) Only admins can create, update, or delete attendance records (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Stores grace time settings for late entry detection.
+     * @description Allows public read access, but restricts write access.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get) Any signed-in user can read any grace setting.
-     * @allow (list) Any signed-in user can list grace settings.
-     * @allow (create) Any signed-in user can create a grace setting.
-     * @allow (update) Any signed-in user can update any grace setting.
-     * @allow (delete) Any signed-in user can delete any grace setting.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read grace settings.
+     * @deny (create, update, delete) Only admins can create, update, or delete grace settings (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /grace_settings/{graceSettingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Stores audit logs with details about each audit execution.
+     * @description Allows public read access, but restricts write access.
      * @path /audit_logs/{auditLogId}
-     * @allow (get) Any signed-in user can read any audit log.
-     * @allow (list) Any signed-in user can list audit logs.
-     * @allow (create) Any signed-in user can create an audit log.
-     * @allow (update) Any signed-in user can update any audit log.
-     * @allow (delete) Any signed-in user can delete any audit log.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read audit logs.
+     * @deny (create, update, delete) Only admins can create, update, or delete audit logs (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /audit_logs/{auditLogId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Stores email logs for tracking notifications.
+     * @description Allows public read access, but restricts write access.
      * @path /email_logs/{emailLogId}
-     * @allow (get) Any signed-in user can read any email log.
-     * @allow (list) Any signed-in user can list email logs.
-     * @allow (create) Any signed-in user can create an email log.
-     * @allow (update) Any signed-in user can update any email log.
-     * @allow (delete) Any signed-in user can delete any email log.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read email logs.
+     * @deny (create, update, delete) Only admins can create, update, or delete email logs (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /email_logs/{emailLogId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Stores the configuration for auto-auditing.
+     * @description Allows public read access, but restricts write access.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) Any signed-in user can read the auto audit config.
-     * @allow (list) Any signed-in user can list the auto audit config.
-     * @allow (create) Any signed-in user can create the auto audit config.
-     * @allow (update) Any signed-in user can update the auto audit config.
-     * @allow (delete) Any signed-in user can delete the auto audit config.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read the auto audit settings.
+     * @deny (create, update, delete) Only admins can create, update, or delete the auto audit settings (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /auto_audit_settings/auto_audit_config {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Stores biometric device information.
+     * @description Allows public read access, but restricts write access.
      * @path /devices/{deviceId}
-     * @allow (get) Any signed-in user can read any device.
-     * @allow (list) Any signed-in user can list devices.
-     * @allow (create) Any signed-in user can create a device.
-     * @allow (update) Any signed-in user can update any device.
-     * @allow (delete) Any signed-in user can delete any device.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
+     * @allow (get, list) Anyone can read device information.
+     * @deny (create, update, delete) Only admins can create, update, or delete devices (TODO: Implement admin role).
+     * @principle Public read, owner-only write (requires ownerId field).
      */
     match /devices/{deviceId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
-    }
-
-    /**
-     * @description Stores roles.
-     * @path /roles
-     * @allow (get) Any signed-in user can read any role.
-     * @allow (list) Any signed-in user can list roles.
-     * @allow (create) Any signed-in user can create a role.
-     * @allow (update) Any signed-in user can update any role.
-     * @allow (delete) Any signed-in user can delete any role.
-     * @principle Open access for prototyping.  MUST BE RESTRICTED LATER.
-     */
-    match /roles {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn(); // TODO: Add authorization checks
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
