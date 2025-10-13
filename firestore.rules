@@ -1,203 +1,138 @@
 /**
- * @file Overview
- * This ruleset enforces a user-ownership model for user profiles,
- * and allows public read access to attendance records, grace settings, audit logs and email logs with owner-only writes.
- * The auto-audit settings are protected by requiring an authenticated user.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict user-ownership model for user profiles
+ * and provides controlled access to attendance records, grace settings, audit logs, email logs, and auto-audit settings.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information, accessible only to the user themselves.
- * - /attendance_records/{attendanceRecordId}: Stores attendance records, publicly readable, but only writeable by an authenticated user.
- * - /grace_settings/{graceSettingId}: Stores grace period settings, publicly readable, but only writeable by an authenticated user.
- * - /audit_logs/{auditLogId}: Stores audit logs, publicly readable, but only writeable by an authenticated user.
- * - /email_logs/{emailLogId}: Stores email logs, publicly readable, but only writeable by an authenticated user.
- * - /auto_audit_settings/auto_audit_config: Stores auto-audit settings, accessible only to authenticated users.
+ * - /users/{userId}: Stores user profiles. Only the authenticated user can read/write their own profile.
+ * - /attendance_records/{attendanceRecordId}: Stores employee attendance records.  Write access is disallowed, read access is public.
+ * - /grace_settings/{graceSettingId}: Stores grace time settings. Write access is disallowed, read access is public.
+ * - /audit_logs/{auditLogId}: Stores audit logs.  Write access is disallowed, read access is public.
+ * - /email_logs/{emailLogId}: Stores email logs.  Write access is disallowed, read access is public.
+ * - /auto_audit_settings/auto_audit_config: Stores auto-audit settings. Write access is disallowed, read access is public.
  *
  * Key Security Decisions:
- * - Users can only read and write their own profile data.
- * - Listing of users is not allowed.
- * - Attendance records, grace settings, audit logs and email logs are publicly readable but only writeable by authenticated users.
- * - Auto-audit settings are accessible only to authenticated users.
- *
- * Denormalization for Authorization:
- *  - The current data model does not require denormalization. However, if we wanted to restrict access to attendance records, grace settings, audit logs and email logs to specific users or roles,
- *  we would need to add an `ownerId` or `allowedUsers` field to each document and adjust the security rules accordingly.
- *
- * Structural Segregation:
- *  - No structural segregation is currently implemented. If there were a need to have public and private attendance records, for example,
- *  we could create separate collections for each.
+ * - User listing is disallowed.
+ * - Read-only collections: attendance_records, grace_settings, audit_logs, email_logs and auto_audit_settings are publicly readable but not writable.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Checks if the request is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the requested user ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the resource's user ID AND the resource exists.
+     */
+    function isExistingOwner(userId) {
+        return (isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)));
+    }
+
+    /**
+     * @description Enforces that on create operations, the userId matches the document id.
+     */
+    function isValidUserCreate() {
+      return request.resource.data.uid == request.auth.uid;
+    }
+
+    /**
+     * @description Enforces that on update operations, the userId cannot be changed.
+     */
+    function isValidUserUpdate() {
+      return request.resource.data.uid == resource.data.uid;
+    }
+
+
+    /**
+     * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - If the user's auth UID matches the userId.
-     * @allow (get, update, delete) - If the user's auth UID matches the userId, and the resource exists.
-     * @deny (list) - Listing users is not allowed.
-     * @deny (create, update, delete) - If the user's auth UID does not match the userId.
-     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Helper function to check if the user is signed in and owns the document.
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      // Helper function to check if the user is signed in and owns the existing document.
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      // Allow the user to create their own profile if the UID matches.
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-
-      // Allow the user to read their own profile if it exists.
-      allow get: if isExistingOwner(userId);
-
-      // Allow the user to update their own profile if it exists.
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-
-      // Allow the user to delete their own profile if it exists.
-      allow delete: if isExistingOwner(userId);
-
-      // Listing users is not allowed.
+      allow get: if isOwner(userId);
       allow list: if false;
+      allow create: if isOwner(userId) && isValidUserCreate();
+      allow update: if isOwner(userId) && isExistingOwner(userId) && isValidUserUpdate();
+      allow delete: if isOwner(userId) && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to attendance records.
+     * @description Rules for attendance records.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) - All reads are allowed.
-     * @allow (create, update, delete) - Only authenticated users can write.
-     * @deny (create, update, delete) - If the user is not authenticated.
-     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /attendance_records/{attendanceRecordId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow anyone to read attendance records.
       allow get, list: if true;
-
-      // Allow only authenticated users to create attendance records.
-      allow create: if isSignedIn();
-
-      // Allow only authenticated users to update attendance records.
-      allow update: if isSignedIn() && resource != null;
-
-      // Allow only authenticated users to delete attendance records.
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to grace period settings.
+     * @description Rules for grace settings.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) - All reads are allowed.
-     * @allow (create, update, delete) - Only authenticated users can write.
-     * @deny (create, update, delete) - If the user is not authenticated.
-     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /grace_settings/{graceSettingId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow anyone to read grace settings.
       allow get, list: if true;
-
-      // Allow only authenticated users to create grace settings.
-      allow create: if isSignedIn();
-
-      // Allow only authenticated users to update grace settings.
-      allow update: if isSignedIn() && resource != null;
-
-      // Allow only authenticated users to delete grace settings.
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to audit logs.
+     * @description Rules for audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) - All reads are allowed.
-     * @allow (create, update, delete) - Only authenticated users can write.
-     * @deny (create, update, delete) - If the user is not authenticated.
-     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /audit_logs/{auditLogId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow anyone to read audit logs.
       allow get, list: if true;
-
-      // Allow only authenticated users to create audit logs.
-      allow create: if isSignedIn();
-
-      // Allow only authenticated users to update audit logs.
-      allow update: if isSignedIn() && resource != null;
-
-      // Allow only authenticated users to delete audit logs.
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to email logs.
+     * @description Rules for email logs.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) - All reads are allowed.
-     * @allow (create, update, delete) - Only authenticated users can write.
-     * @deny (create, update, delete) - If the user is not authenticated.
-     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /email_logs/{emailLogId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow anyone to read email logs.
       allow get, list: if true;
-
-      // Allow only authenticated users to create email logs.
-      allow create: if isSignedIn();
-
-      // Allow only authenticated users to update email logs.
-      allow update: if isSignedIn() && resource != null;
-
-      // Allow only authenticated users to delete email logs.
-      allow delete: if isSignedIn() && resource != null;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to auto-audit settings.
+     * @description Rules for auto-audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) - Only authenticated users can read the settings.
-     * @allow (create, update, delete) - Only authenticated users can write the settings.
-     * @deny (create, update, delete) - If the user is not authenticated.
-     * @deny (list) - Listing is not allowed.
-     * @principle Requires authentication for access.
      */
     match /auto_audit_settings/auto_audit_config {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Allow only authenticated users to read the settings.
-      allow get: if isSignedIn();
-
-      // Allow only authenticated users to create the settings.
-      allow create: if isSignedIn();
-
-      // Allow only authenticated users to update the settings.
-      allow update: if isSignedIn() && resource != null;
-
-      // Allow only authenticated users to delete the settings.
-      allow delete: if isSignedIn() && resource != null;
-
-      // Listing is not allowed
+      allow get: if true;
       allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    /**
+     * @description Rules for devices collection (fix for reported issue).
+     * @path /devices
+     */
+    match /devices/{deviceId} {
+      allow list: if true;
+      allow get: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
