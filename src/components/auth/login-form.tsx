@@ -21,6 +21,14 @@ export default function LoginForm() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) {
+        toast({
+            variant: 'destructive',
+            title: 'Authentication service not available',
+            description: 'Please try again later.',
+        });
+        return;
+    }
     setIsLoading(true);
 
     try {
@@ -69,6 +77,7 @@ export default function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               required
               disabled={isLoading}
+              placeholder="********"
             />
           </div>
         </CardContent>
