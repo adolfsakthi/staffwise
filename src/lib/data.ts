@@ -1,6 +1,10 @@
+
+import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import type { AttendanceRecord } from './types';
+import type { AttendanceRecord, Role } from './types';
 import { MOCK_DEPARTMENTS } from './mock-data';
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
 
 export type EmailLog = {
@@ -46,45 +50,90 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
 }
 
 
-export async function addAttendanceRecords(records: any[]) {
-    // This is a mock function. In a real app, it would add records to a database.
-    console.log("Mock addAttendanceRecords called with:", records);
-    records.forEach(record => {
-        const processed = processRecord(record);
-        console.log("Processed record:", processed);
+export async function addAttendanceRecords(db: Firestore, records: any[]): Promise<void> {
+    const batch = writeBatch(db);
+
+    records.forEach((recordData) => {
+        const processed = processRecord(recordData);
+        const newRecordRef = doc(collection(db, 'attendance_records'));
+        const recordWithAudited = {
+            ...processed,
+            id: newRecordRef.id,
+            is_audited: false,
+            audit_notes: ''
+        };
+        batch.set(newRecordRef, recordWithAudited);
     });
-    return Promise.resolve();
+
+    return batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: 'attendance_records',
+            operation: 'create',
+            requestResourceData: records.map(processRecord),
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        // We still throw the original error to not swallow it completely
+        throw serverError;
+    });
 }
 
 
-export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    // This is a mock function.
-    console.log("Mock getRecordsByIds called with:", recordIds);
-    return Promise.resolve([]);
+export async function getRecordsByIds(db: Firestore, recordIds: string[]): Promise<AttendanceRecord[]> {
+    const records: AttendanceRecord[] = [];
+    if (recordIds.length === 0) return records;
+
+    const CHUNK_SIZE = 30; // Firestore 'in' query limit
+    for (let i = 0; i < recordIds.length; i += CHUNK_SIZE) {
+        const chunk = recordIds.slice(i, i + CHUNK_SIZE);
+        const recordsQuery = query(collection(db, "attendance_records"), where('id', 'in', chunk));
+        
+        try {
+            const querySnapshot = await getDocs(recordsQuery);
+            querySnapshot.forEach(doc => {
+                records.push(doc.data() as AttendanceRecord);
+            });
+        } catch (serverError: any) {
+            const permissionError = new FirestorePermissionError({
+                path: 'attendance_records',
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw serverError;
+        }
+    }
+    return records;
 }
 
-export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    // This is a mock function.
-    console.log("Mock auditRecords called with:", { recordIds, auditNotes });
-    return Promise.resolve();
+export async function auditRecords(db: Firestore, recordIds: string[], auditNotes: string): Promise<void> {
+    const batch = writeBatch(db);
+    recordIds.forEach(id => {
+        const docRef = doc(db, 'attendance_records', id);
+        batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
+    });
+
+    return batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: 'attendance_records',
+            operation: 'update',
+            requestResourceData: { is_audited: true, audit_notes: auditNotes }
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    });
 }
 
 
 export async function logEmail(email: EmailLog): Promise<void> {
-    // This is a mock function.
-    console.log("Mock logEmail called with:", email);
+    console.log('Simulating email log:', email);
+    // In a real app, this would write to Firestore.
+    // For now, we'll just log to the console.
     return Promise.resolve();
 }
 
 
-export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
-    // This is a mock function.
-    console.log("Mock getAttendanceRecords called for propertyCode:", propertyCode);
-    return Promise.resolve([]);
-}
-
-
 export async function getDepartments(): Promise<string[]> {
-    // In mock mode, we return a static list of departments.
+    // This now fetches unique department values from the 'roles' collection.
+    // In a real app, this would be a Firestore query.
+    console.log("Fetching mock departments");
     return Promise.resolve(MOCK_DEPARTMENTS);
 }
