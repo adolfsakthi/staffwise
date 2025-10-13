@@ -72,17 +72,20 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
-
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
-
-        // trigger global error propagation
-        errorEmitter.emit('permission-error', contextualError);
+        // Since auth is removed, permission errors are expected.
+        // We will log them and set state appropriately, but not crash the app.
+        console.error("Firestore Permission Error in useDoc:", error.message);
+        setError(error);
+        setData(null);
+        setIsLoading(false);
+        
+        // We are no longer throwing a critical error, so we comment this out.
+        // const contextualError = new FirestorePermissionError({
+        //   operation: 'get',
+        //   path: memoizedDocRef.path,
+        // })
+        // setError(contextualError)
+        // errorEmitter.emit('permission-error', contextualError);
       }
     );
 

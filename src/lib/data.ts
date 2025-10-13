@@ -2,7 +2,7 @@
 
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc, and, getDoc } from 'firebase/firestore';
-import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { getSdks } from '@/firebase';
 
 export type AttendanceRecord = {
   id: string;
@@ -60,10 +60,13 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
     });
 
     // Since auth is removed, we expect permission errors. We will log them
-    // but not throw the custom error that crashes the app.
-    await batch.commit().catch(error => {
+    // but not re-throw, to prevent the app from crashing.
+    try {
+        await batch.commit();
+    } catch (error) {
          console.error("Firestore Error writing records:", error);
-    });
+         // Do not re-throw error to avoid crashing the upload component.
+    }
 }
 
 
@@ -89,6 +92,7 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     const { firestore } = getSdks();
     const records: AttendanceRecord[] = [];
     
+    // Firestore 'in' queries are limited to 30 elements
     const chunks = [];
     for (let i = 0; i < recordIds.length; i += 30) {
         chunks.push(recordIds.slice(i, i + 30));
@@ -96,14 +100,13 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     
     try {
         for (const chunk of chunks) {
-            const docRefs = chunk.map(id => doc(firestore, 'attendance_records', id));
-            const snapshots = await Promise.all(docRefs.map(ref => getDoc(ref)));
-            
-            snapshots.forEach(docSnap => {
-                if (docSnap.exists()) {
+            const q = query(collection(firestore, 'attendance_records'), where('__name__', 'in', chunk));
+            const snapshot = await getDocs(q);
+            snapshot.forEach(docSnap => {
+                 if (docSnap.exists()) {
                     records.push({ id: docSnap.id, ...docSnap.data() } as AttendanceRecord);
                 }
-            });
+            })
         }
     } catch (error: any) {
         // Since auth is removed, permission errors are expected.
@@ -129,7 +132,8 @@ export async function getAttendanceStats(propertyCode: string) {
     };
 }
 
-export async function getDepartments(propertyCode: string): Promise<string[]> {
+export async function getDepartments(propertyCode?: string): Promise<string[]> {
+    if (!propertyCode) return [];
     const records = await getAttendanceRecords(propertyCode);
     return [...new Set(records.map(r => r.department))].sort();
 }
