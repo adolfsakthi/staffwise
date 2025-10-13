@@ -18,7 +18,8 @@ import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useUserProfile } from '@/firebase/auth/use-user-profile';
+
+const propertyCode = 'PROP-001'; // Hardcoded property code
 
 type Role = {
   id: string;
@@ -29,17 +30,14 @@ type Role = {
   
 export default function UserManagementPage() {
     const firestore = useFirestore();
-    const { userProfile, isLoading: isLoadingProfile } = useUserProfile();
 
     const rolesQuery = useMemoFirebase(() => {
-      if (!firestore || !userProfile?.property_code) return null;
-      return query(collection(firestore, 'roles'), where('property_code', '==', userProfile.property_code));
-    }, [firestore, userProfile]);
+      if (!firestore) return null;
+      return query(collection(firestore, 'roles'), where('property_code', '==', propertyCode));
+    }, [firestore]);
     const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
 
-    const isLoading = isLoadingProfile || isLoadingRoles;
-
-    if (isLoading) {
+    if (isLoadingRoles) {
         return (
             <div className="flex min-h-[400px] w-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -52,7 +50,7 @@ export default function UserManagementPage() {
         <CardHeader>
           <CardTitle>User Management</CardTitle>
           <CardDescription>
-            Manage user accounts and their assigned roles for property {userProfile?.property_code}.
+            Manage user accounts and their assigned roles for property {propertyCode}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -62,10 +60,10 @@ export default function UserManagementPage() {
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList roles={roles || []} propertyCode={userProfile?.property_code || ''} />
+                <UserList roles={roles || []} propertyCode={propertyCode} />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
-                <RoleManagement initialRoles={roles || []} propertyCode={userProfile?.property_code || ''} />
+                <RoleManagement initialRoles={roles || []} propertyCode={propertyCode} />
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -1,20 +1,12 @@
+
 'use client';
 
-import { usePathname } from 'next/navigation';
 import MainSidebar from './main-sidebar';
 import { SidebarInset } from '../ui/sidebar';
 import Header from './header';
 
-const PUBLIC_ROUTES = ['/login'];
-
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isPublicPage = PUBLIC_ROUTES.includes(pathname);
-
-  if (isPublicPage) {
-    return <>{children}</>;
-  }
-
+  // Since auth is removed, we always show the main layout.
   return (
     <>
       <MainSidebar />

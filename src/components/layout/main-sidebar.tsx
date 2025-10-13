@@ -29,8 +29,6 @@ import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { useAuth } from '@/firebase';
-import { useUserProfile } from '@/firebase/auth/use-user-profile';
 import { Button } from '../ui/button';
 
 const navItems = [
@@ -80,8 +78,6 @@ export default function MainSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
-  const auth = useAuth();
-  const { userProfile } = useUserProfile();
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -90,13 +86,17 @@ export default function MainSidebar() {
   };
 
   const getAvatarFallback = (name?: string | null) => {
-    if (!name) return 'U';
+    if (!name) return 'A';
     return name.split(' ').map(n => n[0]).join('');
   }
 
   const handleSignOut = () => {
-    auth.signOut();
+    // Auth functionality removed
+    alert("Sign out functionality has been disabled.");
   }
+
+  const displayName = "Admin User";
+  const email = "demo@staffwise.com";
 
   return (
     <Sidebar>
@@ -144,12 +144,12 @@ export default function MainSidebar() {
                   data-ai-hint={userAvatar.imageHint}
                 />
               )}
-              <AvatarFallback>{getAvatarFallback(userProfile?.displayName)}</AvatarFallback>
+              <AvatarFallback>{getAvatarFallback(displayName)}</AvatarFallback>
             </Avatar>
             <div className="text-left group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-medium">{userProfile?.displayName || 'Admin User'}</p>
+              <p className="text-sm font-medium">{displayName}</p>
               <p className="text-xs text-muted-foreground">
-                {userProfile?.email || 'demo@staffwise.com'}
+                {email}
               </p>
             </div>
             <Button variant="ghost" size="icon" onClick={handleSignOut} className="group-data-[collapsible=icon]:hidden ml-auto">

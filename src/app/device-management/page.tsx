@@ -33,8 +33,8 @@ import {
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useUserProfile } from '@/firebase/auth/use-user-profile';
 
+const propertyCode = "PROP-001"; // Hardcoded property code
 
 type Device = {
   id: string;
@@ -48,18 +48,15 @@ type Device = {
 
 export default function DeviceManagementPage() {
   const firestore = useFirestore();
-  const { userProfile, isLoading: isLoadingProfile } = useUserProfile();
 
   const devicesQuery = useMemoFirebase(
     () => {
-      if (!firestore || !userProfile?.property_code) return null;
-      return query(collection(firestore, 'devices'), where('property_code', '==', userProfile.property_code));
+      if (!firestore) return null;
+      return query(collection(firestore, 'devices'), where('property_code', '==', propertyCode));
     },
-    [firestore, userProfile]
+    [firestore]
   );
   const { data: devices, isLoading: isLoadingDevices } = useCollection<Device>(devicesQuery);
-
-  const isLoading = isLoadingProfile || isLoadingDevices;
 
   return (
     <Card>
@@ -67,7 +64,7 @@ export default function DeviceManagementPage() {
         <div>
           <CardTitle>Device Management</CardTitle>
           <CardDescription>
-            Manage and monitor your connected biometric devices for property {userProfile?.property_code}.
+            Manage and monitor your connected biometric devices for property {propertyCode}.
           </CardDescription>
         </div>
         <Button>
@@ -89,7 +86,7 @@ export default function DeviceManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoadingDevices ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />

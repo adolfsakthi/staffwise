@@ -8,11 +8,11 @@ import StatsCards from '@/components/dashboard/stats-cards';
 import { getAttendanceStats, getWeeklyAttendance } from '@/lib/data';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useUserProfile } from '@/firebase/auth/use-user-profile';
+
+const propertyCode = 'PROP-001'; // Hardcoded property code
 
 export default function DashboardPage() {
   const firestore = useFirestore();
-  const { userProfile, isLoading: isLoadingProfile } = useUserProfile();
 
   const [stats, setStats] = useState({
     totalRecords: 0,
@@ -24,34 +24,33 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore || !userProfile?.property_code) return null;
-    return query(collection(firestore, 'attendance_records'), where('property_code', '==', userProfile.property_code));
-  }, [firestore, userProfile]);
+    if (!firestore) return null;
+    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
+  }, [firestore]);
 
   const { data: records, isLoading: isLoadingRecords } = useCollection(attendanceQuery);
 
   useEffect(() => {
     async function fetchData() {
         setIsLoading(true);
-        if (records && userProfile) {
-            const stats = await getAttendanceStats(userProfile.property_code);
-            const weeklyData = await getWeeklyAttendance(userProfile.property_code);
+        if (records) {
+            const stats = await getAttendanceStats(propertyCode);
+            const weeklyData = await getWeeklyAttendance(propertyCode);
             setStats(stats);
             setWeeklyData(weeklyData);
         }
         setIsLoading(false);
     }
     fetchData();
-  }, [records, userProfile]);
+  }, [records]);
 
-  const overallLoading = isLoading || isLoadingProfile || isLoadingRecords;
 
   return (
     <div className="flex flex-col gap-8">
-      <StatsCards stats={stats} isLoading={overallLoading} />
+      <StatsCards stats={stats} isLoading={isLoadingRecords} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <OverviewChart data={weeklyData} isLoading={overallLoading} />
+          <OverviewChart data={weeklyData} isLoading={isLoadingRecords} />
         </div>
         <div>
           <DataUpload />

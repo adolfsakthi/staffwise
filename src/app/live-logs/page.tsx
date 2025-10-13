@@ -27,8 +27,8 @@ import {
 } from '@/components/ui/table';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { useUserProfile } from '@/firebase/auth/use-user-profile';
 
+const propertyCode = 'PROP-001'; // Hardcoded property code
 
 type LiveLog = {
     id: string;
@@ -50,15 +50,12 @@ const logConfig = {
 
 export default function LiveLogsPage() {
     const firestore = useFirestore();
-    const { userProfile, isLoading: isLoadingProfile } = useUserProfile();
 
     const logsQuery = useMemoFirebase(() => {
-        if (!firestore || !userProfile?.property_code) return null;
-        return query(collection(firestore, 'live_logs'), where('property_code', '==', userProfile.property_code));
-    }, [firestore, userProfile]);
+        if (!firestore) return null;
+        return query(collection(firestore, 'live_logs'), where('property_code', '==', propertyCode));
+    }, [firestore]);
     const { data: logs, isLoading: isLoadingLogs } = useCollection<LiveLog>(logsQuery);
-
-    const isLoading = isLoadingProfile || isLoadingLogs;
 
   return (
     <Card>
@@ -68,7 +65,7 @@ export default function LiveLogsPage() {
           <div>
             <CardTitle>Live Attendance Logs</CardTitle>
             <CardDescription>
-              Real-time feed of notable attendance events for property {userProfile?.property_code}.
+              Real-time feed of notable attendance events for property {propertyCode}.
             </CardDescription>
           </div>
         </div>
@@ -87,7 +84,7 @@ export default function LiveLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {isLoadingLogs ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
