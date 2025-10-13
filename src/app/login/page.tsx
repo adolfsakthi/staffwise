@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
@@ -50,12 +50,23 @@ export default function LoginPage() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
+        if (!user.emailVerified) {
+            await signOut(auth);
+            toast({
+                variant: 'destructive',
+                title: 'Email Not Verified',
+                description: 'Please check your inbox and verify your email address before logging in.',
+                duration: 6000,
+            });
+            setIsLoading(false);
+            return;
+        }
+
         if (user && firestore) {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
 
             if (userDoc.exists()) {
-                // User document exists, check property code
                 if (userDoc.data().property_code?.toLowerCase() === propertyCode.toLowerCase()) {
                     toast({
                         title: 'Login Successful',
@@ -71,12 +82,11 @@ export default function LoginPage() {
                     });
                 }
             } else {
-                // User document does not exist, create it for the first login
                 await setDoc(userDocRef, {
                     uid: user.uid,
                     email: user.email,
                     displayName: user.email?.split('@')[0] || 'Admin User',
-                    role: 'Admin', // Default role for first-time user
+                    role: 'Admin',
                     property_code: propertyCode,
                     createdAt: new Date(),
                 });

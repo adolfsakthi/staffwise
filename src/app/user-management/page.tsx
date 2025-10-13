@@ -1,3 +1,5 @@
+
+'use client';
 import {
     Card,
     CardContent,
@@ -13,13 +15,34 @@ import {
   } from '@/components/ui/tabs';
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
-import { getUsers, getRoles } from '@/lib/data';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
+
+type Role = {
+  id: string;
+  name: string;
+  permissions: string[];
+};
   
-  export default async function UserManagementPage() {
+export default function UserManagementPage() {
+    const firestore = useFirestore();
 
-    const users = await getUsers();
-    const roles = await getRoles();
+    const rolesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'roles');
+    }, [firestore]);
 
+    const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
+
+    if (isLoadingRoles) {
+        return (
+            <div className="flex min-h-[400px] w-full items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
     return (
       <Card>
         <CardHeader>
@@ -35,14 +58,15 @@ import { getUsers, getRoles } from '@/lib/data';
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList initialUsers={users} roles={roles} />
+                <UserList roles={roles || []} />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
-                <RoleManagement initialRoles={roles} />
+                <RoleManagement initialRoles={roles || []} />
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
     );
-  }
-  
+}
+
+    
