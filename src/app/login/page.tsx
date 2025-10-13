@@ -25,9 +25,9 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 export default function LoginPage() {
   const auth = useAuth();
   const { toast } = useToast();
-  const [email, setEmail] = useState('demo@staffwise.com');
-  const [password, setPassword] = useState('password');
-  const [propertyCode, setPropertyCode] = useState('PROP-001');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [propertyCode, setPropertyCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
