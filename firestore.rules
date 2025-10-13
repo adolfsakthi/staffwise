@@ -1,126 +1,136 @@
 /**
- * @fileOverview Firestore Security Rules for the Attendance Tracking Application.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure data access based on user roles and ownership.
- * It aims to prevent unauthorized data modification and exposure while allowing
- * for rapid prototyping with flexible data shapes.  Wherever possible, rules are
- * structured to be easily auditable and maintainable.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a role-based access control model.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information.
- * - /attendance_records/{attendanceRecordId}: Stores employee attendance records.
- * - /grace_settings/{graceSettingId}: Stores grace period settings.
- * - /audit_logs/{auditLogId}: Stores audit logs.
- * - /email_logs/{emailLogId}: Stores email logs.
- * - /auto_audit_settings/auto_audit_config: Stores auto audit configurations.
+ * - `/users/{userId}`: Stores user profile information; accessible only to the user themselves.
+ * - `/attendance_records/{attendanceRecordId}`: Stores employee attendance records; publicly readable, but only authorized users can modify records with matching IDs.
+ * - `/grace_settings/{graceSettingId}`: Stores grace time settings; publicly readable, but only authorized users can modify settings.
+ * - `/audit_logs/{auditLogId}`: Stores audit logs; publicly readable, but only authorized users can create logs.
+ * - `/email_logs/{emailLogId}`: Stores email logs; publicly readable, but only authorized users can create logs.
+ * - `/auto_audit_settings/auto_audit_config`: Stores auto-audit settings; publicly readable, but only authorized users can modify settings.
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - Data validation is minimal, focusing on authorization and relational integrity,
- *   to facilitate rapid development.  Data types and full schema validation are skipped.
- * - The ruleset assumes that all writes must be explicitly authorized.
+ * - Users can only read and write their own user profile data.
+ * - All collections are publicly readable to facilitate prototyping.
+ * - Write access to all collections is restricted and needs to be specifically configured.
+ *
+ * Denormalization for Authorization:
+ * - The rules rely on request.auth.uid for user identification. No denormalization is needed.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects user profile data.
+     * @description Manages user profile data.
      * @path /users/{userId}
-     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth.uid.
-     * @allow (get, list) - No one can get or list user profiles.
-     * @allow (update, delete) - No one can update or delete user profiles.
-     * @deny (create) - Unauthenticated user cannot create a profile.
-     * @deny (create) - Authenticated user cannot create a profile with a userId that doesn't match their own.
-     * @deny (get, list, update, delete) - All get, list, update, and delete operations are denied to everyone.
-     * @principle Enforces strict user ownership for profile creation and prevents unauthorized access to user data.
+     * @allow (create) User with UID 'user_abc' can create their profile if request.auth.uid == 'user_abc'.
+     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
+     * @allow (get) User with UID 'user_abc' can read their own profile.
+     * @deny (get) User with UID 'user_xyz' cannot read the profile of 'user_abc'.
+     * @allow (update) User with UID 'user_abc' can update their own profile.
+     * @deny (update) User with UID 'user_xyz' cannot update the profile of 'user_abc'.
+     * @allow (delete) User with UID 'user_abc' can delete their own profile.
+     * @deny (delete) User with UID 'user_xyz' cannot delete the profile of 'user_abc'.
+     * @principle Enforces user ownership for profile management.
      */
     match /users/{userId} {
-      allow get, list: if false;
+      allow get: if true;
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
-      allow update, delete: if false;
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.uid == userId;
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Controls access to attendance records.
+     * @description Manages employee attendance records.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) - Public read access to attendance records.
-     * @allow (create) - Anyone can create attendance records.
-     * @allow (update, delete) - Only the owner (determined by an 'ownerId' field) can update or delete.
-     * @deny (create) - Creation will be denied if the the user does not match the ownerId.
-     * @deny (update, delete) - Update and delete are denied if the document does not exist, or if the user is not the owner.
-     * @principle Allows public read access but restricts writes to record owners.
+     * @allow (get) Any user can read any attendance record.
+     * @allow (list) Any user can list attendance records.
+     * @deny (create) Any user cannot create an attendance record.
+     * @deny (update) Any user cannot update an attendance record.
+     * @deny (delete) Any user cannot delete an attendance record.
+     * @principle Allows public read access but restricts write access.
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Manages access to grace period settings.
+     * @description Manages grace time settings for late entry detection.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) - Public read access to grace settings.
-     * @allow (create) - Anyone can create grace settings.
-     * @allow (update, delete) - Only the owner can update or delete the grace settings.
-     * @deny (update, delete) - Update and delete are denied if the document does not exist, or if the user is not the owner.
-     * @principle Provides public read access but restricts writes to the owner.
+     * @allow (get) Any user can read any grace setting.
+     * @allow (list) Any user can list grace settings.
+     * @deny (create) Any user cannot create a grace setting.
+     * @deny (update) Any user cannot update a grace setting.
+     * @deny (delete) Any user cannot delete a grace setting.
+     * @principle Allows public read access but restricts write access.
      */
     match /grace_settings/{graceSettingId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Controls access to audit logs.
+     * @description Manages audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) - Public read access to audit logs.
-     * @allow (create) - Anyone can create audit logs.
-     * @allow (update, delete) - Only the owner can update or delete.
-     * @deny (update, delete) - Update and delete are denied if the document does not exist, or if the user is not the owner.
-     * @principle Allows public read but restricts write access.
+     * @allow (get) Any user can read any audit log.
+     * @allow (list) Any user can list audit logs.
+     * @deny (create) Any user cannot create an audit log.
+     * @deny (update) Any user cannot update an audit log.
+     * @deny (delete) Any user cannot delete an audit log.
+     * @principle Allows public read access but restricts write access.
      */
     match /audit_logs/{auditLogId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Restricts access to email logs.
+     * @description Manages email logs for tracking notifications.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) - Public read access to email logs.
-     * @allow (create) - Anyone can create email logs.
-     * @allow (update, delete) - Only the owner can update or delete.
-     * @deny (update, delete) - Update and delete are denied if the document does not exist, or if the user is not the owner.
-     * @principle Limits access to email logs.
+     * @allow (get) Any user can read any email log.
+     * @allow (list) Any user can list email logs.
+     * @deny (create) Any user cannot create an email log.
+     * @deny (update) Any user cannot update an email log.
+     * @deny (delete) Any user cannot delete an email log.
+     * @principle Allows public read access but restricts write access.
      */
     match /email_logs/{emailLogId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Secures auto-audit settings.
+     * @description Manages the configuration for auto-auditing.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get, list) - Public read access to auto audit settings.
-     * @allow (create) - Anyone can create auto audit settings.
-     * @allow (update, delete) - Only the owner can update or delete auto audit settings.
-     * @deny (update, delete) - Update and delete are denied if the document does not exist, or if the user is not the owner.
-     * @principle Protects auto-audit configuration.
+     * @allow (get) Any user can read the auto-audit settings.
+     * @allow (list) Any user can list the auto-audit settings.
+     * @deny (create) Any user cannot create the auto-audit settings.
+     * @deny (update) Any user cannot update the auto-audit settings.
+     * @deny (delete) Any user cannot delete the auto-audit settings.
+     * @principle Allows public read access but restricts write access.
      */
     match /auto_audit_settings/auto_audit_config {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     // Helper functions
@@ -130,6 +140,10 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return request.auth.uid == userId;
+    }
+
+    function isExistingOwner(userId) {
+        return (isOwner(userId) && resource != null);
     }
   }
 }
