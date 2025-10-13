@@ -1,4 +1,3 @@
-
 'use server';
 
 import { auditRecords, getRecordsByIds, logEmail } from "@/lib/data";
@@ -25,7 +24,7 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
 
         // --- Send Audit Summary Email ---
         const auditedRecords = await getRecordsByIds(recordIds);
-        const adminEmail = 'adolfsakthi@gmail.com';
+        const adminEmail = 'adolfsakthi@gmail.com'; // In a real app, this would be a configured admin email
         const subject = `Audit Completed: ${new Date().toLocaleString()}`;
         
         const auditedList = auditedRecords.map(r => 
@@ -33,14 +32,27 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
         ).join('');
 
         const body = `
-            <h1>Manual Audit Summary</h1>
-            <p>An audit was finalized with the following details:</p>
-            <p><b>Audit Notes:</b> ${auditNotes || 'No notes provided.'}</p>
-            <p><b>${auditedRecords.length} records were audited:</b></p>
-            <ul>
-                ${auditedList}
-            </ul>
-            <p>This is an automated notification. The audit was triggered manually from the StaffWise dashboard.</p>
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #2E3192; color: white; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px;">Audit Summary</h1>
+                </div>
+                <div style="padding: 20px;">
+                    <p>An audit was finalized with the following details:</p>
+                    <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; border-left: 5px solid #FFA500;">
+                        <p style="margin: 0;"><b>Audit Notes:</b> ${auditNotes || 'No notes provided.'}</p>
+                    </div>
+                    <h2 style="font-size: 18px; margin-top: 20px; border-bottom: 2px solid #eee; padding-bottom: 5px;">${auditedRecords.length} record(s) were audited:</h2>
+                    <ul style="padding-left: 20px;">
+                        ${auditedList}
+                    </ul>
+                    <p style="font-size: 12px; color: #777; margin-top: 30px;">
+                        This is an automated notification. The audit was triggered manually from the StaffWise dashboard.
+                    </p>
+                </div>
+                <div style="background-color: #f0f2f5; text-align: center; padding: 10px; font-size: 12px; color: #777;">
+                    &copy; ${new Date().getFullYear()} StaffWise Inc. All rights reserved.
+                </div>
+            </div>
         `;
 
         await logEmail({

@@ -40,7 +40,8 @@ const nextConfig: NextConfig = {
       config.externals.push('firebase-admin');
     }
     return config;
-  }
+  },
+  serverComponentsExternalPackages: ['recharts'],
 };
 
 export default nextConfig;

@@ -30,16 +30,22 @@ const MOCK_RECORDS: AttendanceRecord[] = [
     { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
     { id: '2', employee_name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales', shift_start: '09:00', shift_end: '18:00', entry_time: '08:55', exit_time: '18:30', date: '2024-05-27', is_late: false, late_by_minutes: 0, overtime_minutes: 30, is_audited: true },
     { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
+    { id: '4', employee_name: 'Sarah Lee', email: 'sarah.lee@example.com', department: 'HR', shift_start: '09:00', shift_end: '18:00', entry_time: '09:30', exit_time: '18:00', date: '2024-05-26', is_late: true, late_by_minutes: 30, overtime_minutes: 0, is_audited: false },
 ];
 const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
 
 export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
     await new Promise(res => setTimeout(res, 500));
-    return MOCK_RECORDS;
+    return MOCK_RECORDS.filter(r => !r.is_audited);
+}
+
+export async function getUnauditedRecords(): Promise<AttendanceRecord[]> {
+    await new Promise(res => setTimeout(res, 500));
+    return MOCK_RECORDS.filter(r => !r.is_audited);
 }
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise(res => setTimeout(res, 100));
     return MOCK_RECORDS.filter(r => recordIds.includes(r.id));
 }
 
@@ -79,12 +85,21 @@ export async function getWeeklyAttendance() {
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    console.log('Auditing records:', recordIds, 'with notes:', auditNotes);
+    console.log('Simulating auditing of records:', recordIds, 'with notes:', auditNotes);
+    // In a real app, you would update these records in the database.
+    // For now, we don't need to change the mock data here as the component will filter its view.
     await new Promise(res => setTimeout(res, 1000));
 }
 
 export async function logEmail(email: EmailLog): Promise<void> {
-    console.log('Logging email:', email);
+    console.log('--- MOCK EMAIL LOG ---');
+    console.log(`To: ${email.to}`);
+    console.log(`Subject: ${email.subject}`);
+    console.log('--- Body ---');
+    console.log(email.body);
+    console.log('--------------------');
+    // In a real app, this would use an email service (e.g., SendGrid, Nodemailer)
+    // and save a log to the database.
     await new Promise(res => setTimeout(res, 500));
 }
 

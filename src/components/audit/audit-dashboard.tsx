@@ -67,21 +67,26 @@ export default function AuditDashboard() {
     }
 
     setIsLoading(true);
-    // In a real app, this would be a server action
-    await new Promise(res => setTimeout(res, 1000));
-    
-    setRecords(records.filter(r => !selectedRecords.includes(r.id)));
-    
+    const result = await runAudit(selectedRecords, auditNotes);
     setIsLoading(false);
 
-    toast({
-        title: 'Audit Successful',
-        description: `${selectedRecords.length} records have been audited.`,
-        action: <FileCheck2 className="text-green-500" />,
-    });
-
-    setSelectedRecords([]);
-    setAuditNotes('');
+    if (result.success) {
+      toast({
+          title: 'Audit Successful',
+          description: result.message,
+          action: <FileCheck2 className="text-green-500" />,
+      });
+      // Filter out audited records from the view
+      setRecords(records.filter(r => !selectedRecords.includes(r.id)));
+      setSelectedRecords([]);
+      setAuditNotes('');
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Audit Failed',
+        description: result.message,
+      });
+    }
   };
 
   return (
