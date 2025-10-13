@@ -26,17 +26,22 @@ import type { AttendanceRecord } from '@/lib/data';
 import { FileCheck2, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
-type AuditDashboardProps = {
-  initialRecords: AttendanceRecord[];
-};
-
-export default function AuditDashboard({ initialRecords }: AuditDashboardProps) {
-  const [records, setRecords] = useState(initialRecords);
+export default function AuditDashboard() {
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const unauditedQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'attendance_records'), where('is_audited', '==', false));
+  }, [firestore]);
+
+  const { data: records, isLoading: isLoadingRecords } = useCollection<AttendanceRecord>(unauditedQuery);
 
   const handleSelectRecord = (id: string) => {
     setSelectedRecords((prev) =>
@@ -45,6 +50,7 @@ export default function AuditDashboard({ initialRecords }: AuditDashboardProps) 
   };
 
   const handleSelectAll = () => {
+    if (!records) return;
     if (selectedRecords.length === records.length) {
       setSelectedRecords([]);
     } else {
@@ -72,9 +78,7 @@ export default function AuditDashboard({ initialRecords }: AuditDashboardProps) 
         description: response.message,
         action: <FileCheck2 className="text-green-500" />,
       });
-      setRecords((prev) =>
-        prev.filter((r) => !selectedRecords.includes(r.id))
-      );
+      // Records will update automatically due to real-time listener
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -103,8 +107,9 @@ export default function AuditDashboard({ initialRecords }: AuditDashboardProps) 
                 <TableRow>
                   <TableHead>
                     <Checkbox
-                      checked={selectedRecords.length === records.length && records.length > 0}
+                      checked={records && records.length > 0 && selectedRecords.length === records.length}
                       onCheckedChange={handleSelectAll}
+                      disabled={!records || records.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
@@ -114,7 +119,13 @@ export default function AuditDashboard({ initialRecords }: AuditDashboardProps) 
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {records.length > 0 ? (
+                {isLoadingRecords ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                    </TableCell>
+                  </TableRow>
+                ) : records && records.length > 0 ? (
                   records.map((record) => (
                     <TableRow
                       key={record.id}
