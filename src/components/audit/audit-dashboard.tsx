@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -27,33 +26,29 @@ import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
-
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 interface AuditDashboardProps {
     propertyCode: string;
 }
 
 export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
-  const firestore = useFirestore();
-  
-  const auditQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-        collection(firestore, 'attendance_records'), 
-        where('property_code', '==', propertyCode),
-        where('is_audited', '==', false)
-    );
-  }, [firestore, propertyCode]);
-  
-  const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(auditQuery);
-
+  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    setIsFetching(true);
+    setTimeout(() => {
+        const records = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode && !r.is_audited);
+        setUnauditedRecords(records);
+        setIsFetching(false);
+    }, 500);
+  }, [propertyCode]);
+
 
   useEffect(() => {
     setSelectedRecords([]);
@@ -95,7 +90,8 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           description: result.message,
           action: <FileCheck2 className="text-green-500" />,
       });
-      // Data will refresh automatically due to useCollection hook
+      // In a real app with a backend, data would refresh. Here we manually filter.
+      setUnauditedRecords(prev => prev.filter(r => !selectedRecords.includes(r.id)));
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -142,12 +138,6 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : error ? (
-                    <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-destructive">
-                            Error: Could not fetch data. Check Firestore security rules.
-                        </TableCell>
-                    </TableRow>
                 ) : unauditedRecords && unauditedRecords.length > 0 ? (
                   unauditedRecords.map((record) => (
                     <TableRow

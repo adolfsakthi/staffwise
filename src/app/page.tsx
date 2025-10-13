@@ -1,30 +1,28 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
 import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { seedDatabase } from '@/lib/seed';
-import { useToast } from '@/hooks/use-toast';
-import { Database } from 'lucide-react';
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
+
+// Mock user for frontend-only mode
+const useUser = () => ({ propertyCode: 'D001' });
 
 export default function DashboardPage() {
   const { propertyCode } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [isSeeding, setIsSeeding] = useState(false);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
-    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
-  }, [firestore, propertyCode]);
-  
-  const { data: records, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
+  useEffect(() => {
+    // Simulate fetching data
+    setTimeout(() => {
+      setRecords(MOCK_ATTENDANCE_RECORDS);
+      setIsLoading(false);
+    }, 1000);
+  }, []);
 
   const stats = useMemo(() => {
     if (!records || records.length === 0) {
@@ -61,37 +59,13 @@ export default function DashboardPage() {
   }, [records]);
   
   const handleDataUpload = () => {
-    // The useCollection hook will automatically refresh the data.
-    // This function can be used for any additional side effects after upload.
     console.log("Data upload finished, dashboard refreshed.");
-  }
-  
-  const handleSeed = async () => {
-    setIsSeeding(true);
-    const result = await seedDatabase();
-    if (result.success) {
-      toast({
-        title: 'Database Initialized',
-        description: result.message,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Seeding Failed',
-        description: result.message,
-      });
-    }
-    setIsSeeding(false);
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-between items-start">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button onClick={handleSeed} disabled={isSeeding} variant="outline">
-          <Database className="mr-2 h-4 w-4" />
-          Initialize Database Collections
-        </Button>
       </div>
       <StatsCards stats={stats} isLoading={isLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

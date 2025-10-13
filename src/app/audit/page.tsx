@@ -1,7 +1,9 @@
 'use client';
 import AuditDashboard from "@/components/audit/audit-dashboard";
-import { useUser } from "@/firebase";
 import { Loader2 } from "lucide-react";
+
+// Mock user for frontend-only mode
+const useUser = () => ({ propertyCode: 'D001', isUserLoading: false });
 
 export default function AuditPage() {
     const { propertyCode, isUserLoading } = useUser();

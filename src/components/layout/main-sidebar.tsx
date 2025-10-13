@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Sidebar,
   SidebarContent,
@@ -29,9 +29,6 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { useAuth, useUser } from '@/firebase';
-import { signOut } from 'firebase/auth';
-import { useRouter } from 'next/navigation';
 
 const navItems = [
   {
@@ -76,10 +73,12 @@ const navItems = [
   },
 ];
 
+// Mock user for frontend-only mode
+const useUser = () => ({ user: { email: 'demo@staffwise.com', displayName: 'Demo User', photoURL: null } });
+
 export default function MainSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useAuth();
   const { user } = useUser();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
@@ -96,7 +95,8 @@ export default function MainSidebar() {
   }
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    // In a real app, this would sign out from Firebase
+    console.log("Signing out...");
     router.push('/login');
   }
 

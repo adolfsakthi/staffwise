@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,42 +10,33 @@ import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('demo@staffwise.com');
+  const [password, setPassword] = useState('demopass');
   const [isLoading, setIsLoading] = useState(false);
-  const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) {
-        toast({
-            variant: 'destructive',
-            title: 'Authentication service not available',
-            description: 'Please try again later.',
-        });
-        return;
-    }
     setIsLoading(true);
 
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast({
-        title: 'Signed in successfully!',
-        description: "Welcome back!",
-      });
-      router.push('/');
-    } catch (error: any) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Sign in failed',
-        description: error.message || 'Please check your credentials and try again.',
-      });
-    } finally {
+    // Mock sign-in logic
+    setTimeout(() => {
+      if (email === 'demo@staffwise.com' && password === 'demopass') {
+        toast({
+          title: 'Signed in successfully!',
+          description: "Welcome back!",
+        });
+        router.push('/');
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sign in failed',
+          description: 'Please use the demo credentials.',
+        });
+      }
       setIsLoading(false);
-    }
+    }, 1000);
   };
 
   return (

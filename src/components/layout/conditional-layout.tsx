@@ -1,34 +1,29 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import MainSidebar from './main-sidebar';
 import { SidebarInset } from '../ui/sidebar';
 import Header from './header';
-import { useUser } from '@/firebase';
-import { useEffect } from 'react';
-import LoginPage from '@/app/login/page';
+
+// Mock user for frontend-only mode
+const useUser = () => ({ user: { email: 'demo@staffwise.com', displayName: 'Demo User' }, isUserLoading: false });
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    // If loading is finished and there's no user, redirect to login.
-    if (!isUserLoading && !user && pathname !== '/login') {
-      router.push('/login');
-    }
-  }, [user, isUserLoading, pathname, router]);
-
 
   // Don't render the main layout on the login page.
-  if (pathname === '/login' || (!user && !isUserLoading)) {
-    return <LoginPage />;
+  if (pathname === '/login') {
+    return <>{children}</>;
   }
 
   // Still show a loading state while user is being determined to prevent flicker
-  if (isUserLoading || !user) {
+  if (isUserLoading) {
     return null; // Or a loading spinner
+  }
+
+  if (!user) {
+     return <>{children}</>;
   }
 
   return (

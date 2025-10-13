@@ -18,9 +18,10 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MOCK_ROLES } from '@/lib/mock-data';
 import type { Role } from '@/lib/types';
-import { useUser } from '@/firebase';
 
-  
+// Mock user for frontend-only mode
+const useUser = () => ({ propertyCode: 'D001' });
+
 export default function UserManagementPage() {
     const { propertyCode } = useUser();
     const [roles, setRoles] = useState<Role[]>([]);

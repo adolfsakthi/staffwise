@@ -33,8 +33,8 @@ import {
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
 import { MOCK_DEVICES } from '@/lib/mock-data';
-import { useUser } from '@/firebase';
 
+const useUser = () => ({ propertyCode: 'D001' });
 
 export default function DeviceManagementPage() {
   const { propertyCode } = useUser();

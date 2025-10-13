@@ -1,7 +1,9 @@
 'use client';
 import AttendanceTable from "@/components/attendance/attendance-table";
-import { useUser } from "@/firebase";
 import { Loader2 } from "lucide-react";
+
+// Mock user for frontend-only mode
+const useUser = () => ({ propertyCode: 'D001', isUserLoading: false });
 
 export default function AttendancePage() {
     const { propertyCode, isUserLoading } = useUser();

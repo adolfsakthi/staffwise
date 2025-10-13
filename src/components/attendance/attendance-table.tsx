@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -23,30 +22,29 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
-
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 interface AttendanceTableProps {
     propertyCode: string;
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const firestore = useFirestore();
-  
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
-  }, [firestore, propertyCode]);
-  
-  const { data: allRecords, isLoading, error } = useCollection<AttendanceRecord>(attendanceQuery);
-
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
+  useEffect(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+        const propertyRecords = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
+        setAllRecords(propertyRecords);
+        setIsLoading(false);
+    }, 500);
+  }, [propertyCode]);
+
   const departments = useMemo(() => {
     if (!allRecords) return [];
     return [...new Set(allRecords.map(rec => rec.department))];
@@ -112,12 +110,6 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
                   <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                   <TableCell colSpan={7} className="h-24 text-center text-destructive">
-                      Error: Could not fetch data. Check Firestore security rules.
-                   </TableCell>
                 </TableRow>
               ) : filteredRecords && filteredRecords.length > 0 ? (
                 filteredRecords.map((record) => (

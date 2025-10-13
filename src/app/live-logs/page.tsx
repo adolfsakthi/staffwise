@@ -27,7 +27,9 @@ import {
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
 import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
-import { useUser } from '@/firebase';
+
+// Mock user for frontend-only mode
+const useUser = () => ({ propertyCode: 'D001' });
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
