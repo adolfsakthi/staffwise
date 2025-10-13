@@ -5,7 +5,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where } from 'firebase/firestore';
-import { getDepartments } from '@/lib/data';
 import type { AttendanceRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -51,13 +50,11 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
   const { data: allRecords, isLoading, error } = useCollection<AttendanceRecord>(attendanceQuery);
   
   useEffect(() => {
-    async function fetchDepartments() {
-      // Using mock departments temporarily to avoid another Firestore read on load
-      const departmentsData = await getDepartments(propertyCode);
-      setDepartments(departmentsData);
+    if (allRecords) {
+      const uniqueDepartments = [...new Set(allRecords.map(r => r.department))];
+      setDepartments(uniqueDepartments);
     }
-    fetchDepartments();
-  }, [propertyCode]);
+  }, [allRecords]);
 
   const filteredRecords = useMemo(() => {
     if (!allRecords) return [];
