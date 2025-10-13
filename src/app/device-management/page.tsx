@@ -36,7 +36,7 @@ import type { Device } from '@/lib/types';
 import { MOCK_DEVICES } from '@/lib/mock-data';
 
 
-const propertyCode = "PROP-001"; // Hardcoded property code
+const propertyCode = "D001"; // Hardcoded property code
 
 export default function DeviceManagementPage() {
   const [devices, setDevices] = useState<Device[]>([]);

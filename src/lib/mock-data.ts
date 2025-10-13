@@ -7,7 +7,7 @@ const todayStr = format(new Date(), 'yyyy-MM-dd');
 export const MOCK_ATTENDANCE_RECORDS: AttendanceRecord[] = [
   {
     id: 'rec1',
-    property_code: 'PROP-001',
+    property_code: 'D001',
     employee_name: 'John Doe',
     email: 'john.doe@example.com',
     department: 'Housekeeping',
@@ -23,7 +23,7 @@ export const MOCK_ATTENDANCE_RECORDS: AttendanceRecord[] = [
   },
   {
     id: 'rec2',
-    property_code: 'PROP-001',
+    property_code: 'D001',
     employee_name: 'Jane Smith',
     email: 'jane.smith@example.com',
     department: 'Front Desk',
@@ -39,7 +39,7 @@ export const MOCK_ATTENDANCE_RECORDS: AttendanceRecord[] = [
   },
   {
     id: 'rec3',
-    property_code: 'PROP-001',
+    property_code: 'D001',
     employee_name: 'Peter Jones',
     email: 'peter.jones@example.com',
     department: 'Engineering',
@@ -57,27 +57,27 @@ export const MOCK_ATTENDANCE_RECORDS: AttendanceRecord[] = [
 ];
 
 export const MOCK_DEVICES: Device[] = [
-    { id: 'dev1', property_code: 'PROP-001', name: 'Main Entrance Biometric', model: 'ZK-Teco-X10', ip: '192.168.1.100', status: 'online', branch: 'Main Lobby' },
-    { id: 'dev2', property_code: 'PROP-001', name: 'Staff Exit Biometric', model: 'ZK-Teco-X10', ip: '192.168.1.101', status: 'offline', branch: 'Staff Area' },
+    { id: 'dev1', property_code: 'D001', name: 'Main Entrance Biometric', model: 'ZK-Teco-X10', ip: '192.168.1.100', status: 'online', branch: 'Main Lobby' },
+    { id: 'dev2', property_code: 'D001', name: 'Staff Exit Biometric', model: 'ZK-Teco-X10', ip: '192.168.1.101', status: 'offline', branch: 'Staff Area' },
     { id: 'dev3', property_code: 'PROP-002', name: 'Resort Entrance', model: 'BioMax-Pro', ip: '192.168.2.50', status: 'online', branch: 'Beach Resort' }
 ];
 
 export const MOCK_LIVE_LOGS: LiveLog[] = [
-    { id: 'log1', property_code: 'PROP-001', type: 'late', employee: 'John Doe', department: 'Housekeeping', time: '09:15', deviation: 15 },
-    { id: 'log2', property_code: 'PROP-001', type: 'overtime', employee: 'Jane Smith', department: 'Front Desk', time: '17:30', deviation: 30 },
-    { id: 'log3', property_code: 'PROP-001', type: 'on_time', employee: 'Alice Brown', department: 'Kitchen', time: '13:59', deviation: 0 },
+    { id: 'log1', property_code: 'D001', type: 'late', employee: 'John Doe', department: 'Housekeeping', time: '09:15', deviation: 15 },
+    { id: 'log2', property_code: 'D001', type: 'overtime', employee: 'Jane Smith', department: 'Front Desk', time: '17:30', deviation: 30 },
+    { id: 'log3', property_code: 'D001', type: 'on_time', employee: 'Alice Brown', department: 'Kitchen', time: '13:59', deviation: 0 },
 ];
 
 export const MOCK_USERS: User[] = [
-    { id: 'usr1', uid: 'user_1', property_code: 'PROP-001', displayName: 'Admin User', email: 'admin@staffwise.com', role: 'Admin' },
-    { id: 'usr2', uid: 'user_2', property_code: 'PROP-001', displayName: 'Manager User', email: 'manager@staffwise.com', role: 'Manager' },
-    { id: 'usr3', uid: 'user_3', property_code: 'PROP-001', displayName: 'Staff User', email: 'staff@staffwise.com', role: 'Staff' }
+    { id: 'usr1', uid: 'user_1', property_code: 'D001', displayName: 'Admin User', email: 'admin@staffwise.com', role: 'Admin' },
+    { id: 'usr2', uid: 'user_2', property_code: 'D001', displayName: 'Manager User', email: 'manager@staffwise.com', role: 'Manager' },
+    { id: 'usr3', uid: 'user_3', property_code: 'D001', displayName: 'Staff User', email: 'staff@staffwise.com', role: 'Staff' }
 ];
 
 export const MOCK_ROLES: Role[] = [
-    { id: 'role1', property_code: 'PROP-001', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'] },
-    { id: 'role2', property_code: 'PROP-001', name: 'Manager', permissions: ['read', 'write'] },
-    { id: 'role3', property_code: 'PROP-001', name: 'Staff', permissions: ['read'] }
+    { id: 'role1', property_code: 'D001', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'] },
+    { id: 'role2', property_code: 'D001', name: 'Manager', permissions: ['read', 'write'] },
+    { id: 'role3', property_code: 'D001', name: 'Staff', permissions: ['read'] }
 ];
 
 export const MOCK_DEPARTMENTS: string[] = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security'];

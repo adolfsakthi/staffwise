@@ -7,7 +7,7 @@ import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
 import { getAttendanceStats, getWeeklyAttendance } from '@/lib/data';
 
-const propertyCode = 'PROP-001'; // Hardcoded property code
+const propertyCode = 'D001'; // Hardcoded property code
 
 export default function DashboardPage() {
   const [stats, setStats] = useState({

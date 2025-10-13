@@ -21,7 +21,7 @@ import { MOCK_ROLES } from '@/lib/mock-data';
 import type { Role } from '@/lib/types';
 
 
-const propertyCode = 'PROP-001'; // Hardcoded property code
+const propertyCode = 'D001'; // Hardcoded property code
   
 export default function UserManagementPage() {
     const [roles, setRoles] = useState<Role[]>([]);

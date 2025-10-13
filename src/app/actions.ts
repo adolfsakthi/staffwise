@@ -24,7 +24,7 @@ async function parseCsv(file: File): Promise<any[]> {
 export async function uploadAttendance(formData: FormData) {
   const file = formData.get('file') as File;
   const uploadType = formData.get('uploadType') as string;
-  const propertyCode = 'PROP-001'; // Fallback property code since auth is removed
+  const propertyCode = 'D001'; // Fallback property code since auth is removed
 
   if (!file || file.size === 0) {
     return { success: false, message: 'No file provided.' };

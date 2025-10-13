@@ -29,7 +29,7 @@ import {
 import type { LiveLog } from '@/lib/types';
 import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
 
-const propertyCode = 'PROP-001'; // Hardcoded property code
+const propertyCode = 'D001'; // Hardcoded property code
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
