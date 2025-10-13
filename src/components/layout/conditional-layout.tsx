@@ -35,7 +35,15 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
     return <>{children}</>;
   }
 
-  if(!user) return null;
+  // If we are on a protected page and the user object is not yet available,
+  // we can show a loader or just null to prevent a flash of unauthenticated content.
+  if (!user) {
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <>

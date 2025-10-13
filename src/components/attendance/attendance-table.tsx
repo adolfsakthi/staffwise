@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { AttendanceRecord } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,6 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format } from 'date-fns';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { Loader2 } from 'lucide-react';
 
 type AttendanceTableProps = {
   initialRecords: AttendanceRecord[];
@@ -28,28 +32,31 @@ type AttendanceTableProps = {
 };
 
 export default function AttendanceTable({
-  initialRecords,
   departments,
-}: AttendanceTableProps) {
-  const [records, setRecords] = useState(initialRecords);
+}: Omit<AttendanceTableProps, 'initialRecords'>) {
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
+  const firestore = useFirestore();
 
-  const filteredRecords = useMemo(() => {
-    return records
-      .filter((record) => (dateFilter ? record.date === dateFilter : true))
-      .filter((record) =>
-        departmentFilter !== 'all' ? record.department === departmentFilter : true
-      );
-  }, [records, dateFilter, departmentFilter]);
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const baseQuery = collection(firestore, 'attendance_records');
 
-  // Set initial records for today
-  useEffect(() => {
-    setRecords(initialRecords);
-  }, [initialRecords]);
+    let queries = [];
+    if (dateFilter) {
+      queries.push(where('date', '==', dateFilter));
+    }
+    if (departmentFilter !== 'all') {
+      queries.push(where('department', '==', departmentFilter));
+    }
+    
+    return query(baseQuery, ...queries);
+  }, [firestore, dateFilter, departmentFilter]);
 
+  const { data: records, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
+  const filteredRecords = records || [];
 
   return (
     <Card>
@@ -94,7 +101,13 @@ export default function AttendanceTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRecords.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : filteredRecords.length > 0 ? (
                 filteredRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
