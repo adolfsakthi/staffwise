@@ -1,4 +1,3 @@
-
 'use client';
 import {
     Card,
@@ -19,24 +18,25 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MOCK_ROLES } from '@/lib/mock-data';
 import type { Role } from '@/lib/types';
+import { useUser } from '@/firebase';
 
-
-const propertyCode = 'D001'; // Hardcoded property code
   
 export default function UserManagementPage() {
+    const { propertyCode } = useUser();
     const [roles, setRoles] = useState<Role[]>([]);
     const [isLoadingRoles, setIsLoadingRoles] = useState(true);
     
     useEffect(() => {
+        if (!propertyCode) return;
         setIsLoadingRoles(true);
         setTimeout(() => {
             const propertyRoles = MOCK_ROLES.filter(r => r.property_code === propertyCode);
             setRoles(propertyRoles);
             setIsLoadingRoles(false);
         }, 500);
-    }, []);
+    }, [propertyCode]);
 
-    if (isLoadingRoles) {
+    if (isLoadingRoles || !propertyCode) {
         return (
             <div className="flex min-h-[400px] w-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />

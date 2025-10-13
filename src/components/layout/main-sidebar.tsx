@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -30,6 +29,9 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
+import { useAuth, useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
   {
@@ -76,6 +78,9 @@ const navItems = [
 
 export default function MainSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const auth = useAuth();
+  const { user } = useUser();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
@@ -90,13 +95,13 @@ export default function MainSidebar() {
     return name.split(' ').map(n => n[0]).join('');
   }
 
-  const handleSignOut = () => {
-    // Auth functionality removed
-    alert("Sign out functionality has been disabled.");
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/login');
   }
 
-  const displayName = "Admin User";
-  const email = "demo@staffwise.com";
+  const displayName = user?.displayName || user?.email;
+  const email = user?.email;
 
   return (
     <Sidebar>
@@ -135,7 +140,14 @@ export default function MainSidebar() {
             className="w-full justify-start gap-3 p-2 group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center flex items-center"
           >
             <Avatar className="h-8 w-8">
-              {userAvatar && (
+              {user?.photoURL ? (
+                 <AvatarImage
+                  src={user.photoURL}
+                  alt={displayName || 'User avatar'}
+                  width={32}
+                  height={32}
+                />
+              ) : userAvatar && (
                 <AvatarImage
                   src={userAvatar.imageUrl}
                   alt={userAvatar.description}

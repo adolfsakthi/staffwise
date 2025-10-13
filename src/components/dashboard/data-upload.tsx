@@ -28,24 +28,28 @@ const uploadTypes = {
   attendance: {
     label: 'Bulk Attendance',
     icon: FileClock,
-    template: 'property_code,employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date\n,John Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22',
+    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date,property_code\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22,D001',
     templateName: 'attendance_template.csv',
   },
   employees: {
     label: 'Employee Details',
     icon: Users,
-    template: 'employee_id,employee_name,email,department,role,property_code\nEMP001,Jane Doe,jane@company.com,Sales,Employee,PROP-001',
+    template: 'employee_id,employee_name,email,department,role,property_code\nEMP001,Jane Doe,jane@company.com,Sales,Employee,D001',
     templateName: 'employee_template.csv',
   },
   punch_logs: {
     label: 'Punch Logs',
     icon: FileClock,
-    template: 'device_id,employee_id,punch_time,property_code\nDEV001,EMP001,2024-05-21 09:05:12,PROP-001',
+    template: 'device_id,employee_id,punch_time,property_code\nDEV001,EMP001,2024-05-21 09:05:12,D001',
     templateName: 'punch_log_template.csv',
   },
 };
 
-export default function DataUpload() {
+type DataUploadProps = {
+  propertyCode: string | null;
+}
+
+export default function DataUpload({ propertyCode }: DataUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadType, setUploadType] = useState<UploadType>('attendance');
@@ -66,12 +70,21 @@ export default function DataUpload() {
       });
       return;
     }
+    if (!propertyCode) {
+       toast({
+        variant: 'destructive',
+        title: 'Property Code Missing',
+        description: 'Cannot upload file because the property code is missing.',
+      });
+      return;
+    }
 
     setIsUploading(true);
     
     const formData = new FormData();
     formData.append('file', file);
     formData.append('uploadType', uploadType);
+    formData.append('propertyCode', propertyCode);
 
     const result = await uploadAttendance(formData);
 
@@ -81,7 +94,6 @@ export default function DataUpload() {
             description: result.message,
             action: <FileCheck2 className="text-green-500" />,
         });
-        // You might want to trigger a refresh of the dashboard data here
     } else {
         toast({
             variant: 'destructive',
@@ -91,7 +103,6 @@ export default function DataUpload() {
     }
     
     setFile(null);
-    // Clear the file input visually
     const fileInput = document.getElementById('data-file') as HTMLInputElement;
     if(fileInput) fileInput.value = '';
 
@@ -144,7 +155,7 @@ export default function DataUpload() {
           {file && <p className="text-sm text-muted-foreground">Selected: {file.name}</p>}
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
-          <Button onClick={handleUpload} disabled={isUploading || !file} className="w-full">
+          <Button onClick={handleUpload} disabled={isUploading || !file || !propertyCode} className="w-full">
             {isUploading ? (
                 <Loader2 className="mr-2 animate-spin" />
             ) : (

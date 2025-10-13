@@ -16,9 +16,10 @@ type StatsCardsProps = {
     departmentCount: number;
   };
   isLoading: boolean;
+  propertyCode: string | null;
 };
 
-export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
+export default function StatsCards({ stats, isLoading, propertyCode }: StatsCardsProps) {
   const {
     totalRecords,
     lateCount,
@@ -29,7 +30,7 @@ export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
 
   const cardData = [
     {
-      title: 'Total Records',
+      title: `Records for ${propertyCode}`,
       value: totalRecords.toLocaleString(),
       icon: BookUser,
       color: 'text-blue-500',

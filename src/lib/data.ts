@@ -1,9 +1,6 @@
-
-
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from './mock-data';
 import type { AttendanceRecord } from './types';
-import { collection, addDoc, getDocs, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, updateDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
 
@@ -17,13 +14,14 @@ export type EmailLog = {
 }
 
 
-// A helper function to calculate late minutes and overtime
 function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' | 'audit_notes'> {
     const shiftStart = parse(record.shift_start, 'HH:mm', new Date(record.date));
     const entryTime = parse(record.entry_time, 'HH:mm', new Date(record.date));
     
-    // Grace period of 15 minutes is assumed.
-    const lateByMinutes = differenceInMinutes(entryTime, shiftStart) > 15 
+    // Grace period can be fetched from settings, here it's assumed to be 15 minutes.
+    const graceMinutes = 15; 
+    
+    const lateByMinutes = differenceInMinutes(entryTime, shiftStart) > graceMinutes
         ? differenceInMinutes(entryTime, shiftStart) 
         : 0;
 
@@ -54,8 +52,6 @@ export async function addAttendanceRecords(records: any[]) {
     const { firestore } = initializeFirebase();
     const attendanceCollection = collection(firestore, 'attendance_records');
     
-    console.log('Attempting to add records to Firestore:', records);
-    
     try {
         const batch = writeBatch(firestore);
         records.forEach(record => {
@@ -64,36 +60,31 @@ export async function addAttendanceRecords(records: any[]) {
                 ...processed,
                 is_audited: false,
                 audit_notes: '',
+                createdAt: serverTimestamp(),
             };
-            const docRef = doc(attendanceCollection); // Create a new doc with a generated ID
+            const docRef = doc(attendanceCollection);
             batch.set(docRef, newRecordData);
         });
         await batch.commit();
-        console.log(`${records.length} records successfully added to Firestore.`);
     } catch (error) {
-        // This will catch permission errors or other issues during the write.
         console.error("Firestore write error in addAttendanceRecords:", error);
-        // Re-throw a more user-friendly error to be caught by the server action
-        throw new Error("Failed to write to Firestore. This is likely a security rule issue. Please ensure your Firestore rules allow unauthenticated writes to the 'attendance_records' collection.");
+        throw new Error("Failed to write to Firestore. Check security rules and data format.");
     }
 }
 
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    // This is now using live data, but will likely return empty if rules don't allow reads.
     const { firestore } = initializeFirebase();
     if (recordIds.length === 0) return [];
     
     try {
         const attendanceCollection = collection(firestore, 'attendance_records');
-        // Firestore 'in' queries are limited to 30 elements.
-        // For a real app, you might need to batch this.
-        const q = query(attendanceCollection, where('__name__', 'in', recordIds.slice(0, 30)));
+        const q = query(collection(firestore, 'attendance_records'), where('__name__', 'in', recordIds.slice(0, 30)));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch(error) {
         console.error("Firestore read error in getRecordsByIds:", error);
-        return [];
+        throw error;
     }
 }
 
@@ -114,13 +105,17 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
 
 
 export async function logEmail(email: EmailLog): Promise<void> {
-    console.log(`Simulating logging email to ${email.to}.`);
-    // In a real app, this would write to Firestore. We keep this as-is to avoid another write failure.
-    await new Promise(resolve => setTimeout(resolve, 100));
+    const { firestore } = initializeFirebase();
+    try {
+        await addDoc(collection(firestore, 'email_logs'), {
+            ...email,
+            sentAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Firestore write error in logEmail:", error);
+    }
 }
 
-// These functions below are now wrappers around live queries.
-// If Firestore rules block reads, they will return empty arrays instead of crashing.
 
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
     const { firestore } = initializeFirebase();
@@ -134,7 +129,7 @@ export async function getAttendanceRecords(propertyCode: string): Promise<Attend
         return records;
     } catch (error) {
         console.error("Firestore read error in getAttendanceRecords:", error);
-        return []; // Return empty array on permission error
+        throw error;
     }
 }
 
@@ -153,8 +148,7 @@ export async function getAttendanceStats(propertyCode: string) {
     };
 }
 
-export async function getDepartments(propertyCode?: string): Promise<string[]> {
-    if (!propertyCode) return MOCK_DEPARTMENTS;
+export async function getDepartments(propertyCode: string): Promise<string[]> {
     const records = await getAttendanceRecords(propertyCode);
     const uniqueDepartments = [...new Set(records.map(r => r.department))];
     return uniqueDepartments.length > 0 ? uniqueDepartments : [];

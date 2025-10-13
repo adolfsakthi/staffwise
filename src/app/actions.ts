@@ -1,4 +1,3 @@
-
 'use server';
 
 import { auditRecords, getRecordsByIds, logEmail, addAttendanceRecords } from "@/lib/data";
@@ -13,7 +12,6 @@ async function parseCsv(file: File): Promise<any[]> {
         const values = line.split(',').map(v => v.trim());
         const record: { [key: string]: any } = {};
         header.forEach((h, i) => {
-            // A simple camelCase conversion
             const key = h.replace(/\s+/g, '_').toLowerCase();
             record[key] = values[i];
         });
@@ -25,7 +23,7 @@ async function parseCsv(file: File): Promise<any[]> {
 export async function uploadAttendance(formData: FormData) {
   const file = formData.get('file') as File;
   const uploadType = formData.get('uploadType') as string;
-  const propertyCode = 'D001'; // Default property code
+  const defaultPropertyCode = formData.get('propertyCode') as string;
 
   if (!file || file.size === 0) {
     return { success: false, message: 'No file provided.' };
@@ -37,10 +35,9 @@ export async function uploadAttendance(formData: FormData) {
         return { success: false, message: 'CSV file is empty or invalid.' };
     }
 
-    // Add property_code if it's missing from the records
     const processedRecords = recordsToCreate.map(rec => ({
       ...rec,
-      property_code: rec.property_code || propertyCode
+      property_code: rec.property_code || defaultPropertyCode
     }));
 
 
@@ -48,7 +45,6 @@ export async function uploadAttendance(formData: FormData) {
         case 'attendance':
              await addAttendanceRecords(processedRecords);
             break;
-        // In a real app, you would have functions like `addEmployees` or `addPunchLogs`
         case 'employees':
             console.log('Simulating processing of employee details...', processedRecords);
             return { success: false, message: 'Employee upload is not implemented yet.' };
@@ -70,9 +66,8 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
     try {
         await auditRecords(recordIds, auditNotes);
 
-        // --- Send Audit Summary Email ---
         const auditedRecords = await getRecordsByIds(recordIds);
-        const adminEmail = 'adolfsakthi@gmail.com'; // In a real app, this would be a configured admin email
+        const adminEmail = 'admin@staffwise.com'; 
         const subject = `Audit Completed: ${new Date().toLocaleString()}`;
         
         if (auditedRecords.length === 0) {
@@ -113,7 +108,6 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
             body,
             emailType: 'admin_report',
         });
-        // --- End of Email Logic ---
 
 
         return { success: true, message: `${recordIds.length} records audited successfully. A summary email has been logged.` };

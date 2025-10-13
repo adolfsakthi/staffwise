@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -28,8 +27,7 @@ import {
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
 import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
-
-const propertyCode = 'D001'; // Hardcoded property code
+import { useUser } from '@/firebase';
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -40,18 +38,19 @@ const logConfig = {
 
 
 export default function LiveLogsPage() {
+    const { propertyCode } = useUser();
     const [logs, setLogs] = useState<LiveLog[]>([]);
     const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
     useEffect(() => {
+        if (!propertyCode) return;
         setIsLoadingLogs(true);
-        // Simulate fetching data
         setTimeout(() => {
             const propertyLogs = MOCK_LIVE_LOGS.filter(l => l.property_code === propertyCode);
             setLogs(propertyLogs);
             setIsLoadingLogs(false);
         }, 500);
-    }, []);
+    }, [propertyCode]);
 
   return (
     <Card>

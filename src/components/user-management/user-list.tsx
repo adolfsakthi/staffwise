@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -30,8 +29,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import type { User, Role } from '@/lib/types';
-import { MOCK_USERS } from '@/lib/mock-data';
+import type { User, Role, UserProfile } from '@/lib/types';
+import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where, addDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+
 
 type UserListProps = {
     roles: Role[];
@@ -39,8 +41,15 @@ type UserListProps = {
 }
 
 export default function UserList({ roles, propertyCode }: UserListProps) {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const firestore = useFirestore();
+  const auth = useAuth();
+  
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    return query(collection(firestore, 'users'), where('property_code', '==', propertyCode));
+  }, [firestore, propertyCode]);
+  
+  const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile>(usersQuery);
 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -51,18 +60,9 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
   
   const { toast } = useToast();
 
-  useEffect(() => {
-    setIsLoadingUsers(true);
-    setTimeout(() => {
-        const propertyUsers = MOCK_USERS.filter(u => u.property_code === propertyCode);
-        setUsers(propertyUsers);
-        setIsLoadingUsers(false);
-    }, 500);
-  }, [propertyCode]);
-
-
   const handleRoleChange = async (userId: string, newRole: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    // In a real app, this would be an updateDoc call to Firestore
+    console.log(`Updating role for user ${userId} to ${newRole}`);
     toast({ title: "User role updated (mock)" });
   };
 
@@ -74,29 +74,39 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
     
     setIsCreatingUser(true);
     
-    const newUser: User = {
-        id: `user_${Date.now()}`,
-        uid: `uid_${Date.now()}`,
-        displayName: newUserName,
-        email: newUserEmail,
-        role: newUserRole,
-        property_code: propertyCode,
-    };
-    
-    setTimeout(() => {
-        setUsers(prev => [...prev, newUser]);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
+        const user = userCredential.user;
+
+        const newUserProfile: Omit<UserProfile, 'id'> = {
+            uid: user.uid,
+            displayName: newUserName,
+            email: newUserEmail,
+            role: newUserRole,
+            property_code: propertyCode,
+        };
+
+        await addDoc(collection(firestore, 'users'), newUserProfile);
 
         toast({
-            title: 'User Created Successfully (Mock)',
-            description: 'The user has been added to the list.',
+            title: 'User Created Successfully',
+            description: 'The user has been added and can now log in.',
         });
 
         setNewUserEmail('');
         setNewUserPassword('');
         setNewUserName('');
         setNewUserRole(roles[0]?.name || 'Staff');
+
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Failed to create user',
+            description: error.message || 'An unknown error occurred.',
+        });
+    } finally {
         setIsCreatingUser(false);
-    }, 500);
+    }
   };
 
   return (
@@ -178,6 +188,12 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
+            ) : error ? (
+                 <TableRow>
+                   <TableCell colSpan={4} className="h-24 text-center text-destructive">
+                      Error: {error.message}. Check Firestore security rules.
+                   </TableCell>
+                </TableRow>
             ) : users && users.length > 0 ? (
                 users.map((user) => (
                 <TableRow key={user.id}>
@@ -187,7 +203,7 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
                         <AvatarImage src={`https://i.pravatar.cc/150?u=${user.email}`} alt={user.displayName} />
                         <AvatarFallback>
                         {user.displayName
-                            .split(' ')
+                            ?.split(' ')
                             .map((n) => n[0])
                             .join('')}
                         </AvatarFallback>

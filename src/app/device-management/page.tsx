@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -34,23 +33,25 @@ import {
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
 import { MOCK_DEVICES } from '@/lib/mock-data';
+import { useUser } from '@/firebase';
 
-
-const propertyCode = "D001"; // Hardcoded property code
 
 export default function DeviceManagementPage() {
+  const { propertyCode } = useUser();
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
 
   useEffect(() => {
+    if (!propertyCode) return;
+
     setIsLoadingDevices(true);
-    // Simulate fetching data
+    // Simulate fetching data for the logged-in user's property
     setTimeout(() => {
         const propertyDevices = MOCK_DEVICES.filter(d => d.property_code === propertyCode);
         setDevices(propertyDevices);
         setIsLoadingDevices(false);
     }, 500);
-  }, []);
+  }, [propertyCode]);
 
   return (
     <Card>

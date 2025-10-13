@@ -1,4 +1,3 @@
-
 export type AttendanceRecord = {
   id: string;
   property_code: string;
@@ -37,14 +36,18 @@ export type LiveLog = {
     deviation: number;
 };
 
-export type User = {
+export type UserProfile = {
   id: string;
-  property_code: string;
-  displayName: string;
+  uid: string;
+  displayName: string | null;
   email: string;
   role: string;
-  uid: string;
+  property_code: string;
 };
+
+// This type is deprecated, use UserProfile instead.
+export type User = UserProfile;
+
 
 export type Role = {
   id: string;
