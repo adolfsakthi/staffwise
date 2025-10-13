@@ -1,6 +1,6 @@
 
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { initialAttendanceRecords } from './attendance-data';
+import { initialAttendanceRecords, initialDevices, initialLiveLogs, initialRoles, initialUsers } from './attendance-data';
 import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc } from 'firebase/firestore';
 import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
 
@@ -30,37 +30,44 @@ export type EmailLog = {
     sentAt?: Date;
 }
 
-const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations', 'Support', 'Admin', 'Finance'];
 
-
-async function seedInitialData() {
+async function seedCollection(collectionName: string, data: any[]) {
     const { firestore } = getSdks();
-    const attendanceCollection = collection(firestore, 'attendance_records');
+    const collectionRef = collection(firestore, collectionName);
     
     try {
-        const snapshot = await getDocs(attendanceCollection);
-
+        const snapshot = await getDocs(query(collectionRef, where('__name__', '!=', '')));
         if (snapshot.empty) {
-            console.log('No attendance records found, seeding initial data...');
+            console.log(`Seeding ${collectionName}...`);
             const batch = writeBatch(firestore);
-            initialAttendanceRecords.forEach((record) => {
-                const docRef = doc(attendanceCollection);
-                batch.set(docRef, record);
+            data.forEach((item) => {
+                const docRef = doc(collectionRef);
+                batch.set(docRef, item);
             });
             await batch.commit();
-            console.log('Initial data seeded.');
+            console.log(`${collectionName} seeded.`);
         }
     } catch (error: any) {
-        if (error.code === 'permission-denied') {
+         if (error.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
-                path: attendanceCollection.path,
+                path: collectionRef.path,
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
-            throw permissionError;
         }
-        throw error;
+        // Don't rethrow, as seeding is a background task
     }
+}
+
+
+async function seedInitialData() {
+    await Promise.all([
+        seedCollection('attendance_records', initialAttendanceRecords),
+        seedCollection('devices', initialDevices),
+        seedCollection('live_logs', initialLiveLogs),
+        seedCollection('roles', initialRoles),
+        seedCollection('users', initialUsers),
+    ]);
 }
 
 
@@ -120,30 +127,12 @@ export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
         }
         throw error;
     }
 }
 
-export async function getUnauditedRecords(): Promise<AttendanceRecord[]> {
-    const { firestore } = getSdks();
-    const attendanceCollection = collection(firestore, 'attendance_records');
-    const q = query(attendanceCollection, where('is_audited', '==', false));
-    
-    try {
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
-    } catch (error: any) {
-         if (error.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: attendanceCollection.path,
-                operation: 'list',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-        throw error;
-    }
-}
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     if (recordIds.length === 0) return [];
@@ -172,6 +161,7 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
         }
         throw error;
     }
@@ -195,8 +185,8 @@ export async function getAttendanceStats() {
 }
 
 export async function getDepartments(): Promise<string[]> {
-    await new Promise(res => setTimeout(res, 500));
-    return MOCK_DEPARTMENTS;
+    const records = await getAttendanceRecords();
+    return [...new Set(records.map(r => r.department))].sort();
 }
 
 
@@ -242,6 +232,7 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
                 requestResourceData: { audit_notes: auditNotes, is_audited: true }
             });
             errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
         }
         throw error;
     }
@@ -258,31 +249,4 @@ export async function logEmail(email: EmailLog): Promise<void> {
     // In a real app, this would use an email service (e.g., SendGrid, Nodemailer)
     // and save a log to the database.
     await new Promise(res => setTimeout(res, 500));
-}
-
-export async function getUsers() {
-    // This would fetch from a database
-    await new Promise(res => setTimeout(res, 500));
-    return [
-        { id: '1', displayName: 'Alice Johnson', email: 'alice@example.com', role: 'Admin' },
-        { id: '2', displayName: 'Bob Williams', email: 'bob@example.com', role: 'Manager' },
-        { id: '3', displayName: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff' },
-    ];
-}
-
-export async function getRoles() {
-    await new Promise(res => setTimeout(res, 500));
-    return [
-        { id: '1', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'] },
-        { id: '2', name: 'Manager', permissions: ['read', 'write'] },
-        { id: '3', name: 'Staff', permissions: ['read'] },
-    ];
-}
-
-export async function getDevices() {
-    await new Promise(res => setTimeout(res, 500));
-    return [
-        { id: '1', name: 'Main Entrance', model: 'ZK-Teco-X1', ip: '192.168.1.101', status: 'online', branch: 'Headquarters' },
-        { id: '2', name: 'Warehouse-1', model: 'BioMax-9000', ip: '192.168.1.102', status: 'offline', branch: 'West Wing' },
-    ];
 }

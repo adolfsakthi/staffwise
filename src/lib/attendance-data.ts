@@ -119,3 +119,32 @@ export const initialAttendanceRecords: Omit<AttendanceRecord, 'id'>[] = [
       is_audited: false,
     }
 ];
+
+export const initialDevices = [
+    { name: 'Main Entrance', model: 'ZK-Teco-X1', ip: '192.168.1.101', status: 'online', branch: 'Headquarters' },
+    { name: 'Warehouse-1', model: 'BioMax-9000', ip: '192.168.1.102', status: 'offline', branch: 'West Wing' },
+    { name: 'Server Room', model: 'ZK-Teco-X1', ip: '192.168.1.103', status: 'online', branch: 'Headquarters' },
+    { name: 'Marketing Floor', model: 'Generic-A2', ip: '192.168.2.50', status: 'online', branch: 'East Annex' },
+];
+
+export const initialLiveLogs = [
+    { type: 'late', employee: 'John Doe', department: 'Engineering', time: '09:18', deviation: 18 },
+    { type: 'overtime', employee: 'Sarah Wilson', department: 'Engineering', time: '18:45', deviation: 45 },
+    { type: 'early', employee: 'Jane Smith', department: 'Sales', time: '08:50', deviation: 10 },
+    { type: 'late', employee: 'Robert Brown', department: 'HR', time: '09:05', deviation: 5 },
+    { type: 'overtime', employee: 'David Green', department: 'IT', time: '19:02', deviation: 62 },
+    { type: 'on_time', employee: 'Lisa Ray', department: 'Operations', time: '08:59', deviation: 0 },
+    { type: 'late', employee: 'Michael Davis', department: 'Sales', time: '09:25', deviation: 25 },
+];
+
+export const initialUsers = [
+    { uid: 'user1', displayName: 'Alice Johnson', email: 'alice@example.com', role: 'Admin' },
+    { uid: 'user2', displayName: 'Bob Williams', email: 'bob@example.com', role: 'Manager' },
+    { uid: 'user3', displayName: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff' },
+];
+
+export const initialRoles = [
+    { name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'] },
+    { name: 'Manager', permissions: ['read', 'write'] },
+    { name: 'Staff', permissions: ['read'] },
+];

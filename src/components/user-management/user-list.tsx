@@ -29,6 +29,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 
 type User = {
   id: string;
@@ -43,15 +45,13 @@ type Role = {
   name: string;
 };
 
-const MOCK_USERS: User[] = [
-    { id: '1', uid: 'user1', displayName: 'Alice Johnson', email: 'alice@example.com', role: 'Admin' },
-    { id: '2', uid: 'user2', displayName: 'Bob Williams', email: 'bob@example.com', role: 'Manager' },
-    { id: '3', uid: 'user3', displayName: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff' },
-];
-
 export default function UserList({ roles }: { roles: Role[] }) {
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const firestore = useFirestore();
+  const usersQuery = useMemoFirebase(() => (
+    firestore ? collection(firestore, 'users') : null
+  ), [firestore]);
+  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -62,29 +62,36 @@ export default function UserList({ roles }: { roles: Role[] }) {
   const { toast } = useToast();
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    toast({ title: "User role updated (mock)" });
+    if (firestore) {
+      const userDoc = doc(firestore, 'users', userId);
+      await updateDocumentNonBlocking(userDoc, { role: newRole });
+      toast({ title: "User role updated" });
+    }
   };
 
   const handleAddUser = async () => {
-    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserName.trim()) {
-      toast({ variant: 'destructive', title: 'Please fill all fields.' });
+    if (!newUserEmail.trim() || !newUserName.trim()) {
+      toast({ variant: 'destructive', title: 'Please fill name and email fields.' });
       return;
     }
-    setIsCreatingUser(true);
-    await new Promise(res => setTimeout(res, 1000));
+    if (!firestore) return;
 
-    const newUser: User = {
-        id: `user_${Date.now()}`,
+    setIsCreatingUser(true);
+
+    // NOTE: In a real app, createUserWithEmailAndPassword would be used,
+    // and the UID would come from the result.
+    // For this mock, we'll simulate it.
+    const newUser: Omit<User, 'id'> = {
         uid: `user_${Date.now()}`,
         displayName: newUserName,
         email: newUserEmail,
         role: newUserRole,
     };
-    setUsers([...users, newUser]);
+    const usersCollection = collection(firestore, 'users');
+    await addDocumentNonBlocking(usersCollection, newUser);
 
     toast({
-        title: 'User Created Successfully (Mock)',
+        title: 'User Created Successfully',
         description: 'The user has been added to the list.',
     });
 
@@ -120,6 +127,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
                             value={newUserPassword} 
                             onChange={e => setNewUserPassword(e.target.value)} 
                             className="pr-10"
+                            // In a real app, you wouldn't re-fetch passwords. This is for UI mock only.
                         />
                          <Button
                             type="button"

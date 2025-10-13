@@ -73,6 +73,54 @@
         "overtime_minutes",
         "is_audited"
       ]
+    },
+    "Device": {
+      "title": "Device",
+      "type": "object",
+      "description": "Represents a biometric device.",
+      "properties": {
+        "name": { "type": "string" },
+        "model": { "type": "string" },
+        "ip": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "offline"] },
+        "branch": { "type": "string" }
+      },
+      "required": ["name", "model", "status", "branch"]
+    },
+    "LiveLog": {
+        "title": "LiveLog",
+        "type": "object",
+        "description": "Represents a real-time attendance event.",
+        "properties": {
+            "type": { "type": "string", "enum": ["late", "overtime", "early", "on_time"] },
+            "employee": { "type": "string" },
+            "department": { "type": "string" },
+            "time": { "type": "string" },
+            "deviation": { "type": "number" }
+        },
+        "required": ["type", "employee", "department", "time"]
+    },
+    "User": {
+        "title": "User",
+        "type": "object",
+        "description": "Represents an application user.",
+        "properties": {
+            "displayName": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "role": { "type": "string" },
+            "uid": { "type": "string" }
+        },
+        "required": ["displayName", "email", "role", "uid"]
+    },
+    "Role": {
+        "title": "Role",
+        "type": "object",
+        "description": "Defines a user role and its permissions.",
+        "properties": {
+            "name": { "type": "string" },
+            "permissions": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["name", "permissions"]
     }
   },
   "auth": {
@@ -86,6 +134,22 @@
         "$ref": "#/entities/AttendanceRecord"
       },
       "description": "Stores all employee attendance entries."
+    },
+    "/devices/{device_id}": {
+        "schema": { "$ref": "#/entities/Device" },
+        "description": "Stores information about connected biometric devices."
+    },
+    "/live_logs/{log_id}": {
+        "schema": { "$ref": "#/entities/LiveLog" },
+        "description": "Stores real-time attendance event logs."
+    },
+    "/users/{user_id}": {
+        "schema": { "$ref": "#/entities/User" },
+        "description": "Stores application user profiles."
+    },
+    "/roles/{role_id}": {
+        "schema": { "$ref": "#/entities/Role" },
+        "description": "Stores user roles and permissions."
     }
   }
 }

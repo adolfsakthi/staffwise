@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -26,9 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-
-const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
-
+import { getDepartments } from '@/lib/data';
 
 type SettingsFormProps = {
   currentSettings: any; // Replace with actual types
@@ -38,6 +36,7 @@ export default function SettingsForm({
   currentSettings,
 }: SettingsFormProps) {
   const { toast } = useToast();
+  const [departments, setDepartments] = useState<string[]>([]);
   const [graceDepartment, setGraceDepartment] = useState('global');
   const [graceMinutes, setGraceMinutes] = useState(
     currentSettings.globalGraceTime
@@ -48,6 +47,14 @@ export default function SettingsForm({
   const [autoAuditTime, setAutoAuditTime] = useState(
     currentSettings.autoAudit.time
   );
+
+  useEffect(() => {
+    async function fetchDepartments() {
+      const depts = await getDepartments();
+      setDepartments(depts);
+    }
+    fetchDepartments();
+  }, []);
 
   const handleGraceDepartmentChange = (value: string) => {
     setGraceDepartment(value);
@@ -103,7 +110,7 @@ export default function SettingsForm({
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="global">Global (All Departments)</SelectItem>
-                                    {MOCK_DEPARTMENTS.map(dept => (
+                                    {departments.map(dept => (
                                         <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                     ))}
                                 </SelectContent>

@@ -1,3 +1,4 @@
+'use client';
 
 import {
     Card,
@@ -12,6 +13,7 @@ import {
     ArrowUp,
     Clock,
     UserCheck,
+    Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -22,16 +24,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
 
-const MOCK_LOGS = [
-    { type: 'late', employee: 'John Doe', department: 'Engineering', time: '09:18', deviation: 18, id: 1 },
-    { type: 'overtime', employee: 'Sarah Wilson', department: 'Engineering', time: '18:45', deviation: 45, id: 2 },
-    { type: 'early', employee: 'Jane Smith', department: 'Sales', time: '08:50', deviation: 10, id: 3 },
-    { type: 'late', employee: 'Robert Brown', department: 'HR', time: '09:05', deviation: 5, id: 4 },
-    { type: 'overtime', employee: 'David Green', department: 'IT', time: '19:02', deviation: 62, id: 5 },
-    { type: 'on_time', employee: 'Lisa Ray', department: 'Operations', time: '08:59', deviation: 0, id: 6 },
-    { type: 'late', employee: 'Michael Davis', department: 'Sales', time: '09:25', deviation: 25, id: 7 },
-];
+
+type LiveLog = {
+    id: string;
+    type: 'late' | 'overtime' | 'early' | 'on_time';
+    employee: string;
+    department: string;
+    time: string;
+    deviation: number;
+}
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -42,6 +46,12 @@ const logConfig = {
 
 
 export default function LiveLogsPage() {
+    const firestore = useFirestore();
+    const logsQuery = useMemoFirebase(() => (
+        firestore ? collection(firestore, 'live_logs') : null
+    ), [firestore]);
+    const { data: logs, isLoading } = useCollection<LiveLog>(logsQuery);
+
   return (
     <Card>
       <CardHeader>
@@ -68,29 +78,43 @@ export default function LiveLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {MOCK_LOGS.map((log) => {
-                const config = logConfig[log.type as keyof typeof logConfig] || logConfig.on_time;
-                return (
-                    <TableRow key={log.id}>
-                        <TableCell>
-                            <div className='flex items-center gap-2'>
-                                <config.icon className={`size-5 ${config.color}`} />
-                                <span className='font-medium'>{config.label}</span>
-                            </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{log.employee}</TableCell>
-                        <TableCell className="text-muted-foreground">{log.department}</TableCell>
-                        <TableCell className="text-muted-foreground">{log.time}</TableCell>
-                        <TableCell>
-                            {log.deviation > 0 ? (
-                                <Badge variant={config.badge as any}>{log.deviation} min</Badge>
-                            ) : (
-                                <span className='text-muted-foreground'>--</span>
-                            )}
-                        </TableCell>
-                    </TableRow>
-                )
-              })}
+              {isLoading ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                    </TableCell>
+                </TableRow>
+              ) : logs && logs.length > 0 ? (
+                logs.map((log) => {
+                    const config = logConfig[log.type] || logConfig.on_time;
+                    return (
+                        <TableRow key={log.id}>
+                            <TableCell>
+                                <div className='flex items-center gap-2'>
+                                    <config.icon className={`size-5 ${config.color}`} />
+                                    <span className='font-medium'>{config.label}</span>
+                                </div>
+                            </TableCell>
+                            <TableCell className="font-medium">{log.employee}</TableCell>
+                            <TableCell className="text-muted-foreground">{log.department}</TableCell>
+                            <TableCell className="text-muted-foreground">{log.time}</TableCell>
+                            <TableCell>
+                                {log.deviation > 0 ? (
+                                    <Badge variant={config.badge as any}>{log.deviation} min</Badge>
+                                ) : (
+                                    <span className='text-muted-foreground'>--</span>
+                                )}
+                            </TableCell>
+                        </TableRow>
+                    )
+                })
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        No live logs available.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
