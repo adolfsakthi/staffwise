@@ -1,4 +1,7 @@
 
+'use client';
+
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -23,16 +26,35 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { getDevices } from '@/lib/data';
 
-const MOCK_DEVICES = [
-    { id: 'dev_1', name: 'Main Entrance Biometric', model: 'ESSL x990', ip: '192.168.1.100', status: 'online', branch: 'Head Office' },
-    { id: 'dev_2', name: 'Server Room Access', model: 'ESSL F22', ip: '192.168.1.101', status: 'online', branch: 'Head Office' },
-    { id: 'dev_3', name: 'Warehouse Exit', model: 'ESSL x990', ip: '192.168.1.102', status: 'offline', branch: 'Warehouse A' },
-    { id: 'dev_4', name: 'HR Department', model: 'ESSL F18', ip: '192.168.1.103', status: 'online', branch: 'Head Office' },
-    { id: 'dev_5', name: 'Branch Office 1', model: 'ESSL x990', ip: '10.10.5.20', status: 'online', branch: 'Branch Office 1' },
-];
+type Device = {
+  id: string;
+  name: string;
+  model: string;
+  ip: string;
+  status: 'online' | 'offline';
+  branch: string;
+};
 
 export default function DeviceManagementPage() {
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchDevices() {
+      try {
+        const fetchedDevices = await getDevices();
+        setDevices(fetchedDevices);
+      } catch (error) {
+        console.error("Failed to fetch devices", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDevices();
+  }, []);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -60,37 +82,51 @@ export default function DeviceManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {MOCK_DEVICES.map((device) => (
-                <TableRow key={device.id}>
-                  <TableCell className="font-medium">{device.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{device.branch}</TableCell>
-                  <TableCell className="text-muted-foreground">{device.model}</TableCell>
-                  <TableCell className="text-muted-foreground">{device.ip}</TableCell>
-                  <TableCell>
-                    <Badge variant={device.status === 'online' ? 'secondary' : 'destructive'} className={device.status === 'online' ? 'text-emerald-500 bg-emerald-50 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'}>
-                      {device.status === 'online' ? <Wifi className="mr-2" /> : <WifiOff className="mr-2" />}
-                      {device.status.charAt(0).toUpperCase() + device.status.slice(1)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem>View Logs</DropdownMenuItem>
-                        <DropdownMenuItem>Sync Device</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                          Remove Device
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+              {loading ? (
+                 <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        Loading devices...
+                    </TableCell>
+                 </TableRow>
+              ) : devices.length > 0 ? (
+                devices.map((device) => (
+                  <TableRow key={device.id}>
+                    <TableCell className="font-medium">{device.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{device.branch}</TableCell>
+                    <TableCell className="text-muted-foreground">{device.model}</TableCell>
+                    <TableCell className="text-muted-foreground">{device.ip}</TableCell>
+                    <TableCell>
+                      <Badge variant={device.status === 'online' ? 'secondary' : 'destructive'} className={device.status === 'online' ? 'text-emerald-500 bg-emerald-50 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'}>
+                        {device.status === 'online' ? <Wifi className="mr-2" /> : <WifiOff className="mr-2" />}
+                        {device.status.charAt(0).toUpperCase() + device.status.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem>View Logs</DropdownMenuItem>
+                          <DropdownMenuItem>Sync Device</DropdownMenuItem>
+                          <DropdownMenuItem>Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive">
+                            Remove Device
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                        No devices found.
+                    </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

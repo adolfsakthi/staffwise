@@ -19,4 +19,5 @@ export {
   useAuth,
 } from './provider';
 
+export const { firestore } = initializeFirebase();
 export { useUser } from './auth/use-user';
