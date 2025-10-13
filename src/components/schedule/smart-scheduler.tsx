@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { BrainCircuit, Loader2 } from 'lucide-radix-icons';
+import { BrainCircuit, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getSmartSchedule } from '@/app/actions';
 import type { SmartStaffingScheduleOutput } from '@/ai/flows/smart-staffing-schedule';
