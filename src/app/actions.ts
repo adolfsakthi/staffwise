@@ -1,3 +1,4 @@
+
 'use server';
 
 import { auditRecords, getRecordsByIds, logEmail } from "@/lib/data";
@@ -24,7 +25,7 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
 
         // --- Send Audit Summary Email ---
         const auditedRecords = await getRecordsByIds(recordIds);
-        const adminEmail = 'sakthi@hezee.co.in';
+        const adminEmail = 'adolfsakthi@gmail.com';
         const subject = `Audit Completed: ${new Date().toLocaleString()}`;
         
         const auditedList = auditedRecords.map(r => 
