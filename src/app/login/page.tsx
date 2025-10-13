@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
@@ -187,3 +187,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "AttendanceRecord": {
@@ -219,22 +220,45 @@
         "enabled",
         "auditTime"
       ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user profile.",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user, from Firebase Auth." },
+        "email": { "type": "string", "description": "User's email address.", "format": "email" },
+        "displayName": { "type": "string", "description": "User's display name." },
+        "role": { "type": "string", "description": "User's role (e.g., Admin, Manager, Staff)." },
+        "property_code": { "type": "string", "description": "The property code the user belongs to." },
+        "createdAt": { "type": "string", "description": "Timestamp of user creation.", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "property_code", "createdAt"]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "password"
     ]
   },
   "firestore": {
     "structure": [
       {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": { "$ref": "#/entities/User" },
+          "description": "Stores user profiles.",
+          "params": [{ "name": "userId", "description": "User's unique ID." }]
+        }
+      },
+      {
         "path": "/attendance_records/{attendanceRecordId}",
         "definition": {
           "entityName": "AttendanceRecord",
           "schema": {
-            "$ref": "#/backend/entities/AttendanceRecord"
+            "$ref": "#/entities/AttendanceRecord"
           },
           "description": "Stores individual employee attendance records.",
           "params": [
@@ -250,7 +274,7 @@
         "definition": {
           "entityName": "GraceSetting",
           "schema": {
-            "$ref": "#/backend/entities/GraceSetting"
+            "$ref": "#/entities/GraceSetting"
           },
           "description": "Stores grace time settings for late entry detection, either globally or for a specific department. The document ID 'global' represents global settings; otherwise, the ID is the department name.",
           "params": [
@@ -266,7 +290,7 @@
         "definition": {
           "entityName": "AuditLog",
           "schema": {
-            "$ref": "#/backend/entities/AuditLog"
+            "$ref": "#/entities/AuditLog"
           },
           "description": "Stores audit logs with details about each audit execution.",
           "params": [
@@ -282,7 +306,7 @@
         "definition": {
           "entityName": "EmailLog",
           "schema": {
-            "$ref": "#/backend/entities/EmailLog"
+            "$ref": "#/entities/EmailLog"
           },
           "description": "Stores email logs for tracking notifications.",
           "params": [
@@ -298,13 +322,14 @@
         "definition": {
           "entityName": "AutoAuditSetting",
           "schema": {
-            "$ref": "#/backend/entities/AutoAuditSetting"
+            "$ref": "#/entities/AutoAuditSetting"
           },
           "description": "Stores the configuration for auto-auditing. There is only one document with the fixed ID 'auto_audit_config'.",
           "params": []
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to support the StaffWise application's features, including attendance tracking, late entry detection, overtime calculation, email notifications, daily audit reporting, smart scheduling and dashboard analytics. The structure prioritizes authorization independence and enables secure list operations.\n\n1.  **Authorization Independence (CRITICAL):** The design avoids hierarchical authorization dependencies (`get()`). Each document contains the necessary information for access control, preventing reliance on parent document data. This ensures atomic operations (transactions/batches) are robust and easily debugged.\n\n2.  **Structural Segregation (Homogeneous Security Posture):** Each collection is designed to contain documents with the same security requirements, simplifying rules and enhancing security.\n\n3.  **Access Modeling (Standardization and Consistency):** Path-based ownership is used where applicable (`/users/{userId}/drafts`). Collaborative data uses Membership Maps (`members: {uid1: \"role\", uid2: \"role\"}`).\n\n4.  **Data Clarity and Predictability:** Explicit state modeling uses a dedicated `status` field. Predictable schema avoids dynamic keys. Radical consistency enforces semantic naming conventions.\n\n*   `/attendance_records`: Stores all attendance records.\n*   `/grace_settings`: Stores global and department-specific grace time settings. A single document with `id: \"global\"` stores global settings; other documents are keyed by `department`.\n*   `/audit_logs`: Stores audit logs with details about each audit execution.\n*   `/email_logs`: Stores email logs for tracking notifications.\n*   `/auto_audit_settings`: Stores the configuration for auto-auditing. There should be only one document with the fixed ID 'auto_audit_config'."
+    ]
   }
 }
+
+    
