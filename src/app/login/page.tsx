@@ -9,8 +9,9 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuth } from '@/firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth, useFirestore } from '@/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,6 +31,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,17 +46,43 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({
-            title: 'Login Successful',
-            description: "Welcome back!",
-        });
-        router.push('/');
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Step 2: Verify Property Code
+        if (user && firestore) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists() && userDoc.data().property_code === propertyCode) {
+                // Property code is valid
+                toast({
+                    title: 'Login Successful',
+                    description: "Welcome back!",
+                });
+                router.push('/');
+            } else {
+                // Property code is invalid, sign out user and show error
+                await signOut(auth);
+                toast({
+                    variant: 'destructive',
+                    title: 'Login Failed',
+                    description: 'Invalid Property Code for this user.',
+                });
+            }
+        }
+
     } catch (error: any) {
+        let description = 'An unknown error occurred.';
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            description = 'Invalid email or password.';
+        } else {
+            description = error.message;
+        }
         toast({
             variant: 'destructive',
             title: 'Login Failed',
-            description: error.message || 'An unknown error occurred.',
+            description,
         });
     } finally {
         setIsLoading(false);
@@ -118,6 +146,7 @@ export default function LoginPage() {
                     <Input
                         id="property-code"
                         type="text"
+                        placeholder="Enter your property code"
                         required
                         value={propertyCode}
                         onChange={(e) => setPropertyCode(e.target.value)}
