@@ -1,137 +1,166 @@
-/**
- * @file Firebase Security Rules for Firestore.
- *
- * @Core Philosophy:
- * This ruleset enforces a department-centric security model. All operations are scoped
- * and controlled at the department level. Attendance records are nested under
- * departments, which allows for simpler and more secure list operations.
- *
- * @Data Structure:
- * - /departments: Stores department information.
- * - /departments/{departmentId}/attendance_records: Stores attendance records for each department.
- * - /grace_settings: Stores global and department-specific grace period settings.
- * - /audit_logs: Stores audit logs.
- * - /email_logs: Stores email logs.
- * - /auto_audit_settings: Stores auto-audit configurations.
- *
- * @Key Security Decisions:
- * - Read and write access to attendance records is controlled at the department level.
- * - Listing of attendance records is restricted to users who have access to the parent department.
- * - No user-specific data is stored, so an owner-only access pattern is not used.
- * - Generic read/write permissions are denied unless explicitly allowed by other rules.
- *
- * @Denormalization for Authorization:
- * - The 'departmentId' field is denormalized into the 'attendance_records' documents.
- *   This avoids the need for costly 'get()' operations to validate access.
- *
- * @Structural Segregation:
- * - Attendance records are stored under department subcollections to simplify access control
- *   and ensure that listing operations are secure by default.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages department information.
-     * @path /departments
-     * @allow (get, list): Anyone can read department names.
-     * @allow (create, update, delete): Nobody can modify departments.
-     * @deny (create): Always deny department creation.
-     * @deny (update): Always deny department updates.
-     * @deny (delete): Always deny department deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage client data.
+     * @path /clients/{clientId}
+     * @allow (create) User with auth can create a new client.
+     * @deny (create) User without auth cannot create a client.
+     * @allow (get, list) Any authenticated user can read client data.
+     * @deny (update, delete) No one can update or delete client data.
+     * @principle Enforces authenticated access for managing client data.
      */
-    match /departments {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Manages attendance records within a department.
-     * @path /departments/{departmentId}/attendance_records/{attendanceRecordId}
-     * @allow (get, list): Anyone can read attendance records.
-     * @allow (create, update, delete): Nobody can modify attendance records.
-     * @deny (create): Always deny attendance record creation.
-     * @deny (update): Always deny attendance record updates.
-     * @deny (delete): Always deny attendance record deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage branch data within a client.
+     * @path /clients/{clientId}/branches/{branchId}
+     * @allow (create) User with auth can create a new branch.
+     * @deny (create) User without auth cannot create a branch.
+     * @allow (get, list) Any authenticated user can read branch data.
+     * @deny (update, delete) No one can update or delete branch data.
+     * @principle Enforces authenticated access for managing branch data within a client.
      */
-    match /departments/{departmentId}/attendance_records/{attendanceRecordId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId}/branches/{branchId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Manages grace period settings.
-     * @path /grace_settings/{graceSettingId}
-     * @allow (get, list): Anyone can read grace settings.
-     * @allow (create, update, delete): Nobody can modify grace settings.
-     * @deny (create): Always deny grace setting creation.
-     * @deny (update): Always deny grace setting updates.
-     * @deny (delete): Always deny grace setting deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage employee data within a branch.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}
+     * @allow (create) User with auth can create a new employee.
+     * @deny (create) User without auth cannot create a employee.
+     * @allow (get, list) Any authenticated user can read employee data.
+     * @deny (update, delete) No one can update or delete employee data.
+     * @principle Enforces authenticated access for managing employee data within a branch.
      */
-    match /grace_settings/{graceSettingId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Manages audit logs.
-     * @path /audit_logs/{auditLogId}
-     * @allow (get, list): Anyone can read audit logs.
-     * @allow (create, update, delete): Nobody can modify audit logs.
-     * @deny (create): Always deny audit log creation.
-     * @deny (update): Always deny audit log updates.
-     * @deny (delete): Always deny audit log deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage biometric device data within a branch.
+     * @path /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
+     * @allow (create) User with auth can create a new biometric device.
+     * @deny (create) User without auth cannot create a biometric device.
+     * @allow (get, list) Any authenticated user can read biometric device data.
+     * @deny (update, delete) No one can update or delete biometric device data.
+     * @principle Enforces authenticated access for managing biometric device data within a branch.
      */
-    match /audit_logs/{auditLogId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Manages email logs.
-     * @path /email_logs/{emailLogId}
-     * @allow (get, list): Anyone can read email logs.
-     * @allow (create, update, delete): Nobody can modify email logs.
-     * @deny (create): Always deny email log creation.
-     * @deny (update): Always deny email log updates.
-     * @deny (delete): Always deny email log deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage attendance records for an employee.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+     * @allow (create) User with auth can create a new attendance record.
+     * @deny (create) User without auth cannot create a attendance record.
+     * @allow (get, list) Any authenticated user can read attendance record data.
+     * @deny (update, delete) No one can update or delete attendance record data.
+     * @principle Enforces authenticated access for managing attendance records for an employee.
      */
-    match /email_logs/{emailLogId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Manages auto-audit settings.
-     * @path /auto_audit_settings/{autoAuditSettingId}
-     * @allow (get, list): Anyone can read auto-audit settings.
-     * @allow (create, update, delete): Nobody can modify auto-audit settings.
-     * @deny (create): Always deny auto-audit setting creation.
-     * @deny (update): Always deny auto-audit setting updates.
-     * @deny (delete): Always deny auto-audit setting deletion.
-     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     * @description Allows authenticated users to manage leave requests for an employee.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+     * @allow (create) User with auth can create a new leave request.
+     * @deny (create) User without auth cannot create a leave request.
+     * @allow (get, list) Any authenticated user can read leave request data.
+     * @deny (update, delete) No one can update or delete leave request data.
+     * @principle Enforces authenticated access for managing leave requests for an employee.
      */
-    match /auto_audit_settings/{autoAuditSettingId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows a user to manage their own notifications.
+     * @path /users/{userId}/notifications/{notificationId}
+     * @allow (create) User can create a notification for themselves if the userId matches their auth ID.
+     * @deny (create) User cannot create a notification for another user.
+     * @allow (get, list) User can read their own notifications if the userId matches their auth ID.
+     * @deny (get, list) User cannot read another user's notifications.
+     * @allow (update, delete) User can update and delete their own notifications if the userId matches their auth ID.
+     * @deny (update, delete) User cannot update or delete another user's notifications.
+     * @principle Enforces document ownership for user-specific notifications.
+     */
+    match /users/{userId}/notifications/{notificationId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(resource);
+      }
+
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId);
+    }
+
+    /**
+     * @description Allows anyone to read and write email logs.  **CRITICAL: This should be restricted in production.**
+     * @path /emailLogs/{emailLogId}
+     * @allow (get, list, create, update, delete) Any authenticated user can read and write email logs.
+     * @principle Open access for logging (should be restricted in production).
+     */
+    match /emailLogs/{emailLogId} {
+       allow get, list, create, update, delete: if false; // Disable all access in prototype
+    }
+
+    /**
+     * @description Allows anyone to read and write audit logs.  **CRITICAL: This should be restricted in production.**
+     * @path /auditLogs/{auditLogId}
+     * @allow (get, list, create, update, delete) Any authenticated user can read and write audit logs.
+     * @principle Open access for logging (should be restricted in production).
+     */
+    match /auditLogs/{auditLogId} {
+      allow get, list, create, update, delete: if false; // Disable all access in prototype
     }
   }
 }
