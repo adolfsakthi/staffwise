@@ -108,6 +108,7 @@ export default function AttendanceTable() {
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
+                <TableHead>Property Code</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Times (Entry/Exit)</TableHead>
                 <TableHead>Status</TableHead>
@@ -118,7 +119,7 @@ export default function AttendanceTable() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
@@ -131,6 +132,7 @@ export default function AttendanceTable() {
                         {record.email}
                       </div>
                     </TableCell>
+                    <TableCell>{record.property_code}</TableCell>
                     <TableCell>{record.department}</TableCell>
                     <TableCell>
                       {record.entry_time} / {record.exit_time}
@@ -160,7 +162,7 @@ export default function AttendanceTable() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No records found for the selected filters.
                   </TableCell>
                 </TableRow>

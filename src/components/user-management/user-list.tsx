@@ -34,6 +34,7 @@ import { collection, doc } from 'firebase/firestore';
 
 type User = {
   id: string;
+  property_code: string;
   displayName: string;
   email: string;
   role: string;
@@ -86,6 +87,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
         displayName: newUserName,
         email: newUserEmail,
         role: newUserRole,
+        property_code: 'PROP-001', // Placeholder
     };
     const usersCollection = collection(firestore, 'users');
     await addDocumentNonBlocking(usersCollection, newUser);
@@ -170,6 +172,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
             <TableHeader>
             <TableRow>
                 <TableHead>User</TableHead>
+                <TableHead>Property Code</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="w-[50px]">Actions</TableHead>
             </TableRow>
@@ -177,7 +180,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
             <TableBody>
             {isLoadingUsers ? (
                 <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
@@ -203,6 +206,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
                     </div>
                     </div>
                 </TableCell>
+                <TableCell>{user.property_code}</TableCell>
                 <TableCell>
                     <Select
                     value={user.role}
@@ -240,7 +244,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
             ))
             ) : (
                 <TableRow>
-                    <TableCell colSpan={3} className="h-24 text-center">
+                    <TableCell colSpan={4} className="h-24 text-center">
                         No users found.
                     </TableCell>
                 </TableRow>

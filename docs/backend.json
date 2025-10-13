@@ -5,6 +5,10 @@
       "type": "object",
       "description": "Stores all employee attendance entries.",
       "properties": {
+        "property_code": {
+          "type": "string",
+          "description": "Unique identifier for the property or branch."
+        },
         "employee_name": {
           "type": "string",
           "description": "Name of the employee."
@@ -60,6 +64,7 @@
         }
       },
       "required": [
+        "property_code",
         "employee_name",
         "email",
         "department",
@@ -79,48 +84,52 @@
       "type": "object",
       "description": "Represents a biometric device.",
       "properties": {
+        "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
         "name": { "type": "string" },
         "model": { "type": "string" },
         "ip": { "type": "string" },
         "status": { "type": "string", "enum": ["online", "offline"] },
         "branch": { "type": "string" }
       },
-      "required": ["name", "model", "status", "branch"]
+      "required": ["property_code", "name", "model", "status", "branch"]
     },
     "LiveLog": {
         "title": "LiveLog",
         "type": "object",
         "description": "Represents a real-time attendance event.",
         "properties": {
+            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
             "type": { "type": "string", "enum": ["late", "overtime", "early", "on_time"] },
             "employee": { "type": "string" },
             "department": { "type": "string" },
             "time": { "type": "string" },
             "deviation": { "type": "number" }
         },
-        "required": ["type", "employee", "department", "time"]
+        "required": ["property_code", "type", "employee", "department", "time"]
     },
     "User": {
         "title": "User",
         "type": "object",
         "description": "Represents an application user.",
         "properties": {
+            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
             "displayName": { "type": "string" },
             "email": { "type": "string", "format": "email" },
             "role": { "type": "string" },
             "uid": { "type": "string" }
         },
-        "required": ["displayName", "email", "role", "uid"]
+        "required": ["property_code", "displayName", "email", "role", "uid"]
     },
     "Role": {
         "title": "Role",
         "type": "object",
         "description": "Defines a user role and its permissions.",
         "properties": {
+            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
             "name": { "type": "string" },
             "permissions": { "type": "array", "items": { "type": "string" } }
         },
-        "required": ["name", "permissions"]
+        "required": ["property_code", "name", "permissions"]
     }
   },
   "auth": {

@@ -21,6 +21,7 @@ export const ALL_PERMISSIONS = ['read', 'write', 'delete', 'manage_users'];
 
 type Role = {
   id: string;
+  property_code: string;
   name: string;
   permissions: string[];
 };
@@ -40,6 +41,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
       const newRole: Omit<Role, 'id'> = {
         name: newRoleName.trim(),
         permissions: ['read'],
+        property_code: 'PROP-001', // Placeholder
       };
       const rolesCollection = collection(firestore, 'roles');
       await addDocumentNonBlocking(rolesCollection, newRole);
@@ -104,6 +106,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Role Name</TableHead>
+                <TableHead>Property Code</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
@@ -115,6 +118,9 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
                      <>
                         <TableCell>
                             <Input value={editingRole.name} onChange={(e) => setEditingRole({...editingRole, name: e.target.value})} />
+                        </TableCell>
+                        <TableCell>
+                            <Input value={editingRole.property_code} onChange={(e) => setEditingRole({...editingRole, property_code: e.target.value})} />
                         </TableCell>
                         <TableCell>
                             <div className="flex flex-wrap gap-2">
@@ -135,6 +141,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
                   ) : (
                     <>
                       <TableCell className="font-medium">{role.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{role.property_code}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {role.permissions.length > 0 ? role.permissions.map((p) => (

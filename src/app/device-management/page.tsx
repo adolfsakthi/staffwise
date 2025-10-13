@@ -36,6 +36,7 @@ import { collection } from 'firebase/firestore';
 
 type Device = {
   id: string;
+  property_code: string;
   name: string;
   model: string;
   ip: string;
@@ -71,6 +72,7 @@ export default function DeviceManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Device Name</TableHead>
+                <TableHead>Property Code</TableHead>
                 <TableHead>Branch</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>IP Address</TableHead>
@@ -81,7 +83,7 @@ export default function DeviceManagementPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
@@ -89,6 +91,9 @@ export default function DeviceManagementPage() {
                 devices.map((device) => (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">{device.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.property_code}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {device.branch}
                     </TableCell>
@@ -139,7 +144,7 @@ export default function DeviceManagementPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No devices found.
                   </TableCell>
                 </TableRow>

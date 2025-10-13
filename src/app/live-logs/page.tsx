@@ -30,6 +30,7 @@ import { collection } from 'firebase/firestore';
 
 type LiveLog = {
     id: string;
+    property_code: string;
     type: 'late' | 'overtime' | 'early' | 'on_time';
     employee: string;
     department: string;
@@ -72,6 +73,7 @@ export default function LiveLogsPage() {
               <TableRow>
                 <TableHead className='w-[150px]'>Event</TableHead>
                 <TableHead>Employee</TableHead>
+                <TableHead>Property Code</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Punch Time</TableHead>
                 <TableHead>Deviation</TableHead>
@@ -80,7 +82,7 @@ export default function LiveLogsPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
@@ -96,6 +98,7 @@ export default function LiveLogsPage() {
                                 </div>
                             </TableCell>
                             <TableCell className="font-medium">{log.employee}</TableCell>
+                            <TableCell className="text-muted-foreground">{log.property_code}</TableCell>
                             <TableCell className="text-muted-foreground">{log.department}</TableCell>
                             <TableCell className="text-muted-foreground">{log.time}</TableCell>
                             <TableCell>
@@ -110,7 +113,7 @@ export default function LiveLogsPage() {
                 })
               ) : (
                 <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                         No live logs available.
                     </TableCell>
                 </TableRow>

@@ -116,6 +116,7 @@ export default function AuditDashboard() {
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
+                  <TableHead>Property Code</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Times</TableHead>
                   <TableHead>Status</TableHead>
@@ -124,7 +125,7 @@ export default function AuditDashboard() {
               <TableBody>
                 {isLoadingRecords ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
@@ -146,6 +147,7 @@ export default function AuditDashboard() {
                           {record.department}
                         </div>
                       </TableCell>
+                      <TableCell>{record.property_code}</TableCell>
                       <TableCell>{format(new Date(record.date), 'PPP')}</TableCell>
                       <TableCell>
                         {record.entry_time} / {record.exit_time}
@@ -163,7 +165,7 @@ export default function AuditDashboard() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No unaudited records found. Great job!
                     </TableCell>
                   </TableRow>

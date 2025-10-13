@@ -5,6 +5,7 @@ import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 export type AttendanceRecord = {
   id: string;
+  property_code: string;
   employee_name: string;
   email: string;
   department: string;
@@ -30,7 +31,7 @@ export type EmailLog = {
 }
 
 
-export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited'>[]) {
+export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited' | 'property_code'>[]) {
     const { firestore } = getSdks();
     const batch = writeBatch(firestore);
     const attendanceCollection = collection(firestore, 'attendance_records');
@@ -47,6 +48,7 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
 
         const newRecord = {
             ...record,
+            property_code: 'PROP-001', // Placeholder property code
             is_late: lateByMinutes > 0,
             late_by_minutes: Math.max(0, lateByMinutes),
             overtime_minutes: Math.max(0, overtimeMinutes),
