@@ -5,19 +5,10 @@ import Image from "next/image";
 
 export default function LoginPage() {
     return (
-      <div className="flex min-h-screen items-stretch bg-background text-foreground">
-        <div className="relative hidden w-1/2 flex-col justify-end p-12 lg:flex">
-          <Image
-            src="https://picsum.photos/seed/building-night/1200/1800"
-            alt="Building at night"
-            fill
-            className="object-cover"
-            data-ai-hint="building night"
-            priority
-          />
-        </div>
-        <div className="flex w-full items-center justify-center bg-accent p-8 lg:w-1/2">
-            <div className="w-full max-w-sm">
+      <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
+        <div className="flex items-center justify-center py-12 bg-accent">
+          <div className="mx-auto grid w-[350px] gap-6">
+            <div className="grid gap-2 text-center">
                 <div className="mb-8 flex flex-col items-center text-center">
                     <div className="flex items-center gap-4">
                         <Icons.hezeeLogo className="size-16 text-primary" />
@@ -27,9 +18,21 @@ export default function LoginPage() {
                         For the purpose of industry regulation, your details are required.
                     </p>
                 </div>
-                <LoginForm />
             </div>
+            <LoginForm />
+          </div>
+        </div>
+        <div className="hidden bg-muted lg:block">
+          <Image
+            src="https://picsum.photos/seed/building-night/1200/1800"
+            alt="Image"
+            width="1920"
+            height="1080"
+            className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+            data-ai-hint="building night"
+            priority
+          />
         </div>
       </div>
-    );
+    )
 }
