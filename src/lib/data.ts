@@ -1,7 +1,8 @@
 
-import { collection, getDocs, query, where, doc, writeBatch, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase-admin/firestore';
 import { add, format, startOfWeek } from 'date-fns';
 import { getFirestoreAdmin } from '@/firebase/admin';
+import type { Query, DocumentReference } from 'firebase-admin/firestore';
+
 
 export type AttendanceRecord = {
   id: string;
@@ -25,20 +26,19 @@ export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
 
 export async function getAttendanceRecords(filters?: { audited?: boolean }): Promise<AttendanceRecord[]> {
     const firestore = getFirestoreAdmin();
-    const recordsCol = collection(firestore, 'attendance_records');
-    let q = query(recordsCol);
+    let recordsQuery: Query = firestore.collection('attendance_records');
 
      if (filters?.audited !== undefined) {
-        q = query(q, where('is_audited', '==', filters.audited));
+        recordsQuery = recordsQuery.where('is_audited', '==', filters.audited);
     }
 
     try {
-        const snapshot = await getDocs(q);
+        const snapshot = await recordsQuery.get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch (error) {
         console.error("Error fetching attendance records: ", error);
         // Re-throw the error to be caught by Next.js error boundaries
-        if (error instanceof Error && error.message.includes('permission-denied')) {
+        if (error instanceof Error && 'code' in error && (error as any).code === 'permission-denied') {
              throw new Error("Firestore permission denied. Please check your security rules.");
         }
         throw error;
@@ -49,8 +49,8 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
 export async function getAttendanceStats() {
     const firestore = getFirestoreAdmin();
     try {
-        const recordsCol = collection(firestore, 'attendance_records');
-        const snapshot = await getDocs(recordsCol);
+        const recordsCol = firestore.collection('attendance_records');
+        const snapshot = await recordsCol.get();
         
         const records = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
 
@@ -58,8 +58,8 @@ export async function getAttendanceStats() {
         const lateCount = records.filter(r => r.is_late).length;
         const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
 
-        const departmentsCol = collection(firestore, 'grace_settings'); // Assuming departments are managed via grace_settings
-        const departmentsSnapshot = await getDocs(departmentsCol);
+        const departmentsCol = firestore.collection('grace_settings'); // Assuming departments are managed via grace_settings
+        const departmentsSnapshot = await departmentsCol.get();
         // Exclude global setting from department count
         const departmentCount = departmentsSnapshot.docs.filter(d => d.id !== 'global').length;
         
@@ -78,9 +78,9 @@ export async function getAttendanceStats() {
 export async function getDepartments(): Promise<string[]> {
     const firestore = getFirestoreAdmin();
     try {
-        const departmentsCol = collection(firestore, 'grace_settings');
-        const q = query(departmentsCol, where('department', '!=', null));
-        const snapshot = await getDocs(q);
+        const departmentsCol = firestore.collection('grace_settings');
+        const q = departmentsCol.where('department', '!=', null);
+        const snapshot = await q.get();
         // Using a Set to ensure uniqueness, as department name is the id
         const departments = new Set(snapshot.docs.map(doc => doc.data().department as string));
         return Array.from(departments);
@@ -95,13 +95,13 @@ export async function getWeeklyAttendance() {
     const firestore = getFirestoreAdmin();
 
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const recordsCol = collection(firestore, 'attendance_records');
+    const recordsCol = firestore.collection('attendance_records');
     const weeklyDataPromises = Array.from({ length: 7 }).map(async (_, i) => {
         const date = add(weekStart, { days: i });
         const dateStr = format(date, 'yyyy-MM-dd');
         
-        const q = query(recordsCol, where('date', '==', dateStr));
-        const snapshot = await getDocs(q);
+        const q = recordsCol.where('date', '==', dateStr);
+        const snapshot = await q.get();
         const recordsForDay = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
 
         const onTime = recordsForDay.filter(r => !r.is_late).length;
@@ -118,9 +118,9 @@ export async function getWeeklyAttendance() {
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
     const firestore = getFirestoreAdmin();
-    const batch = writeBatch(firestore);
+    const batch = firestore.batch();
     recordIds.forEach(id => {
-        const docRef = doc(firestore, 'attendance_records', id);
+        const docRef = firestore.collection('attendance_records').doc(id);
         batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
     });
     await batch.commit();
@@ -128,21 +128,21 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
 
 export async function getUsers() {
     const firestore = getFirestoreAdmin();
-    const usersCol = collection(firestore, 'users');
-    const snapshot = await getDocs(usersCol);
+    const usersCol = firestore.collection('users');
+    const snapshot = await usersCol.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 }
 
 export async function getRoles() {
     const firestore = getFirestoreAdmin();
-    const rolesCol = collection(firestore, 'roles');
-    const snapshot = await getDocs(rolesCol);
+    const rolesCol = firestore.collection('roles');
+    const snapshot = await rolesCol.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 }
 
 export async function getDevices() {
     const firestore = getFirestoreAdmin();
-    const devicesCol = collection(firestore, 'devices');
-    const snapshot = await getDocs(devicesCol);
+    const devicesCol = firestore.collection('devices');
+    const snapshot = await devicesCol.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 }
