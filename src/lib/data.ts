@@ -73,8 +73,8 @@ export async function addAttendanceRecords(records: any[]) {
             path: attendanceCollection.path,
         });
         errorEmitter.emit('permission-error', contextualError);
-        // Re-throw the original error to be caught by the caller if needed
-        throw error;
+        // Re-throw the error so the server action knows it failed
+        throw contextualError;
     });
 }
 
@@ -115,6 +115,7 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
             path: 'attendance_records',
         });
         errorEmitter.emit('permission-error', contextualError);
+        throw contextualError;
     });
 }
 
@@ -133,6 +134,7 @@ export async function logEmail(email: EmailLog): Promise<void> {
             requestResourceData: email,
         });
         errorEmitter.emit('permission-error', contextualError);
+        throw contextualError;
     });
 }
 
