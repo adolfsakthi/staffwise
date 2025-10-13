@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, LogIn } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginForm() {
@@ -52,7 +52,7 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSignIn} className="space-y-6">
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
             <Label htmlFor="email">Email</Label>
             <Input
             id="email"
@@ -65,7 +65,7 @@ export default function LoginForm() {
             className="bg-input border-border/50 focus:border-primary"
             />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
             <Label htmlFor="password">Password</Label>
             <Input
             id="password"
@@ -78,8 +78,7 @@ export default function LoginForm() {
             className="bg-input border-border/50 focus:border-primary"
             />
         </div>
-        <div className="flex items-center justify-between">
-            <div/>
+        <div className="flex items-center justify-end">
             <Link href="#" className="text-sm text-primary/80 hover:text-primary hover:underline">
                 Forgot Password?
             </Link>
