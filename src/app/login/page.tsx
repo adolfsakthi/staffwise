@@ -32,7 +32,6 @@ export default function LoginPage() {
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // In a real app, you'd make an API call here.
-    // For now, we'll just simulate a successful login.
     if (email && password) {
       toast({
         title: 'Login Successful',
@@ -51,49 +50,55 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-            <div className="flex justify-center items-center mb-4">
-                <Icons.logo className="size-8 text-primary" />
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
+      <div className="hidden lg:flex lg:flex-col items-center justify-center bg-muted p-8 text-center">
+        <Icons.logo className="size-20 text-primary mb-6" />
+        <h1 className="text-3xl font-bold">Welcome to StaffWise</h1>
+        <p className="text-muted-foreground mt-2 max-w-sm">
+            The ultimate solution for streamlined employee attendance tracking and management.
+        </p>
+      </div>
+      <div className="flex items-center justify-center py-12 px-4">
+        <div className="mx-auto grid w-[350px] gap-6">
+            <div className="grid gap-2 text-center">
+                <h1 className="text-3xl font-bold">Login</h1>
+                <p className="text-balance text-muted-foreground">
+                    Enter your email below to login to your account
+                </p>
             </div>
-          <CardTitle>Welcome Back</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <form onSubmit={handleLogin} className="grid gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="m@example.com"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <div className="flex items-center">
+                        <Label htmlFor="password">Password</Label>
+                    </div>
+                    <Input
+                        id="password"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign In
+                </Button>
+            </form>
+        </div>
+      </div>
     </div>
   );
 }
