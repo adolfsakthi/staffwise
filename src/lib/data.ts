@@ -37,7 +37,11 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch (error) {
         console.error("Error fetching attendance records: ", error);
-        return [];
+        // Re-throw the error to be caught by Next.js error boundaries
+        if (error instanceof Error && error.message.includes('permission-denied')) {
+             throw new Error("Firestore permission denied. Please check your security rules.");
+        }
+        throw error;
     }
 }
 
