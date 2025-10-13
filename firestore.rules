@@ -1,99 +1,110 @@
-/**
- * @file Firestore Security Rules
- * @description This ruleset allows read and write access to all data for authenticated users.
- *              It prioritizes rapid prototyping by focusing on authentication and deferring
- *              fine-grained authorization and data validation to later stages.
- *
- * Data Structure:
- * - /users/{userId}: Stores user profiles.
- * - /attendance_records/{attendanceRecordId}: Stores employee attendance records.
- * - /grace_settings/{graceSettingId}: Stores grace time settings.
- * - /audit_logs/{auditLogId}: Stores audit logs.
- * - /email_logs/{emailLogId}: Stores email logs.
- * - /auto_audit_settings/auto_audit_config: Stores auto-audit configuration.
- *
- * Key Security Decisions:
- * - Authenticated users can read and write any data.
- * - No data validation is performed in this prototyping phase.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
     /**
-     * @description Allows read and write access to user profiles for authenticated users.
+     * @description Controls access to user profile data.
      * @path /users/{userId}
-     * @allow (read, write) User with any ID can be created, read, updated, or deleted if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access any user profile.
+     * @allow (create) Authenticated user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) Authenticated user can get, update, and delete their own profile.
+     * @deny (create) Authenticated user cannot create a profile with a userId that does not match their auth.uid.
+     * @deny (get, update, delete) Authenticated user cannot get, update, and delete another user's profile.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      //  Helper function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper function to check if the requesting user is the owner of the resource.
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is an existing owner of the resource.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource.data != null;
+      }
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false; // Listing users is not permitted.
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isExistingOwner(userId);
+      allow delete: if isSignedIn() && isExistingOwner(userId);
     }
 
     /**
-     * @description Allows read and write access to attendance records for authenticated users.
+     * @description Controls access to attendance records.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (read, write) Any user can create, read, update, or delete attendance records if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access any attendance record.
+     * @allow (get, list) Any user can read attendance records.
+     * @deny (create, update, delete) No one can create, update, or delete attendance records.
+     * @principle Public read access with restricted writes.
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to grace settings for authenticated users.
+     * @description Controls access to grace period settings.
      * @path /grace_settings/{graceSettingId}
-     * @allow (read, write) Any user can create, read, update, or delete grace settings if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access any grace setting.
+     * @allow (get, list) Any user can read grace period settings.
+     * @deny (create, update, delete) No one can create, update, or delete grace period settings.
+     * @principle Public read access with restricted writes.
      */
     match /grace_settings/{graceSettingId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to audit logs for authenticated users.
+     * @description Controls access to audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (read, write) Any user can create, read, update, or delete audit logs if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access any audit log.
+     * @allow (get, list) Any user can read audit logs.
+     * @deny (create, update, delete) No one can create, update, or delete audit logs.
+     * @principle Public read access with restricted writes.
      */
     match /audit_logs/{auditLogId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to email logs for authenticated users.
+     * @description Controls access to email logs.
      * @path /email_logs/{emailLogId}
-     * @allow (read, write) Any user can create, read, update, or delete email logs if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access any email log.
+     * @allow (get, list) Any user can read email logs.
+     * @deny (create, update, delete) No one can create, update, or delete email logs.
+     * @principle Public read access with restricted writes.
      */
     match /email_logs/{emailLogId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Allows read and write access to the auto-audit settings for authenticated users.
+     * @description Controls access to auto audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (read, write) Any user can create, read, update, or delete the auto-audit configuration if the user is signed in.
-     * @deny (none)
-     * @principle Authenticated users can access the auto-audit settings.
+     * @allow (get) Any user can read the auto audit settings.
+     * @deny (create, update, delete) No one can create, update, or delete the auto audit settings.
+     * @principle Public read access with restricted writes.
      */
     match /auto_audit_settings/auto_audit_config {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to biometric devices.
+     * @path /devices/{deviceId}
+     * @allow (get, list) Any user can read device information.
+     * @deny (create, update, delete) No one can create, update, or delete device information.
+     * @principle Public read access with restricted writes.
+     */
+    match /devices/{deviceId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
