@@ -71,7 +71,6 @@ const generateMockData = (numRecords: number): AttendanceRecord[] => {
 const MOCK_RECORDS = generateMockData(50);
 
 export async function getAttendanceRecords(filters?: { date?: string; department?: string }): Promise<AttendanceRecord[]> {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
     let filteredRecords = MOCK_RECORDS;
     if (filters?.date) {
         filteredRecords = filteredRecords.filter(r => r.date === filters.date);
@@ -83,7 +82,6 @@ export async function getAttendanceRecords(filters?: { date?: string; department
 }
 
 export async function getAttendanceStats() {
-    await new Promise(resolve => setTimeout(resolve, 300));
     const totalRecords = MOCK_RECORDS.length;
     const lateCount = MOCK_RECORDS.filter(r => r.is_late).length;
     const totalOvertimeMinutes = MOCK_RECORDS.reduce((sum, r) => sum + r.overtime_minutes, 0);
@@ -98,12 +96,10 @@ export async function getAttendanceStats() {
 }
 
 export async function getDepartments() {
-    await new Promise(resolve => setTimeout(resolve, 100));
     return MOCK_DEPARTMENTS;
 }
 
 export async function getWeeklyAttendance() {
-    await new Promise(resolve => setTimeout(resolve, 400));
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const weeklyData = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });
