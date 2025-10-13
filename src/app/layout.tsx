@@ -6,6 +6,7 @@ import MainSidebar from '@/components/layout/main-sidebar';
 import { SidebarInset } from '@/components/ui/sidebar';
 import Header from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
+import ConditionalLayout from '@/components/layout/conditional-layout';
 
 export const metadata: Metadata = {
   title: 'StaffWise - Employee Attendance Management',
@@ -39,11 +40,9 @@ export default function RootLayout({
         )}
       >
         <SidebarProvider>
-          <MainSidebar />
-          <SidebarInset>
-            <Header />
-            <main className="flex-1 p-4 md:p-6 lg:p-8">{children}</main>
-          </SidebarInset>
+          <ConditionalLayout>
+            {children}
+          </ConditionalLayout>
         </SidebarProvider>
         <Toaster />
       </body>

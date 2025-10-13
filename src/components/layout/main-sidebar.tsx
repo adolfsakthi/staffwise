@@ -19,6 +19,7 @@ import {
   Settings,
   User,
   LogOut,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -33,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
   {
@@ -51,6 +53,11 @@ const navItems = [
     label: 'Audit',
   },
   {
+    href: '/user-management',
+    icon: Users,
+    label: 'User Management',
+  },
+  {
     href: '/settings',
     icon: Settings,
     label: 'Settings',
@@ -59,6 +66,7 @@ const navItems = [
 
 export default function MainSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
   return (
@@ -134,7 +142,7 @@ export default function MainSidebar() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/login')}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>

@@ -70,6 +70,24 @@ const generateMockData = (numRecords: number): AttendanceRecord[] => {
 };
 
 let MOCK_RECORDS = generateMockData(50);
+const MOCK_ROLES = [
+    { id: 'role_1', name: 'Administrator', permissions: ['view_dashboard', 'manage_attendance', 'run_audit', 'manage_users', 'manage_settings'] },
+    { id: 'role_2', name: 'HR Manager', permissions: ['view_dashboard', 'manage_attendance', 'run_audit'] },
+    { id: 'role_3', name: 'Employee', permissions: ['view_dashboard'] },
+];
+
+const MOCK_USERS = [
+    { id: 'user_1', name: 'Admin User', email: 'admin@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=admin@staffwise.com', role: 'Administrator' },
+    { id: 'user_2', name: 'HR Head', email: 'hr@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=hr@staffwise.com', role: 'HR Manager' },
+    { id: 'user_3', name: 'Regular Staff', email: 'employee@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=employee@staffwise.com', role: 'Employee' },
+     ...MOCK_EMPLOYEES.map((emp, i) => ({
+        id: `user_${i + 4}`,
+        name: emp.name,
+        email: emp.email,
+        avatar: `https://i.pravatar.cc/150?u=${emp.email}`,
+        role: 'Employee'
+    }))
+];
 
 export async function getAttendanceRecords(filters?: { date?: string; department?: string, audited?: boolean }): Promise<AttendanceRecord[]> {
     let filteredRecords = MOCK_RECORDS;
@@ -128,4 +146,12 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
         return record;
     });
     return;
+}
+
+export async function getUsers() {
+    return MOCK_USERS;
+}
+
+export async function getRoles() {
+    return MOCK_ROLES;
 }
