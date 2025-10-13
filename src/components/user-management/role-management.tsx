@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit, X, Check } from 'lucide-react';
+import { ALL_PERMISSIONS } from '@/lib/data';
 
 type Role = {
   id: string;
@@ -24,13 +25,6 @@ type RoleManagementProps = {
     initialRoles: Role[]
 }
 
-const ALL_PERMISSIONS = [
-  'view_dashboard',
-  'manage_attendance',
-  'run_audit',
-  'manage_users',
-  'manage_settings',
-];
 
 export default function RoleManagement({ initialRoles }: RoleManagementProps) {
   const [roles, setRoles] = useState(initialRoles);
@@ -42,7 +36,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
       const newRole: Role = {
         id: `role_${Date.now()}`,
         name: newRoleName.trim(),
-        permissions: [],
+        permissions: ['read'],
       };
       setRoles([...roles, newRole]);
       setNewRoleName('');
@@ -121,7 +115,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
                             <div className="flex flex-wrap gap-2">
                                 {ALL_PERMISSIONS.map(permission => (
                                     <Button key={permission} variant={editingRole.permissions.includes(permission) ? 'secondary': 'outline'} size="sm" onClick={() => togglePermission(permission)}>
-                                        {permission.replace(/_/g, ' ')}
+                                        {permission}
                                     </Button>
                                 ))}
                             </div>
@@ -140,7 +134,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
                         <div className="flex flex-wrap gap-1">
                           {role.permissions.length > 0 ? role.permissions.map((p) => (
                             <Badge key={p} variant="secondary">
-                              {p.replace(/_/g, ' ')}
+                              {p}
                             </Badge>
                           )): <span className='text-muted-foreground'>No permissions</span>}
                         </div>

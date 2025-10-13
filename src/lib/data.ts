@@ -19,16 +19,16 @@ export type AttendanceRecord = {
 
 const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'Marketing', 'IT', 'Operations'];
 const MOCK_EMPLOYEES = [
-    { name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering' },
-    { name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales' },
-    { name: 'Robert Brown', email: 'robert.brown@example.com', department: 'HR' },
-    { name: 'Sarah Wilson', email: 'sarah.wilson@example.com', department: 'Engineering' },
-    { name: 'Michael Davis', email: 'michael.davis@example.com', department: 'Sales' },
-    { name: 'Emily White', email: 'emily.white@example.com', department: 'Marketing' },
-    { name: 'David Green', email: 'david.green@example.com', department: 'IT' },
-    { name: 'Lisa Ray', email: 'lisa.ray@example.com', department: 'Operations' },
-    { name: 'Chris Martin', email: 'chris.martin@example.com', department: 'Engineering' },
-    { name: 'Anna Taylor', email: 'anna.taylor@example.com', department: 'Marketing' },
+    { name: 'John Doe', username: 'johndoe', email: 'john.doe@example.com', department: 'Engineering' },
+    { name: 'Jane Smith', username: 'janesmith', email: 'jane.smith@example.com', department: 'Sales' },
+    { name: 'Robert Brown', username: 'robertbrown', email: 'robert.brown@example.com', department: 'HR' },
+    { name: 'Sarah Wilson', username: 'sarahwilson', email: 'sarah.wilson@example.com', department: 'Engineering' },
+    { name: 'Michael Davis', username: 'michaeldavis', email: 'michael.davis@example.com', department: 'Sales' },
+    { name: 'Emily White', username: 'emilywhite', email: 'emily.white@example.com', department: 'Marketing' },
+    { name: 'David Green', username: 'davidgreen', email: 'david.green@example.com', department: 'IT' },
+    { name: 'Lisa Ray', username: 'lisaray', email: 'lisa.ray@example.com', department: 'Operations' },
+    { name: 'Chris Martin', username: 'chrismartin', email: 'chris.martin@example.com', department: 'Engineering' },
+    { name: 'Anna Taylor', username: 'annataylor', email: 'anna.taylor@example.com', department: 'Marketing' },
 ];
 
 const generateMockData = (numRecords: number): AttendanceRecord[] => {
@@ -70,22 +70,27 @@ const generateMockData = (numRecords: number): AttendanceRecord[] => {
 };
 
 let MOCK_RECORDS = generateMockData(50);
+export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
+
 const MOCK_ROLES = [
-    { id: 'role_1', name: 'Administrator', permissions: ['view_dashboard', 'manage_attendance', 'run_audit', 'manage_users', 'manage_settings'] },
-    { id: 'role_2', name: 'HR Manager', permissions: ['view_dashboard', 'manage_attendance', 'run_audit'] },
-    { id: 'role_3', name: 'Employee', permissions: ['view_dashboard'] },
+    { id: 'role_1', name: 'Administrator', permissions: ['read', 'write'] },
+    { id: 'role_2', name: 'HR Manager', permissions: ['read', 'write'] },
+    { id: 'role_3', name: 'Employee', permissions: ['read'] },
+    { id: 'role_4', name: 'Guest', permissions: ['hidden'] },
 ];
 
 const MOCK_USERS = [
-    { id: 'user_1', name: 'Admin User', email: 'admin@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=admin@staffwise.com', role: 'Administrator' },
-    { id: 'user_2', name: 'HR Head', email: 'hr@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=hr@staffwise.com', role: 'HR Manager' },
-    { id: 'user_3', name: 'Regular Staff', email: 'employee@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=employee@staffwise.com', role: 'Employee' },
+    { id: 'user_1', name: 'Admin User', username: 'admin', email: 'admin@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=admin@staffwise.com', role: 'Administrator', password: 'password123' },
+    { id: 'user_2', name: 'HR Head', username: 'hrhead', email: 'hr@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=hr@staffwise.com', role: 'HR Manager', password: 'password123' },
+    { id: 'user_3', name: 'Regular Staff', username: 'staff', email: 'employee@staffwise.com', avatar: 'https://i.pravatar.cc/150?u=employee@staffwise.com', role: 'Employee', password: 'password123' },
      ...MOCK_EMPLOYEES.map((emp, i) => ({
         id: `user_${i + 4}`,
         name: emp.name,
+        username: emp.username,
         email: emp.email,
         avatar: `https://i.pravatar.cc/150?u=${emp.email}`,
-        role: 'Employee'
+        role: 'Employee',
+        password: 'password123'
     }))
 ];
 

@@ -10,7 +10,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -30,6 +29,7 @@ import {
 type User = {
   id: string;
   name: string;
+  username: string;
   email: string;
   avatar: string;
   role: string;
@@ -64,6 +64,7 @@ export default function UserList({ initialUsers, roles }: UserListProps) {
         <TableHeader>
           <TableRow>
             <TableHead>User</TableHead>
+            <TableHead>Username</TableHead>
             <TableHead>Role</TableHead>
             <TableHead className="w-[50px]">Actions</TableHead>
           </TableRow>
@@ -91,6 +92,9 @@ export default function UserList({ initialUsers, roles }: UserListProps) {
                 </div>
               </TableCell>
               <TableCell>
+                <span className="text-sm text-muted-foreground">@{user.username}</span>
+              </TableCell>
+              <TableCell>
                 <Select
                   value={user.role}
                   onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
@@ -116,6 +120,7 @@ export default function UserList({ initialUsers, roles }: UserListProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem>View Profile</DropdownMenuItem>
+                    <DropdownMenuItem>Edit User</DropdownMenuItem>
                     <DropdownMenuItem className="text-destructive focus:text-destructive">
                       Deactivate User
                     </DropdownMenuItem>
