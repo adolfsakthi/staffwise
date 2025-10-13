@@ -1,5 +1,5 @@
 
-import { collection, getDocs, query, where, doc, writeBatch, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, writeBatch, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase-admin/firestore';
 import { add, format, startOfWeek } from 'date-fns';
 import { getFirestoreAdmin } from '@/firebase/admin';
 
