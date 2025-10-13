@@ -1,149 +1,162 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a role-based access control model.
+ * @description This ruleset enforces a strict user-ownership model for user profiles and allows open reads for other data.
  *
  * Data Structure:
- * - `/users/{userId}`: Stores user profile information; accessible only to the user themselves.
- * - `/attendance_records/{attendanceRecordId}`: Stores employee attendance records; publicly readable, but only authorized users can modify records with matching IDs.
- * - `/grace_settings/{graceSettingId}`: Stores grace time settings; publicly readable, but only authorized users can modify settings.
- * - `/audit_logs/{auditLogId}`: Stores audit logs; publicly readable, but only authorized users can create logs.
- * - `/email_logs/{emailLogId}`: Stores email logs; publicly readable, but only authorized users can create logs.
- * - `/auto_audit_settings/auto_audit_config`: Stores auto-audit settings; publicly readable, but only authorized users can modify settings.
+ * - /users/{userId}: Stores user profile information. Access is restricted to the user themselves.
+ * - /attendance_records/{attendanceRecordId}: Stores attendance records. Currently allows public read access.
+ * - /grace_settings/{graceSettingId}: Stores grace period settings. Currently allows public read access.
+ * - /audit_logs/{auditLogId}: Stores audit logs. Currently allows public read access.
+ * - /email_logs/{emailLogId}: Stores email logs. Currently allows public read access.
+ * - /auto_audit_settings/auto_audit_config: Stores auto-audit settings. Currently allows public read access.
  *
  * Key Security Decisions:
- * - Users can only read and write their own user profile data.
- * - All collections are publicly readable to facilitate prototyping.
- * - Write access to all collections is restricted and needs to be specifically configured.
- *
- * Denormalization for Authorization:
- * - The rules rely on request.auth.uid for user identification. No denormalization is needed.
+ * - User listing is disallowed.
+ * - Other collections are currently configured for open read access in this prototyping phase.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages user profile data.
+     * @description Controls access to user profile information.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user_abc' can create their profile if request.auth.uid == 'user_abc'.
-     * @deny (create) User with UID 'user_xyz' cannot create a profile for 'user_abc'.
-     * @allow (get) User with UID 'user_abc' can read their own profile.
-     * @deny (get) User with UID 'user_xyz' cannot read the profile of 'user_abc'.
-     * @allow (update) User with UID 'user_abc' can update their own profile.
-     * @deny (update) User with UID 'user_xyz' cannot update the profile of 'user_abc'.
-     * @allow (delete) User with UID 'user_abc' can delete their own profile.
-     * @deny (delete) User with UID 'user_xyz' cannot delete the profile of 'user_abc'.
-     * @principle Enforces user ownership for profile management.
+     * @allow (create) User with ID 'user123' can create their profile.
+     *   - Auth: { uid: 'user123' }
+     *   - Data: { uid: 'user123', email: 'test@example.com', role: 'Staff', property_code: '123', createdAt: '2024-01-01T00:00:00Z' }
+     * @allow (get) User with ID 'user123' can read their profile.
+     *   - Auth: { uid: 'user123' }
+     * @allow (update) User with ID 'user123' can update their profile.
+     *   - Auth: { uid: 'user123' }
+     * @allow (delete) User with ID 'user123' can delete their profile.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
+     *   - Auth: { uid: 'user456' }
+     *   - Data: { uid: 'user123', email: 'test@example.com', role: 'Staff', property_code: '123', createdAt: '2024-01-01T00:00:00Z' }
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      allow get: if true;
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.uid == userId;
-      allow delete: if isSignedIn() && isExistingOwner(userId);
+      allow update: if isOwner(userId) && resource.data.uid == request.resource.data.uid;
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Manages employee attendance records.
+     * @description Controls access to attendance records.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get) Any user can read any attendance record.
-     * @allow (list) Any user can list attendance records.
-     * @deny (create) Any user cannot create an attendance record.
-     * @deny (update) Any user cannot update an attendance record.
-     * @deny (delete) Any user cannot delete an attendance record.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get) Any signed-in user can read any attendance record.
+     *   - Auth: { uid: 'user123' }
+     * @allow (list) Any signed-in user can list attendance records.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) No one can create attendance record.
+     *   - Auth: { uid: 'user123' }
+     * @deny (update) No one can update attendance record.
+     *   - Auth: { uid: 'user123' }
+     * @deny (delete) No one can delete attendance record.
+     *   - Auth: { uid: 'user123' }
+     * @principle Allows public read access for prototyping. Write access is denied.
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Manages grace time settings for late entry detection.
+     * @description Controls access to grace settings.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get) Any user can read any grace setting.
-     * @allow (list) Any user can list grace settings.
-     * @deny (create) Any user cannot create a grace setting.
-     * @deny (update) Any user cannot update a grace setting.
-     * @deny (delete) Any user cannot delete a grace setting.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get) Any signed-in user can read any grace setting.
+     *   - Auth: { uid: 'user123' }
+     * @allow (list) Any signed-in user can list grace settings.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) No one can create grace setting.
+     *   - Auth: { uid: 'user123' }
+     * @deny (update) No one can update grace setting.
+     *   - Auth: { uid: 'user123' }
+     * @deny (delete) No one can delete grace setting.
+     *   - Auth: { uid: 'user123' }
+     * @principle Allows public read access for prototyping. Write access is denied.
      */
     match /grace_settings/{graceSettingId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Manages audit logs.
+     * @description Controls access to audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (get) Any user can read any audit log.
-     * @allow (list) Any user can list audit logs.
-     * @deny (create) Any user cannot create an audit log.
-     * @deny (update) Any user cannot update an audit log.
-     * @deny (delete) Any user cannot delete an audit log.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get) Any signed-in user can read any audit log.
+     *   - Auth: { uid: 'user123' }
+     * @allow (list) Any signed-in user can list audit logs.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) No one can create audit log.
+     *   - Auth: { uid: 'user123' }
+     * @deny (update) No one can update audit log.
+     *   - Auth: { uid: 'user123' }
+     * @deny (delete) No one can delete audit log.
+     *   - Auth: { uid: 'user123' }
+     * @principle Allows public read access for prototyping. Write access is denied.
      */
     match /audit_logs/{auditLogId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Manages email logs for tracking notifications.
+     * @description Controls access to email logs.
      * @path /email_logs/{emailLogId}
-     * @allow (get) Any user can read any email log.
-     * @allow (list) Any user can list email logs.
-     * @deny (create) Any user cannot create an email log.
-     * @deny (update) Any user cannot update an email log.
-     * @deny (delete) Any user cannot delete an email log.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get) Any signed-in user can read any email log.
+     *   - Auth: { uid: 'user123' }
+     * @allow (list) Any signed-in user can list email logs.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) No one can create email log.
+     *   - Auth: { uid: 'user123' }
+     * @deny (update) No one can update email log.
+     *   - Auth: { uid: 'user123' }
+     * @deny (delete) No one can delete email log.
+     *   - Auth: { uid: 'user123' }
+     * @principle Allows public read access for prototyping. Write access is denied.
      */
     match /email_logs/{emailLogId} {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Manages the configuration for auto-auditing.
+     * @description Controls access to auto audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) Any user can read the auto-audit settings.
-     * @allow (list) Any user can list the auto-audit settings.
-     * @deny (create) Any user cannot create the auto-audit settings.
-     * @deny (update) Any user cannot update the auto-audit settings.
-     * @deny (delete) Any user cannot delete the auto-audit settings.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get) Any signed-in user can read the auto audit config.
+     *   - Auth: { uid: 'user123' }
+     * @allow (list) Any signed-in user can list auto audit configs.
+     *   - Auth: { uid: 'user123' }
+     * @deny (create) No one can create auto audit config.
+     *   - Auth: { uid: 'user123' }
+     * @deny (update) No one can update auto audit config.
+     *   - Auth: { uid: 'user123' }
+     * @deny (delete) No one can delete auto audit config.
+     *   - Auth: { uid: 'user123' }
+     * @principle Allows public read access for prototyping. Write access is denied.
      */
     match /auto_audit_settings/auto_audit_config {
-      allow get: if true;
-      allow list: if true;
+      allow get, list: if true;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-        return (isOwner(userId) && resource != null);
     }
   }
 }
