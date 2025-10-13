@@ -28,4 +28,33 @@ export const Icons = {
       />
     </svg>
   ),
+  hezeeLogo: (props: SVGProps<SVGSVGElement>) => (
+    <svg
+      {...props}
+      width="64"
+      height="64"
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M32 6L6 22V38C6 48.4 17.6 58 32 62C46.4 58 58 48.4 58 38V22L32 6Z"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22 28L32 38L42 28"
+        stroke="currentColor"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+       <path d="M42 16L46 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+       <path d="M46 16L42 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+       <path d="M50 20L54 16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+       <path d="M54 20L50 16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  ),
 };

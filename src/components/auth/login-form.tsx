@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, LogIn } from 'lucide-react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import Link from 'next/link';
 
 export default function LoginForm() {
   const [email, setEmail] = useState('');
@@ -37,8 +37,6 @@ export default function LoginForm() {
         title: 'Signed in successfully!',
         description: "Welcome back!",
       });
-      // The onAuthStateChanged listener in the provider will handle the redirect
-      // by updating the user state, which will cause ConditionalLayout to render the app.
       router.push('/');
     } catch (error: any) {
       console.error(error);
@@ -53,45 +51,45 @@ export default function LoginForm() {
   };
 
   return (
-    <Card>
-      <form onSubmit={handleSignIn}>
-        <CardContent className="space-y-4 pt-6">
-          <div className="space-y-2">
+    <form onSubmit={handleSignIn} className="space-y-6">
+        <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="admin@staffwise.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={isLoading}
+            id="email"
+            type="email"
+            placeholder="thiru.vikram@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+            className="bg-input border-border/50 focus:border-primary"
             />
-          </div>
-          <div className="space-y-2">
+        </div>
+        <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoading}
-              placeholder="********"
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={isLoading}
+            placeholder="••••••••"
+            className="bg-input border-border/50 focus:border-primary"
             />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+        </div>
+        <div className="flex items-center justify-between">
+            <div/>
+            <Link href="#" className="text-sm text-primary/80 hover:text-primary hover:underline">
+                Forgot Password?
+            </Link>
+        </div>
+        <Button type="submit" className="w-full !mt-8" size="lg" disabled={isLoading}>
             {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <LogIn className="mr-2" />
-            )}
-            Sign In
-          </Button>
-        </CardFooter>
-      </form>
-    </Card>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            SIGN IN
+        </Button>
+    </form>
   );
 }
