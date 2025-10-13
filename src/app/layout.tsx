@@ -18,15 +18,6 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
-// Metadata can't be dynamically generated in a client component,
-// so we'll define it statically here. We could move this to a server
-// component wrapper if dynamic metadata were needed.
-// export const metadata: Metadata = {
-//   title: 'StaffWise - Employee Attendance Management',
-//   description:
-//     'A comprehensive Employee Attendance Tracking and Audit Management System.',
-// };
-
 function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -49,12 +40,12 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // Render children immediately if on login page or if user is loaded
+  // Render children immediately if on login page or if user is loaded and not on login page
   if (pathname === '/login' || user) {
      return <>{children}</>;
   }
 
-  // If loading and not on login, show loader. If not loading and no user, will redirect.
+  // Fallback while redirecting
   return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

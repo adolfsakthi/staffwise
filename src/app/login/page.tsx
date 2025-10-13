@@ -1,14 +1,16 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { useAuth, initiateEmailSignIn } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,24 +27,52 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState('demo@staffwise.com');
   const [password, setPassword] = useState('password');
+  const [propertyCode, setPropertyCode] = useState('PROP-001');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!email || !password || !propertyCode) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Fields',
+        description: 'Please enter email, password, and property code.',
+      });
+      return;
+    }
     setIsLoading(true);
+
     try {
-      // We are not awaiting this, the redirect is handled by the root layout's AuthWrapper
-      initiateEmailSignIn(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      if (user) {
+        const firestore = getFirestore();
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          throw new Error('User profile not found in database.');
+        }
+        
+        const userProfile = userDoc.data();
+        if (userProfile.property_code !== propertyCode) {
+          throw new Error('Property code does not match.');
+        }
+        // Success! Redirect is handled by the root layout's AuthWrapper
+      }
     } catch (error: any) {
+      // Sign out if any part of the custom verification fails
+      if(auth.currentUser) {
+          await auth.signOut();
+      }
+
       toast({
         variant: 'destructive',
         title: 'Login Failed',
         description: error.message || 'An unknown error occurred.',
       });
-      setIsLoading(false);
+       setIsLoading(false); // Only set to false on error
     }
-    // Don't set isLoading to false here, as the page will redirect on success.
-    // A timeout can be added to handle cases where the redirect takes time or fails silently.
-    setTimeout(() => setIsLoading(false), 5000); 
   };
   
   return (
@@ -93,6 +123,17 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="property-code">Property Code</Label>
+                <Input
+                  id="property-code"
+                  type="text"
+                  placeholder="PROP-001"
+                  required
+                  value={propertyCode}
+                  onChange={(e) => setPropertyCode(e.target.value)}
                 />
               </div>
               <Button onClick={handleLogin} disabled={isLoading} className="w-full h-12 text-base">
