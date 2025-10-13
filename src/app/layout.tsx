@@ -19,7 +19,7 @@ const fontSans = FontSans({
 });
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const { isUserLoading, user } = useUserProfile();
+  const { user, isUserLoading } = useUserProfile();
   const router = useRouter();
   const pathname = usePathname();
 
