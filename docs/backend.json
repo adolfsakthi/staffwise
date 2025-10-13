@@ -37,7 +37,7 @@
           "description": "Actual time the employee entered (HH:MM)."
         },
         "exitTime": {
-          "type": "string",
+          "type": "string",_
           "description": "Actual time the employee exited (HH:MM)."
         },
         "date": {
@@ -235,6 +235,21 @@
         "createdAt": { "type": "string", "description": "Timestamp of user creation.", "format": "date-time" }
       },
       "required": ["uid", "email", "role", "property_code", "createdAt"]
+    },
+     "Device": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Device",
+      "type": "object",
+      "description": "Represents a biometric device.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the device." },
+        "name": { "type": "string", "description": "Device name." },
+        "model": { "type": "string", "description": "Device model." },
+        "ip": { "type": "string", "description": "IP address of the device.", "format": "ipv4" },
+        "status": { "type": "string", "description": "Device status ('online' or 'offline').", "enum": ["online", "offline"] },
+        "branch": { "type": "string", "description": "Branch where the device is located." }
+      },
+      "required": ["id", "name", "model", "ip", "status", "branch"]
     }
   },
   "auth": {
@@ -327,9 +342,16 @@
           "description": "Stores the configuration for auto-auditing. There is only one document with the fixed ID 'auto_audit_config'.",
           "params": []
         }
+      },
+      {
+        "path": "/devices/{deviceId}",
+        "definition": {
+          "entityName": "Device",
+          "schema": { "$ref": "#/entities/Device" },
+          "description": "Stores biometric device information.",
+          "params": [{ "name": "deviceId", "description": "Unique ID for the device." }]
+        }
       }
     ]
   }
 }
-
-    
