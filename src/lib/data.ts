@@ -1,6 +1,5 @@
 
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { initialAttendanceRecords, initialDevices, initialLiveLogs, initialRoles, initialUsers } from './attendance-data';
 import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc } from 'firebase/firestore';
 import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
 
@@ -28,46 +27,6 @@ export type EmailLog = {
     body: string;
     emailType: 'late_notice' | 'admin_report' | 'department_report';
     sentAt?: Date;
-}
-
-
-async function seedCollection(collectionName: string, data: any[]) {
-    const { firestore } = getSdks();
-    const collectionRef = collection(firestore, collectionName);
-    
-    try {
-        const snapshot = await getDocs(query(collectionRef, where('__name__', '!=', '')));
-        if (snapshot.empty) {
-            console.log(`Seeding ${collectionName}...`);
-            const batch = writeBatch(firestore);
-            data.forEach((item) => {
-                const docRef = doc(collectionRef);
-                batch.set(docRef, item);
-            });
-            await batch.commit();
-            console.log(`${collectionName} seeded.`);
-        }
-    } catch (error: any) {
-         if (error.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-                path: collectionRef.path,
-                operation: 'list',
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        }
-        // Don't rethrow, as seeding is a background task
-    }
-}
-
-
-async function seedInitialData() {
-    await Promise.all([
-        seedCollection('attendance_records', initialAttendanceRecords),
-        seedCollection('devices', initialDevices),
-        seedCollection('live_logs', initialLiveLogs),
-        seedCollection('roles', initialRoles),
-        seedCollection('users', initialUsers),
-    ]);
 }
 
 
@@ -113,7 +72,6 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
 
 
 export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
-    await seedInitialData();
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
     
