@@ -39,6 +39,9 @@ import {
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
+import { signOut } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 const navItems = [
   {
@@ -88,12 +91,24 @@ export default function MainSidebar() {
   const router = useRouter();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
+  const { user } = useUser();
+  const auth = useAuth();
   
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
     }
   };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push('/login');
+  };
+
+  const getAvatarFallback = (name?: string | null) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('');
+  }
 
   return (
     <Sidebar>
@@ -135,7 +150,14 @@ export default function MainSidebar() {
               className="w-full justify-start gap-3 p-2 group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center"
             >
               <Avatar className="h-8 w-8">
-                {userAvatar && (
+                {user?.photoURL ? (
+                  <AvatarImage
+                    src={user.photoURL}
+                    alt={user.displayName || 'User Avatar'}
+                    width={32}
+                    height={32}
+                  />
+                ) : userAvatar && (
                   <AvatarImage
                     src={userAvatar.imageUrl}
                     alt={userAvatar.description}
@@ -144,12 +166,12 @@ export default function MainSidebar() {
                     data-ai-hint={userAvatar.imageHint}
                   />
                 )}
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
               </Avatar>
               <div className="text-left group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium">John Doe</p>
+                <p className="text-sm font-medium">{user?.displayName || 'User'}</p>
                 <p className="text-xs text-muted-foreground">
-                  john.doe@example.com
+                  {user?.email || 'No email'}
                 </p>
               </div>
             </Button>
@@ -157,9 +179,9 @@ export default function MainSidebar() {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">John Doe</p>
+                <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  john.doe@example.com
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -168,7 +190,7 @@ export default function MainSidebar() {
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/login')}>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
