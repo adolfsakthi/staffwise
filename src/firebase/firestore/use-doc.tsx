@@ -69,6 +69,8 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
+        // Since auth is removed, permission errors are expected.
+        // We will log them and set state appropriately, but not crash the app.
         console.error("Firestore Permission Error in useDoc:", error.message);
         setError(error);
         setData(null);

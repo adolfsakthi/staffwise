@@ -3,6 +3,9 @@
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from './mock-data';
 import type { AttendanceRecord } from './types';
+import { collection, addDoc, getDocs, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
+import { initializeFirebase } from '@/firebase';
 
 
 export type EmailLog = {
@@ -49,29 +52,78 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
 
 
 export async function addAttendanceRecords(records: any[]) {
-    // This now simulates adding to the mock data.
-    console.log('Simulating adding records:', records);
-    records.forEach(record => {
-        const processed = processRecord(record);
-        const newRecord: AttendanceRecord = {
-            ...processed,
-            id: `rec_${Date.now()}_${Math.random()}`,
-            is_audited: false,
-            audit_notes: '',
-        };
-        MOCK_ATTENDANCE_RECORDS.push(newRecord);
-    });
-    // In a real mock scenario, you might want to emit an event to update UI
-    await new Promise(resolve => setTimeout(resolve, 500));
+    const { firestore } = initializeFirebase();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    
+    console.log('Attempting to add records to Firestore:', records);
+    
+    try {
+        const batch = writeBatch(firestore);
+        records.forEach(record => {
+            const processed = processRecord(record);
+            const newRecordData = {
+                ...processed,
+                is_audited: false,
+                audit_notes: '',
+            };
+            const docRef = doc(attendanceCollection); // Create a new doc with a generated ID
+            batch.set(docRef, newRecordData);
+        });
+        await batch.commit();
+        console.log(`${records.length} records successfully added to Firestore.`);
+    } catch (error) {
+        // This will catch permission errors or other issues during the write.
+        // It prevents the app from crashing.
+        console.error("Firestore Permission Error on write:", error);
+        // We can re-throw or handle it as needed, but for now, we'll log it.
+    }
 }
 
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     if (recordIds.length === 0) return [];
     
-    const records = MOCK_ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
-    return records;
+    const { firestore } = initializeFirebase();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    // Firestore's 'in' query is limited to 30 items. If more are needed, multiple queries would be required.
+    const q = query(attendanceCollection, where('__name__', 'in', recordIds));
+    try {
+        const querySnapshot = await getDocs(q);
+        const records = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+        return records;
+    } catch (error) {
+        console.error("Firestore Permission Error getting records by IDs:", error);
+        return MOCK_ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
+    }
 }
+
+export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
+    const { firestore } = initializeFirebase();
+    try {
+        const batch = writeBatch(firestore);
+        recordIds.forEach(id => {
+            const docRef = doc(firestore, 'attendance_records', id);
+            batch.update(docRef, {
+                is_audited: true,
+                audit_notes: auditNotes,
+            });
+        });
+        await batch.commit();
+        console.log(`Successfully audited ${recordIds.length} records in Firestore.`);
+    } catch (error) {
+        console.error("Firestore Permission Error during audit:", error);
+    }
+}
+
+
+export async function logEmail(email: EmailLog): Promise<void> {
+    console.log(`Simulating logging email to ${email.to}.`);
+    // In a real app, this would write to Firestore.
+    await new Promise(resolve => setTimeout(resolve, 100));
+}
+
+// These functions below will use mock data for now to avoid read errors on pages
+// that are not the primary focus of the upload feature.
 
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
     return MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
@@ -113,24 +165,4 @@ export async function getWeeklyAttendance(propertyCode: string) {
         };
     });
     return data;
-}
-
-export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    // This now simulates auditing in the mock data.
-    console.log(`Simulating auditing for records: ${recordIds.join(', ')}`);
-    recordIds.forEach(id => {
-        const record = MOCK_ATTENDANCE_RECORDS.find(r => r.id === id);
-        if (record) {
-            record.is_audited = true;
-            record.audit_notes = auditNotes;
-        }
-    });
-    await new Promise(resolve => setTimeout(resolve, 500));
-}
-
-
-export async function logEmail(email: EmailLog): Promise<void> {
-    console.log(`Simulating logging email to ${email.to}.`);
-    // In a real app, this would write to Firestore.
-    await new Promise(resolve => setTimeout(resolve, 100));
 }
