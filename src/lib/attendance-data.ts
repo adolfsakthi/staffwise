@@ -119,6 +119,3 @@ export const initialAttendanceRecords: Omit<AttendanceRecord, 'id'>[] = [
       is_audited: false,
     }
 ];
-
-// This will act as our in-memory database
-export const ATTENDANCE_RECORDS: AttendanceRecord[] = [];

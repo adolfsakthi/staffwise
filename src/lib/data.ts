@@ -1,6 +1,6 @@
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { initialAttendanceRecords, ATTENDANCE_RECORDS } from './attendance-data';
-import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction } from 'firebase/firestore';
+import { initialAttendanceRecords } from './attendance-data';
+import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc } from 'firebase/firestore';
 import { getSdks } from '@/firebase';
 
 export type AttendanceRecord = {
@@ -31,13 +31,6 @@ export type EmailLog = {
 
 const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations', 'Support', 'Admin', 'Finance'];
 
-// This will act as our in-memory database
-if (ATTENDANCE_RECORDS.length === 0) {
-    initialAttendanceRecords.forEach(record => ATTENDANCE_RECORDS.push({
-        ...record,
-    }));
-}
-
 
 async function seedInitialData() {
     const { firestore } = getSdks();
@@ -48,7 +41,7 @@ async function seedInitialData() {
         console.log('No attendance records found, seeding initial data...');
         const batch = writeBatch(firestore);
         initialAttendanceRecords.forEach((record) => {
-            const docRef = collection(firestore, 'attendance_records').doc();
+            const docRef = doc(collection(firestore, 'attendance_records'));
             batch.set(docRef, record);
         });
         await batch.commit();
@@ -60,6 +53,7 @@ async function seedInitialData() {
 export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited'>[]) {
     const { firestore } = getSdks();
     const batch = writeBatch(firestore);
+    const attendanceCollection = collection(firestore, 'attendance_records');
 
     records.forEach(record => {
         const today = new Date();
@@ -79,7 +73,7 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
             is_audited: false,
             date: format(new Date(), 'yyyy-MM-dd')
         };
-        const docRef = collection(firestore, 'attendance_records').doc();
+        const docRef = doc(attendanceCollection);
         batch.set(docRef, newRecord);
     });
 
@@ -163,10 +157,11 @@ export async function getWeeklyAttendance() {
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
     const { firestore } = getSdks();
+    const attendanceCollection = collection(firestore, 'attendance_records');
     
     await runTransaction(firestore, async (transaction) => {
         const recordsToUpdate = await Promise.all(recordIds.map(id => {
-            const docRef = collection(firestore, 'attendance_records').doc(id);
+            const docRef = doc(attendanceCollection, id);
             return transaction.get(docRef);
         }));
 
