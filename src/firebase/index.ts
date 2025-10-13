@@ -1,37 +1,32 @@
-'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// --- Start of New Singleton Initialization ---
+// --- Singleton Initialization ---
+// This guarantees that Firebase is initialized only once.
 
-let firebaseApp: FirebaseApp;
-
-// Check if Firebase has already been initialized
+let app: FirebaseApp;
 if (!getApps().length) {
-  // If not, initialize a new app
-  // This logic correctly handles both automatic App Hosting env vars and local config
+  // This logic handles both Vercel/App Hosting env vars and local config.
   try {
-    firebaseApp = initializeApp();
+    // This will throw if the default app is not initialized, which is expected
+    // in some environments.
+    app = getApp();
   } catch (e) {
-    if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-    }
-    firebaseApp = initializeApp(firebaseConfig);
+    // Fallback to config for local dev or environments where auto-init isn't set up.
+    app = initializeApp(firebaseConfig);
   }
 } else {
-  // If already initialized, use the existing app
-  firebaseApp = getApp();
+  app = getApp();
 }
 
-export const app = firebaseApp;
-export const auth = getAuth(app);
-export const firestore = getFirestore(app);
+export const firebaseApp = app;
+export const auth = getAuth(firebaseApp);
+export const firestore = getFirestore(firebaseApp);
 
-// --- End of New Singleton Initialization ---
-
+// --- End of Singleton Initialization ---
 
 export * from './provider';
 export * from './client-provider';

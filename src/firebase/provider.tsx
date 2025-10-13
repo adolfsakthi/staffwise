@@ -5,7 +5,7 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { app, auth as globalAuth, firestore as globalFirestore } from '@/firebase'; // Import the singleton instances
+import { firebaseApp, auth, firestore } from '@/firebase'; // Import the singleton instances
 import { useUser as useAuthUserHook } from './auth/use-user';
 
 
@@ -38,9 +38,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   const contextValue = useMemo((): FirebaseContextState => {
     return {
-      firebaseApp: app,
-      firestore: globalFirestore,
-      auth: globalAuth,
+      firebaseApp: firebaseApp,
+      firestore: firestore,
+      auth: auth,
       user,
       isUserLoading,
       userError: userError || null,
