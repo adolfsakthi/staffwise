@@ -1,19 +1,28 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for user profiles
- * and provides controlled access to attendance records, grace settings, audit logs, email logs, and auto-audit settings.
+ * @fileoverview Firestore Security Rules for the Attendance Tracking Application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes secure data access based on user roles.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles. Only the authenticated user can read/write their own profile.
- * - /attendance_records/{attendanceRecordId}: Stores employee attendance records.  Write access is disallowed, read access is public.
- * - /grace_settings/{graceSettingId}: Stores grace time settings. Write access is disallowed, read access is public.
- * - /audit_logs/{auditLogId}: Stores audit logs.  Write access is disallowed, read access is public.
- * - /email_logs/{emailLogId}: Stores email logs.  Write access is disallowed, read access is public.
- * - /auto_audit_settings/auto_audit_config: Stores auto-audit settings. Write access is disallowed, read access is public.
+ * - Users: Stored in `/users/{userId}`, accessible only to the user themselves.
+ * - Attendance Records: Stored in `/attendance_records/{attendanceRecordId}`, publicly readable, but create/update/delete is open, needs to be secured in a future iteration.
+ * - Grace Settings: Stored in `/grace_settings/{graceSettingId}`, publicly readable, but create/update/delete is open, needs to be secured in a future iteration..
+ * - Audit Logs: Stored in `/audit_logs/{auditLogId}`, publicly readable, but create/update/delete is open, needs to be secured in a future iteration..
+ * - Email Logs: Stored in `/email_logs/{emailLogId}`, publicly readable, but create/update/delete is open, needs to be secured in a future iteration..
+ * - Auto Audit Settings: Stored in `/auto_audit_settings/auto_audit_config`, publicly readable, but create/update/delete is open, needs to be secured in a future iteration..
  *
  * Key Security Decisions:
- * - User listing is disallowed.
- * - Read-only collections: attendance_records, grace_settings, audit_logs, email_logs and auto_audit_settings are publicly readable but not writable.
+ * - Users can only access their own profile data.
+ * - Listing of users is disallowed.
+ * - Other collections are currently open for modification and require stricter rules in future iterations.
+ *
+ * Denormalization for Authorization:
+ *  - The application currently doesn't denormalize any data for authorization.
+ *  - In future iterations, consider denormalizing user role or property_code into the AttendanceRecord to restrict data access.
+ *
+ * Structural Segregation:
+ * - The application does not currently segregate data based on public/private access.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -21,118 +30,111 @@ service cloud.firestore {
 
     /**
      * @description Checks if the request is authenticated.
+     * @return {bool} True if the request is authenticated, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user's ID matches the requested user ID.
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the UIDs match, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user's ID matches the resource's user ID AND the resource exists.
+     * @description Checks if the authenticated user's UID matches the provided userId, and the resource exists.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the UIDs match and resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
-        return (isOwner(userId) && existsAfter(/databases/$(database)/documents/users/$(userId)));
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Enforces that on create operations, the userId matches the document id.
-     */
-    function isValidUserCreate() {
-      return request.resource.data.uid == request.auth.uid;
-    }
-
-    /**
-     * @description Enforces that on update operations, the userId cannot be changed.
-     */
-    function isValidUserUpdate() {
-      return request.resource.data.uid == resource.data.uid;
-    }
-
-
-    /**
-     * @description Rules for user profiles.
+     * @description Security rules for user profiles.
      * @path /users/{userId}
+     * @allow (create) - User with UID 'user123' can create a profile at /users/user123.
+     * @allow (get, update, delete) - User with UID 'user123' can read, update, and delete their profile at /users/user123.
+     * @deny (create) - User with UID 'user456' cannot create a profile at /users/user123.
+     * @deny (get, update, delete) - User with UID 'user456' cannot read, update, or delete the profile at /users/user123.
+     * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && isValidUserCreate();
-      allow update: if isOwner(userId) && isExistingOwner(userId) && isValidUserUpdate();
-      allow delete: if isOwner(userId) && isExistingOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for attendance records.
+     * @description Security rules for attendance records.
      * @path /attendance_records/{attendanceRecordId}
+     * @allow (get, list) - Any user can read any attendance record.
+     * @allow (create, update, delete) - Any user can create, update, or delete any attendance record.
+     * @deny (none) - This rule is currently open and needs to be secured in a future iteration.
+     * @principle Public read, open write (INSECURE - requires future hardening).
      */
     match /attendance_records/{attendanceRecordId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for grace settings.
+     * @description Security rules for grace settings.
      * @path /grace_settings/{graceSettingId}
+     * @allow (get, list) - Any user can read any grace setting.
+     * @allow (create, update, delete) - Any user can create, update, or delete any grace setting.
+     * @deny (none) - This rule is currently open and needs to be secured in a future iteration.
+     * @principle Public read, open write (INSECURE - requires future hardening).
      */
     match /grace_settings/{graceSettingId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false; // TODO: Add owner validation. Determine who should manage grace settings.
     }
 
     /**
-     * @description Rules for audit logs.
+     * @description Security rules for audit logs.
      * @path /audit_logs/{auditLogId}
+     * @allow (get, list) - Any user can read any audit log.
+     * @allow (create, update, delete) - Any user can create, update, or delete any audit log.
+     * @deny (none) - This rule is currently open and needs to be secured in a future iteration.
+     * @principle Public read, open write (INSECURE - requires future hardening).
      */
     match /audit_logs/{auditLogId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false; // TODO: Determine who should be able to create audit logs.
     }
 
     /**
-     * @description Rules for email logs.
+     * @description Security rules for email logs.
      * @path /email_logs/{emailLogId}
+     * @allow (get, list) - Any user can read any email log.
+     * @allow (create, update, delete) - Any user can create, update, or delete any email log.
+     * @deny (none) - This rule is currently open and needs to be secured in a future iteration.
+     * @principle Public read, open write (INSECURE - requires future hardening).
      */
     match /email_logs/{emailLogId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false; // TODO: Determine who should have access to create and manage email logs.
     }
 
     /**
-     * @description Rules for auto-audit settings.
+     * @description Security rules for auto audit settings.
      * @path /auto_audit_settings/auto_audit_config
+     * @allow (get) - Any user can read the auto audit configuration.
+     * @allow (create, update, delete) - Any user can create, update, or delete the auto audit configuration.
+     * @deny (none) - This rule is currently open and needs to be secured in a future iteration.
+     * @principle Public read, open write (INSECURE - requires future hardening).
      */
     match /auto_audit_settings/auto_audit_config {
       allow get: if true;
       allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-    
-    /**
-     * @description Rules for devices collection (fix for reported issue).
-     * @path /devices
-     */
-    match /devices/{deviceId} {
-      allow list: if true;
-      allow get: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create, update, delete: if false; // TODO: Add role-based access control for managing auto audit settings.
     }
   }
 }

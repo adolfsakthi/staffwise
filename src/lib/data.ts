@@ -30,9 +30,6 @@ export type EmailLog = {
     sentAt?: Date;
 }
 
-// This can be fetched from a 'settings' collection in Firestore
-export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
-
 export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
     const firestore = getFirestoreAdmin();
     let recordsQuery: Query = firestore.collection('attendance_records');

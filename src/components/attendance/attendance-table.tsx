@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import type { AttendanceRecord } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,19 +26,26 @@ import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
-type AttendanceTableProps = {
-  initialRecords: AttendanceRecord[];
-  departments: string[];
-};
+type GraceSetting = {
+  id: string;
+  department: string;
+  graceMinutes: number;
+}
 
-export default function AttendanceTable({
-  departments,
-}: Omit<AttendanceTableProps, 'initialRecords'>) {
+export default function AttendanceTable() {
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   const firestore = useFirestore();
+
+  const departmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'grace_settings'), where('department', '!=', null));
+  }, [firestore]);
+
+  const { data: departmentSettings } = useCollection<GraceSetting>(departmentsQuery);
+  const departments = departmentSettings?.map(d => d.department) || [];
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore) return null;

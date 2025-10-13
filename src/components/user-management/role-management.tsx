@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit, X, Check } from 'lucide-react';
-import { ALL_PERMISSIONS } from '@/lib/data';
+
+// This can be fetched from a 'settings' collection in Firestore
+export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
 
 type Role = {
   id: string;
