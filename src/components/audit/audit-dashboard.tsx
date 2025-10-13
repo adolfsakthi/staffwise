@@ -31,10 +31,12 @@ import { collection, query, where } from 'firebase/firestore';
 
 
 interface AuditDashboardProps {
+    clientId: string;
+    branchId: string;
     propertyCode: string;
 }
 
-export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
+export default function AuditDashboard({ clientId, branchId, propertyCode }: AuditDashboardProps) {
   const firestore = useFirestore();
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
@@ -42,13 +44,14 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
   const { toast } = useToast();
 
   const unauditedQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
+    if (!firestore || !propertyCode || !clientId || !branchId) return null;
+    const attendanceCollectionRef = collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`);
     return query(
-        collection(firestore, 'attendance_records'),
+        attendanceCollectionRef,
         where('property_code', '==', propertyCode),
         where('is_audited', '==', false)
     );
-  }, [firestore, propertyCode]);
+  }, [firestore, clientId, branchId, propertyCode]);
   
   const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedQuery);
 
@@ -83,7 +86,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
     }
 
     setIsAuditing(true);
-    const result = await runAudit(selectedRecords, auditNotes);
+    const result = await runAudit(clientId, branchId, selectedRecords, auditNotes);
     setIsAuditing(false);
 
     if (result.success) {

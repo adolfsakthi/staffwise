@@ -1,4 +1,4 @@
-import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch, addDoc } from 'firebase/firestore';
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import type { AttendanceRecord, Role } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -32,6 +32,8 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
         : 0;
     
     return {
+        clientId: record.clientId || 'default_client',
+        branchId: record.branchId || 'default_branch',
         property_code: record.property_code,
         employee_name: record.employee_name,
         email: record.email,
@@ -48,12 +50,12 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
 }
 
 
-export async function addAttendanceRecords(db: Firestore, records: any[]): Promise<void> {
+export async function addAttendanceRecords(db: Firestore, records: any[], clientId: string, branchId: string): Promise<void> {
     const batch = writeBatch(db);
-    const attendanceCollection = collection(db, 'attendance_records');
+    const attendanceCollection = collection(db, `clients/${clientId}/branches/${branchId}/attendanceRecords`);
 
     records.forEach((recordData) => {
-        const processed = processRecord(recordData);
+        const processed = processRecord({ ...recordData, clientId, branchId });
         const newRecordRef = doc(attendanceCollection);
         const recordWithAudited = {
             ...processed,
@@ -65,7 +67,7 @@ export async function addAttendanceRecords(db: Firestore, records: any[]): Promi
 
     return batch.commit().catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: 'attendance_records',
+            path: `clients/${clientId}/branches/${branchId}/attendanceRecords`,
             operation: 'create',
             requestResourceData: records.map(processRecord),
         });
@@ -115,14 +117,14 @@ export async function addPunchLogs(db: Firestore, logs: any[]): Promise<void> {
 }
 
 
-export async function getRecordsByIds(db: Firestore, recordIds: string[]): Promise<AttendanceRecord[]> {
+export async function getRecordsByIds(db: Firestore, clientId: string, branchId: string, recordIds: string[]): Promise<AttendanceRecord[]> {
     const records: AttendanceRecord[] = [];
     if (recordIds.length === 0) return records;
 
     const CHUNK_SIZE = 30; // Firestore 'in' query limit
     for (let i = 0; i < recordIds.length; i += CHUNK_SIZE) {
         const chunk = recordIds.slice(i, i + CHUNK_SIZE);
-        const recordsQuery = query(collection(db, "attendance_records"), where('id', 'in', chunk));
+        const recordsQuery = query(collection(db, `clients/${clientId}/branches/${branchId}/attendanceRecords`), where('id', 'in', chunk));
         
         try {
             const querySnapshot = await getDocs(recordsQuery);
@@ -131,7 +133,7 @@ export async function getRecordsByIds(db: Firestore, recordIds: string[]): Promi
             });
         } catch (serverError: any) {
             const permissionError = new FirestorePermissionError({
-                path: 'attendance_records',
+                path: `clients/${clientId}/branches/${branchId}/attendanceRecords`,
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
@@ -141,16 +143,16 @@ export async function getRecordsByIds(db: Firestore, recordIds: string[]): Promi
     return records;
 }
 
-export async function auditRecords(db: Firestore, recordIds: string[], auditNotes: string): Promise<void> {
+export async function auditRecords(db: Firestore, clientId: string, branchId: string, recordIds: string[], auditNotes: string): Promise<void> {
     const batch = writeBatch(db);
     recordIds.forEach(id => {
-        const docRef = doc(db, 'attendance_records', id);
+        const docRef = doc(db, `clients/${clientId}/branches/${branchId}/attendanceRecords`, id);
         batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
     });
 
     return batch.commit().catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: 'attendance_records',
+            path: `clients/${clientId}/branches/${branchId}/attendanceRecords`,
             operation: 'update',
             requestResourceData: { is_audited: true, audit_notes: auditNotes }
         });
@@ -162,7 +164,7 @@ export async function auditRecords(db: Firestore, recordIds: string[], auditNote
 
 export async function logEmail(email: Omit<EmailLog, 'id' | 'sentAt'>): Promise<void> {
     const db = (await import('@/firebase/server')).getDb();
-    const emailLogCollection = collection(db, 'email_logs');
+    const emailLogCollection = collection(db, 'emailLogs');
     const newLog = {
         ...email,
         sentAt: new Date()
@@ -170,7 +172,7 @@ export async function logEmail(email: Omit<EmailLog, 'id' | 'sentAt'>): Promise<
     
     addDoc(emailLogCollection, newLog).catch(async (serverError) => {
          const permissionError = new FirestorePermissionError({
-            path: 'email_logs',
+            path: 'emailLogs',
             operation: 'create',
             requestResourceData: newLog
         });

@@ -28,29 +28,31 @@ const uploadTypes = {
   attendance: {
     label: 'Bulk Attendance',
     icon: FileClock,
-    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date,property_code\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22,D001',
+    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22',
     templateName: 'attendance_template.csv',
   },
   employees: {
     label: 'Employee Details',
     icon: Users,
-    template: 'employee_id,employee_name,email,department,role,property_code\nEMP001,Jane Doe,jane@company.com,Sales,Employee,D001',
+    template: 'employee_id,employee_name,email,department,role\nEMP001,Jane Doe,jane@company.com,Sales,Employee',
     templateName: 'employee_template.csv',
   },
   punch_logs: {
     label: 'Punch Logs',
     icon: FileClock,
-    template: 'device_id,employee_id,punch_time,property_code\nDEV001,EMP001,2024-05-21 09:05:12,D001',
+    template: 'device_id,employee_id,punch_time\nDEV001,EMP001,2024-05-21 09:05:12',
     templateName: 'punch_log_template.csv',
   },
 };
 
 type DataUploadProps = {
+  clientId: string;
+  branchId: string;
   propertyCode: string | null;
   onUploadComplete?: () => void;
 }
 
-export default function DataUpload({ propertyCode, onUploadComplete }: DataUploadProps) {
+export default function DataUpload({ clientId, branchId, propertyCode, onUploadComplete }: DataUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadType, setUploadType] = useState<UploadType>('attendance');
@@ -71,11 +73,11 @@ export default function DataUpload({ propertyCode, onUploadComplete }: DataUploa
       });
       return;
     }
-    if (!propertyCode) {
+    if (!propertyCode || !clientId || !branchId) {
        toast({
         variant: 'destructive',
-        title: 'Property Code Missing',
-        description: 'Cannot upload file because the property code is missing.',
+        title: 'Configuration Missing',
+        description: 'Cannot upload file because client, branch, or property code is missing.',
       });
       return;
     }
@@ -86,6 +88,8 @@ export default function DataUpload({ propertyCode, onUploadComplete }: DataUploa
     formData.append('file', file);
     formData.append('uploadType', uploadType);
     formData.append('propertyCode', propertyCode);
+    formData.append('clientId', clientId);
+    formData.append('branchId', branchId);
 
     const result = await uploadData(formData);
 
@@ -136,7 +140,7 @@ export default function DataUpload({ propertyCode, onUploadComplete }: DataUploa
             <span>Data Upload</span>
         </CardTitle>
         <CardDescription>
-          Upload Excel or CSV files for employees, attendance, or punch logs.
+          Upload CSV files for employees, attendance, or punch logs.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

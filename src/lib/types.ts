@@ -1,5 +1,7 @@
 export type AttendanceRecord = {
   id: string;
+  clientId: string;
+  branchId: string;
   property_code: string;
   employee_name: string;
   email: string;

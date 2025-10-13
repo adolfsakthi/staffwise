@@ -8,18 +8,24 @@ import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
+import { seedDatabase } from '@/lib/seed'; // Assuming seed functionality is moved here
+import { Button } from '@/components/ui/button';
+
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
+  // In a real app, these would come from user claims or a user profile document
+  const clientId = 'default_client';
+  const branchId = 'default_branch';
   // @ts-ignore
   const propertyCode = user?.property_code || 'D001';
 
   const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
-    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
-  }, [firestore, propertyCode]);
+    if (!firestore || !clientId || !branchId) return null;
+    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`), where('property_code', '==', propertyCode));
+  }, [firestore, clientId, branchId, propertyCode]);
   
   const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
 
@@ -57,15 +63,22 @@ export default function DashboardPage() {
     return data;
   }, [records]);
   
-  // In a real app, we would re-fetch or optimistically update
   const handleDataUpload = () => {
     console.log("Data upload finished, dashboard will refresh automatically.");
+  }
+  
+  const handleSeed = async () => {
+    if (firestore) {
+      await seedDatabase(firestore, clientId, branchId);
+      alert('Database has been seeded with initial data.');
+    }
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-between items-start">
         <h1 className="text-3xl font-bold">Dashboard</h1>
+        <Button onClick={handleSeed} variant="outline">Initialize Database Collections</Button>
       </div>
       <StatsCards stats={stats} isLoading={isLoading || isUserLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -73,7 +86,7 @@ export default function DashboardPage() {
           <OverviewChart data={weeklyData} isLoading={isLoading || isUserLoading} error={error}/>
         </div>
         <div>
-          <DataUpload propertyCode={propertyCode} onUploadComplete={handleDataUpload} />
+          <DataUpload clientId={clientId} branchId={branchId} propertyCode={propertyCode} onUploadComplete={handleDataUpload} />
         </div>
       </div>
     </div>

@@ -27,10 +27,12 @@ import { collection, query, where } from 'firebase/firestore';
 
 
 interface AttendanceTableProps {
+    clientId: string;
+    branchId: string;
     propertyCode: string;
 }
 
-export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
+export default function AttendanceTable({ clientId, branchId, propertyCode }: AttendanceTableProps) {
   const firestore = useFirestore();
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
@@ -38,8 +40,10 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
   const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
+    if (!firestore || !propertyCode || !clientId || !branchId) return null;
     
+    const attendanceCollectionRef = collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`);
+
     const conditions = [
       where('property_code', '==', propertyCode),
       where('date', '==', dateFilter)
@@ -49,21 +53,13 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
       conditions.push(where('department', '==', departmentFilter));
     }
     
-    return query(collection(firestore, 'attendance_records'), ...conditions);
+    return query(attendanceCollectionRef, ...conditions);
 
-  }, [firestore, propertyCode, dateFilter, departmentFilter]);
+  }, [firestore, clientId, branchId, propertyCode, dateFilter, departmentFilter]);
   
   const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
 
-  const departmentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'roles')); // Assuming departments can be inferred from roles or another collection
-  }, [firestore]);
-  const {data: departmentsData} = useCollection(departmentsQuery);
-
   const departments = useMemo(() => {
-    // In a real app, departments might be its own collection.
-    // For now, we'll derive it from records.
     if (!records) return [];
     return [...new Set(records.map(rec => rec.department))];
   }, [records]);

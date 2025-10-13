@@ -19,14 +19,12 @@ const AttendanceRecordSchema = z.object({
   entry_time: z.string(),
   exit_time: z.string(),
   date: z.string(),
-  property_code: z.string().optional(),
 });
 
 const PunchLogSchema = z.object({
   device_id: z.string(),
   employee_id: z.string(),
   punch_time: z.string(),
-  property_code: z.string().optional(),
 });
 
 const EmployeeSchema = z.object({
@@ -35,7 +33,6 @@ const EmployeeSchema = z.object({
   email: z.string().email(),
   department: z.string(),
   role: z.string(),
-  property_code: z.string().optional(),
 });
 
 async function parseCsv(file: File): Promise<any[]> {
@@ -60,10 +57,16 @@ export async function uploadData(formData: FormData) {
   const file = formData.get('file') as File;
   const uploadType = formData.get('uploadType') as string;
   const defaultPropertyCode = formData.get('propertyCode') as string;
+  const clientId = formData.get('clientId') as string;
+  const branchId = formData.get('branchId') as string;
   const db = getDb();
 
   if (!file || file.size === 0) {
     return { success: false, message: 'No file provided.' };
+  }
+
+  if (!clientId || !branchId || !defaultPropertyCode) {
+    return { success: false, message: 'Client, Branch, or Property information is missing.' };
   }
 
   try {
@@ -74,13 +77,13 @@ export async function uploadData(formData: FormData) {
 
     const processedRecords = recordsToCreate.map((rec) => ({
       ...rec,
-      property_code: rec.property_code || defaultPropertyCode,
+      property_code: defaultPropertyCode,
     }));
 
     switch (uploadType) {
       case 'attendance':
         const validAttendance = z.array(AttendanceRecordSchema).parse(processedRecords);
-        await addAttendanceRecords(db, validAttendance);
+        await addAttendanceRecords(db, validAttendance, clientId, branchId);
         break;
       case 'employees':
         const validEmployees = z.array(EmployeeSchema).parse(processedRecords);
@@ -110,12 +113,12 @@ export async function uploadData(formData: FormData) {
   }
 }
 
-export async function runAudit(recordIds: string[], auditNotes: string) {
+export async function runAudit(clientId: string, branchId: string, recordIds: string[], auditNotes: string) {
   const db = getDb();
   try {
     console.log('Running audit:', { recordIds, auditNotes });
 
-    await auditRecords(db, recordIds, auditNotes);
+    await auditRecords(db, clientId, branchId, recordIds, auditNotes);
 
     const adminEmail = 'admin@staffwise.com';
     const subject = `Audit Completed: ${new Date().toLocaleString()}`;

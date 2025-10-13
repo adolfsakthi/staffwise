@@ -6,12 +6,16 @@ import { useUser } from "@/firebase";
 export default function AuditPage() {
     const { user, isUserLoading } = useUser();
 
+    // In a real app, these would come from user claims or a user profile document
+    const clientId = 'default_client';
+    const branchId = 'default_branch';
+
     // @ts-ignore
     const propertyCode = user?.property_code || 'D001';
 
-    if (isUserLoading || !propertyCode) {
+    if (isUserLoading || !propertyCode || !clientId || !branchId) {
         return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
     }
 
-    return <AuditDashboard propertyCode={propertyCode} />
+    return <AuditDashboard clientId={clientId} branchId={branchId} propertyCode={propertyCode} />
 }
