@@ -1,124 +1,140 @@
 /**
- * @description This ruleset enforces a strict user-ownership model for user profiles and general read-only access to other data.
+ * @description This ruleset enforces a strict user-ownership model for user profiles,
+ *              and allows public read access to attendance records, grace settings, audit logs and email logs,
+ *              but restricts writes to these collections to authenticated users.  There is also configuration settings for auto audits.
+ *              It is designed for rapid prototyping and does not include detailed schema validation.
  * @dataStructure
- *   - /users/{userId}: Stores user profile data, accessible only to the user themselves.
- *   - /attendance_records/{attendanceRecordId}: Stores attendance records. Intended to be generally readable. Writes not currently secured.
- *   - /grace_settings/{graceSettingId}: Stores grace period settings. Intended to be generally readable. Writes not currently secured.
- *   - /audit_logs/{auditLogId}: Stores logs of audit executions. Intended to be generally readable. Writes not currently secured.
- *   - /email_logs/{emailLogId}: Stores logs of emails sent. Intended to be generally readable. Writes not currently secured.
- *   - /auto_audit_settings/auto_audit_config: Stores configuration for auto-auditing. Intended to be generally readable. Writes not currently secured.
+ *   /users/{userId} - Stores user profile data, accessible only to the user themselves.
+ *   /attendance_records/{attendanceRecordId} - Stores employee attendance records, publicly readable.
+ *   /grace_settings/{graceSettingId} - Stores grace time settings, publicly readable.
+ *   /audit_logs/{auditLogId} - Stores audit logs, publicly readable.
+ *   /email_logs/{emailLogId} - Stores email logs, publicly readable.
+ *   /auto_audit_settings/auto_audit_config - Stores settings for auto-auditing.
  * @keySecurityDecisions
- *   - User profiles are private and only accessible to the owning user.
- *   - Other collections (attendance_records, grace_settings, audit_logs, email_logs, auto_audit_settings) are configured for public read access in this prototype.
+ *   - User listing is explicitly denied.
+ *   - Public read access is granted to attendance records, grace settings, audit logs and email logs for prototyping.
+ *   - Writes to attendance records, grace settings, audit logs and email logs are allowed for authenticated users only.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants access to user profiles only to the owning user.
+     * @description Manages user profile data, accessible only to the user themselves.
      * @path /users/{userId}
-     * @allow (create) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can create their own profile if request.auth.uid == userId.
-     * @allow (get) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can read their own profile.
-     * @allow (update) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can update their own profile.
-     * @allow (delete) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can delete their own profile.
-     * @deny (create) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' cannot create a profile for another user ('user_xyz').
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth.uid.
+     * @allow (get, list, update, delete) - Authenticated user can only access their own profile.
+     * @deny (create) - If the userId does not match the authenticated user's ID.
+     * @deny (update, delete) - If the document does not exist.
+     * @principle Enforces document ownership for all operations on user profiles.
      */
     match /users/{userId} {
-      // Utility function to check if the user is signed in
       function isSignedIn() {
         return request.auth != null;
       }
-
-      // Utility function to check if the requested user ID matches the authenticated user ID
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
-
-      //Utility function to check if the requested user ID matches the authenticated user ID and the document exists
       function isExistingOwner(userId) {
-        return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+        return isOwner(userId) && resource != null;
       }
 
       allow get: if isOwner(userId);
-      allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow list: if false; // Listing all users is not permitted.
+      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Grants public read access to attendance records. Write access is not secured in this prototype.
+     * @description Manages employee attendance records. Publicly readable, writes allowed for authenticated users.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get) - Any user can read an attendance record.
-     * @allow (list) - Any user can list attendance records.
-     * @principle Allows public read access for prototyping.
+     * @allow (get, list) - Anyone can read attendance records.
+     * @allow (create, update, delete) - Only authenticated users can create, update, or delete attendance records.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Provides public read access with authentication required for writes.
      */
     match /attendance_records/{attendanceRecordId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Grants public read access to grace settings. Write access is not secured in this prototype.
+     * @description Manages grace time settings. Publicly readable, writes allowed for authenticated users.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get) - Any user can read a grace setting.
-     * @allow (list) - Any user can list grace settings.
-     * @principle Allows public read access for prototyping.
+     * @allow (get, list) - Anyone can read grace time settings.
+     * @allow (create, update, delete) - Only authenticated users can create, update, or delete grace time settings.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Provides public read access with authentication required for writes.
      */
     match /grace_settings/{graceSettingId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Grants public read access to audit logs. Write access is not secured in this prototype.
+     * @description Manages audit logs. Publicly readable, writes allowed for authenticated users.
      * @path /audit_logs/{auditLogId}
-     * @allow (get) - Any user can read an audit log.
-     * @allow (list) - Any user can list audit logs.
-     * @principle Allows public read access for prototyping.
+     * @allow (get, list) - Anyone can read audit logs.
+     * @allow (create, update, delete) - Only authenticated users can create, update, or delete audit logs.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Provides public read access with authentication required for writes.
      */
     match /audit_logs/{auditLogId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Grants public read access to email logs. Write access is not secured in this prototype.
+     * @description Manages email logs. Publicly readable, writes allowed for authenticated users.
      * @path /email_logs/{emailLogId}
-     * @allow (get) - Any user can read an email log.
-     * @allow (list) - Any user can list email logs.
-     * @principle Allows public read access for prototyping.
+     * @allow (get, list) - Anyone can read email logs.
+     * @allow (create, update, delete) - Only authenticated users can create, update, or delete email logs.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Provides public read access with authentication required for writes.
      */
     match /email_logs/{emailLogId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Grants public read access to auto audit settings. Write access is not secured in this prototype.
+     * @description Manages auto-audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) - Any user can read the auto audit config.
-     * @allow (list) - Any user can list the auto audit config (though there is only one).
-     * @principle Allows public read access for prototyping.
+     * @allow (get) - Anyone can read the auto-audit settings.
+     * @allow (create, update, delete) - Only authenticated users can create, update, or delete the auto-audit settings.
+     * @deny (create, update, delete) - If not authenticated.
+     * @principle Provides public read access with authentication required for writes.
      */
-    match /auto_audit_settings/{autoAuditSettingId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Grants public read access to devices. Write access is not secured in this prototype.
-     * @path /devices
-     * @allow (get) - Any user can read the devices.
-     * @allow (list) - Any user can list the devices.
-     * @principle Allows public read access for prototyping.
-     */
-    match /devices/{deviceId} {
-        allow get, list: if true;
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    match /auto_audit_settings/auto_audit_config {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      allow get: if true;
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
   }
 }
