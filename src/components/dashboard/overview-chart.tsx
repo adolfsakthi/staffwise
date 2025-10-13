@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import { Skeleton } from '../ui/skeleton';
+import { Info } from 'lucide-react';
 
 const chartConfig = {
   onTime: {
@@ -59,23 +60,35 @@ export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
         <CardDescription>On-time vs. late entries for the last 7 days.</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={data}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="name"
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
-            />
-             <YAxis />
-            <ChartTooltip content={<ChartTooltipContent />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Bar dataKey="onTime" fill="var(--color-onTime)" radius={4} />
-            <Bar dataKey="late" fill="var(--color-late)" radius={4} />
-          </BarChart>
-        </ChartContainer>
+        {data.length > 0 ? (
+            <ChartContainer config={chartConfig} className="h-[300px] w-full">
+            <BarChart accessibilityLayer data={data}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                dataKey="name"
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
+                <Bar dataKey="onTime" fill="var(--color-onTime)" radius={4} />
+                <Bar dataKey="late" fill="var(--color-late)" radius={4} />
+            </BarChart>
+            </ChartContainer>
+        ) : (
+            <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-center">
+                <Info className="h-10 w-10 text-muted-foreground" />
+                <div className="space-y-1">
+                    <h3 className="font-semibold">No Data to Display</h3>
+                    <p className="text-sm text-muted-foreground">
+                        Upload attendance data to see the weekly overview chart.
+                    </p>
+                </div>
+            </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -21,12 +21,12 @@ export default function DashboardPage() {
   const { data: records, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
 
   const stats = useMemo(() => {
-    if (!records) {
+    if (!records || records.length === 0) {
       return { totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
     }
     const totalRecords = records.length;
     const lateCount = records.filter(r => r.is_late).length;
-    const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
+    const totalOvertimeMinutes = records.reduce((sum, r) => sum + (r.overtime_minutes || 0), 0);
     const departmentCount = [...new Set(records.map(r => r.department))].length;
     
     return {
@@ -38,11 +38,13 @@ export default function DashboardPage() {
   }, [records]);
 
   const weeklyData = useMemo(() => {
-    if (!records) return [];
+    if (!records || records.length === 0) return [];
+    
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const data = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });
-        const recordsForDay = records.filter(r => r.date === format(date, 'yyyy-MM-dd'));
+        const dateString = format(date, 'yyyy-MM-dd');
+        const recordsForDay = records.filter(r => r.date === dateString);
         return {
             name: format(date, 'EEE'),
             onTime: recordsForDay.filter(r => !r.is_late).length,
