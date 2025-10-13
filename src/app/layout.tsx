@@ -2,9 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { cn } from '@/lib/utils';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import MainSidebar from '@/components/layout/main-sidebar';
-import { SidebarInset } from '@/components/ui/sidebar';
-import Header from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import ConditionalLayout from '@/components/layout/conditional-layout';
 
