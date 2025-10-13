@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -29,17 +28,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 type User = {
   id: string;
-  name: string;
-  username: string;
+  displayName: string;
   email: string;
-  avatar: string;
   role: string;
   uid: string;
 };
@@ -49,31 +43,27 @@ type Role = {
   name: string;
 };
 
+const MOCK_USERS: User[] = [
+    { id: '1', uid: 'user1', displayName: 'Alice Johnson', email: 'alice@example.com', role: 'Admin' },
+    { id: '2', uid: 'user2', displayName: 'Bob Williams', email: 'bob@example.com', role: 'Manager' },
+    { id: '3', uid: 'user3', displayName: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff' },
+];
+
 export default function UserList({ roles }: { roles: Role[] }) {
+  const [users, setUsers] = useState(MOCK_USERS);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState(roles[0]?.name || 'Guest');
+  const [newUserRole, setNewUserRole] = useState(roles[0]?.name || 'Staff');
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
-  const auth = useAuth();
-  const firestore = useFirestore();
   const { toast } = useToast();
 
-  const usersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'users');
-  }, [firestore]);
-
-  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
-
   const handleRoleChange = async (userId: string, newRole: string) => {
-    // In a real app, you would call an API to update the user's role.
-    if (!firestore) return;
-    const userRef = doc(firestore, 'users', userId);
-    await setDoc(userRef, { role: newRole }, { merge: true });
-    toast({ title: "User role updated" });
+    setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    toast({ title: "User role updated (mock)" });
   };
 
   const handleAddUser = async () => {
@@ -82,47 +72,27 @@ export default function UserList({ roles }: { roles: Role[] }) {
       return;
     }
     setIsCreatingUser(true);
-    try {
-      // We create a temporary auth instance to create the user
-      // This avoids signing in the admin as the new user
-      const { user } = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
-      
-      if(firestore) {
-        await setDoc(doc(firestore, 'users', user.uid), {
-            uid: user.uid,
-            email: newUserEmail,
-            displayName: newUserName,
-            role: newUserRole,
-            property_code: 'D001', // Or from a selector
-            createdAt: new Date(),
-        });
-      }
+    await new Promise(res => setTimeout(res, 1000));
 
-      toast({
-        title: 'User Created Successfully',
-        description: 'The user can now log in.',
-      });
+    const newUser: User = {
+        id: `user_${Date.now()}`,
+        uid: `user_${Date.now()}`,
+        displayName: newUserName,
+        email: newUserEmail,
+        role: newUserRole,
+    };
+    setUsers([...users, newUser]);
 
-      setNewUserEmail('');
-      setNewUserPassword('');
-      setNewUserName('');
-      setNewUserRole(roles[0]?.name || 'Guest');
+    toast({
+        title: 'User Created Successfully (Mock)',
+        description: 'The user has been added to the list.',
+    });
 
-    } catch (error: any) {
-        let description = 'An unexpected error occurred.';
-        if (error.code === 'auth/email-already-in-use') {
-            description = 'This email address is already in use.';
-        } else if (error.code === 'auth/weak-password') {
-            description = 'The password is too weak. It must be at least 6 characters long.';
-        }
-        toast({
-            variant: 'destructive',
-            title: 'Failed to Create User',
-            description,
-        });
-    } finally {
-        setIsCreatingUser(false);
-    }
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserName('');
+    setNewUserRole(roles[0]?.name || 'Staff');
+    setIsCreatingUser(false);
   };
 
   return (

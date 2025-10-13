@@ -1,8 +1,4 @@
-
 import { add, format, startOfWeek } from 'date-fns';
-import { getFirestoreAdmin } from '@/firebase/admin';
-import type { Query } from 'firebase-admin/firestore';
-
 
 export type AttendanceRecord = {
   id: string;
@@ -30,136 +26,91 @@ export type EmailLog = {
     sentAt?: Date;
 }
 
-export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
-    const firestore = getFirestoreAdmin();
-    let recordsQuery: Query = firestore.collection('attendance_records');
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
+    { id: '2', employee_name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales', shift_start: '09:00', shift_end: '18:00', entry_time: '08:55', exit_time: '18:30', date: '2024-05-27', is_late: false, late_by_minutes: 0, overtime_minutes: 30, is_audited: true },
+    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
+];
+const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
 
-    try {
-        const snapshot = await recordsQuery.get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
-    } catch (error) {
-        console.error("Error fetching attendance records: ", error);
-        if (error instanceof Error && 'code' in error && (error as any).code === 'permission-denied') {
-             throw new Error("Firestore permission denied. Please check your security rules.");
-        }
-        return []; // Return empty array on error
-    }
+export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
+    await new Promise(res => setTimeout(res, 500));
+    return MOCK_RECORDS;
 }
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    if (recordIds.length === 0) {
-        return [];
-    }
-    const firestore = getFirestoreAdmin();
-    const recordsCol = firestore.collection('attendance_records');
-    const snapshot = await recordsCol.where('__name__', 'in', recordIds).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    await new Promise(res => setTimeout(res, 500));
+    return MOCK_RECORDS.filter(r => recordIds.includes(r.id));
 }
 
 export async function getAttendanceStats() {
-    const firestore = getFirestoreAdmin();
-    try {
-        const recordsCol = firestore.collection('attendance_records');
-        const snapshot = await recordsCol.get();
-        
-        const records = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
-
-        const totalRecords = records.length;
-        const lateCount = records.filter(r => r.is_late).length;
-        const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
-
-        const departmentsCol = firestore.collection('grace_settings');
-        const departmentsSnapshot = await departmentsCol.get();
-        const departmentCount = departmentsSnapshot.docs.filter(d => d.id !== 'global').length;
-        
-        return {
-            totalRecords,
-            lateCount,
-            totalOvertimeMinutes,
-            departmentCount,
-        };
-    } catch (error) {
-        console.error("Error fetching attendance stats: ", error);
-        return { totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
-    }
+    await new Promise(res => setTimeout(res, 500));
+    const totalRecords = MOCK_RECORDS.length;
+    const lateCount = MOCK_RECORDS.filter(r => r.is_late).length;
+    const totalOvertimeMinutes = MOCK_RECORDS.reduce((sum, r) => sum + r.overtime_minutes, 0);
+    const departmentCount = MOCK_DEPARTMENTS.length;
+    
+    return {
+        totalRecords,
+        lateCount,
+        totalOvertimeMinutes,
+        departmentCount,
+    };
 }
 
 export async function getDepartments(): Promise<string[]> {
-    const firestore = getFirestoreAdmin();
-    try {
-        const departmentsCol = firestore.collection('grace_settings');
-        const q = departmentsCol.where('department', '!=', null);
-        const snapshot = await q.get();
-        const departments = new Set(snapshot.docs.map(doc => doc.data().department as string));
-        return Array.from(departments);
-    } catch (error) {
-        console.error("Error fetching departments: ", error);
-        return [];
-    }
+    await new Promise(res => setTimeout(res, 500));
+    return MOCK_DEPARTMENTS;
 }
 
 
 export async function getWeeklyAttendance() {
-    const firestore = getFirestoreAdmin();
-
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const recordsCol = firestore.collection('attendance_records');
-    const weeklyDataPromises = Array.from({ length: 7 }).map(async (_, i) => {
+    const data = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });
-        const dateStr = format(date, 'yyyy-MM-dd');
-        
-        const q = recordsCol.where('date', '==', dateStr);
-        const snapshot = await q.get();
-        const recordsForDay = snapshot.docs.map(doc => doc.data() as AttendanceRecord);
-
-        const onTime = recordsForDay.filter(r => !r.is_late).length;
-        const late = recordsForDay.filter(r => r.is_late).length;
-
         return {
             name: format(date, 'EEE'),
-            onTime,
-            late,
+            onTime: Math.floor(Math.random() * 20) + 5,
+            late: Math.floor(Math.random() * 5),
         };
     });
-    return Promise.all(weeklyDataPromises);
+    await new Promise(res => setTimeout(res, 500));
+    return data;
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    const firestore = getFirestoreAdmin();
-    const batch = firestore.batch();
-    recordIds.forEach(id => {
-        const docRef = firestore.collection('attendance_records').doc(id);
-        batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
-    });
-    await batch.commit();
+    console.log('Auditing records:', recordIds, 'with notes:', auditNotes);
+    await new Promise(res => setTimeout(res, 1000));
 }
 
 export async function logEmail(email: EmailLog): Promise<void> {
-    const firestore = getFirestoreAdmin();
-    const emailLogWithTimestamp = {
-        ...email,
-        sentAt: new Date(),
-    };
-    await firestore.collection('email_logs').add(emailLogWithTimestamp);
+    console.log('Logging email:', email);
+    await new Promise(res => setTimeout(res, 500));
 }
 
 export async function getUsers() {
-    const firestore = getFirestoreAdmin();
-    const usersCol = firestore.collection('users');
-    const snapshot = await usersCol.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    // This would fetch from a database
+    await new Promise(res => setTimeout(res, 500));
+    return [
+        { id: '1', displayName: 'Alice Johnson', email: 'alice@example.com', role: 'Admin' },
+        { id: '2', displayName: 'Bob Williams', email: 'bob@example.com', role: 'Manager' },
+        { id: '3', displayName: 'Charlie Brown', email: 'charlie@example.com', role: 'Staff' },
+    ];
 }
 
 export async function getRoles() {
-    const firestore = getFirestoreAdmin();
-    const rolesCol = firestore.collection('roles');
-    const snapshot = await rolesCol.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    await new Promise(res => setTimeout(res, 500));
+    return [
+        { id: '1', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'] },
+        { id: '2', name: 'Manager', permissions: ['read', 'write'] },
+        { id: '3', name: 'Staff', permissions: ['read'] },
+    ];
 }
 
 export async function getDevices() {
-    const firestore = getFirestoreAdmin();
-    const devicesCol = firestore.collection('devices');
-    const snapshot = await devicesCol.get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    await new Promise(res => setTimeout(res, 500));
+    return [
+        { id: '1', name: 'Main Entrance', model: 'ZK-Teco-X1', ip: '192.168.1.101', status: 'online', branch: 'Headquarters' },
+        { id: '2', name: 'Warehouse-1', model: 'BioMax-9000', ip: '192.168.1.102', status: 'offline', branch: 'West Wing' },
+    ];
 }

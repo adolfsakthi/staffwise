@@ -5,11 +5,11 @@ import MainSidebar from './main-sidebar';
 import { SidebarInset } from '../ui/sidebar';
 import Header from './header';
 
-const NO_SIDEBAR_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/login'];
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isPublicPage = NO_SIDEBAR_ROUTES.includes(pathname);
+  const isPublicPage = PUBLIC_ROUTES.includes(pathname);
 
   if (isPublicPage) {
     return <>{children}</>;

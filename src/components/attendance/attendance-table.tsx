@@ -21,49 +21,27 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
-type GraceSetting = {
-  id: string;
-  department: string;
-  graceMinutes: number;
-}
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
+    { id: '2', employee_name: 'Jane Smith', email: 'jane.smith@example.com', department: 'Sales', shift_start: '09:00', shift_end: '18:00', entry_time: '08:55', exit_time: '18:30', date: '2024-05-27', is_late: false, late_by_minutes: 0, overtime_minutes: 30, is_audited: true },
+    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
+];
+const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations'];
 
 export default function AttendanceTable() {
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const firestore = useFirestore();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const departmentsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'grace_settings'), where('department', '!=', null));
-  }, [firestore]);
-
-  const { data: departmentSettings } = useCollection<GraceSetting>(departmentsQuery);
-  const departments = departmentSettings?.map(d => d.department) || [];
-
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    const baseQuery = collection(firestore, 'attendance_records');
-
-    let queries = [];
-    if (dateFilter) {
-      queries.push(where('date', '==', dateFilter));
-    }
-    if (departmentFilter !== 'all') {
-      queries.push(where('department', '==', departmentFilter));
-    }
-    
-    return query(baseQuery, ...queries);
-  }, [firestore, dateFilter, departmentFilter]);
-
-  const { data: records, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
-  const filteredRecords = records || [];
+  const filteredRecords = MOCK_RECORDS.filter(record => {
+    const dateMatch = !dateFilter || record.date === dateFilter;
+    const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
+    return dateMatch && departmentMatch;
+  });
 
   return (
     <Card>
@@ -85,7 +63,7 @@ export default function AttendanceTable() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {departments.map((dept) => (
+              {MOCK_DEPARTMENTS.map((dept) => (
                 <SelectItem key={dept} value={dept}>
                   {dept}
                 </SelectItem>

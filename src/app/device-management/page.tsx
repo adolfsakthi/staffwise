@@ -6,7 +6,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +30,8 @@ import {
   WifiOff,
   Loader2,
 } from 'lucide-react';
-import { collection } from 'firebase/firestore';
+import { useState } from 'react';
+
 
 type Device = {
   id: string;
@@ -42,15 +42,16 @@ type Device = {
   branch: string;
 };
 
+const MOCK_DEVICES: Device[] = [
+    { id: '1', name: 'Main Entrance', model: 'ZK-Teco-X1', ip: '192.168.1.101', status: 'online', branch: 'Headquarters' },
+    { id: '2', name: 'Warehouse-1', model: 'BioMax-9000', ip: '192.168.1.102', status: 'offline', branch: 'West Wing' },
+    { id: '3', name: 'Server Room', model: 'ZK-Teco-X1', ip: '192.168.1.103', status: 'online', branch: 'Headquarters' },
+    { id: '4', name: 'Marketing Floor', model: 'Generic-A2', ip: '192.168.2.50', status: 'online', branch: 'East Annex' },
+]
+
 export default function DeviceManagementPage() {
-  const firestore = useFirestore();
-
-  const devicesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'devices');
-  }, [firestore]);
-
-  const { data: devices, isLoading } = useCollection<Device>(devicesQuery);
+  const [devices, setDevices] = useState(MOCK_DEVICES);
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
     <Card>

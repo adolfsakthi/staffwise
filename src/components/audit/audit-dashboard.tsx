@@ -26,22 +26,20 @@ import type { AttendanceRecord } from '@/lib/data';
 import { FileCheck2, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employee_name: 'John Doe', email: 'john.doe@example.com', department: 'Engineering', shift_start: '09:00', shift_end: '18:00', entry_time: '09:15', exit_time: '18:05', date: '2024-05-27', is_late: true, late_by_minutes: 15, overtime_minutes: 5, is_audited: false },
+    { id: '3', employee_name: 'Mike Johnson', email: 'mike.j@example.com', department: 'Engineering', shift_start: '10:00', shift_end: '19:00', entry_time: '10:01', exit_time: '19:00', date: '2024-05-27', is_late: true, late_by_minutes: 1, overtime_minutes: 0, is_audited: false },
+    { id: '4', employee_name: 'Sarah Lee', email: 'sarah.lee@example.com', department: 'HR', shift_start: '09:00', shift_end: '18:00', entry_time: '09:30', exit_time: '18:00', date: '2024-05-26', is_late: true, late_by_minutes: 30, overtime_minutes: 0, is_audited: false },
+];
 
 export default function AuditDashboard() {
+  const [records, setRecords] = useState(MOCK_RECORDS);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   const { toast } = useToast();
-  const firestore = useFirestore();
-
-  const unauditedQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'attendance_records'), where('is_audited', '==', false));
-  }, [firestore]);
-
-  const { data: records, isLoading: isLoadingRecords } = useCollection<AttendanceRecord>(unauditedQuery);
 
   const handleSelectRecord = (id: string) => {
     setSelectedRecords((prev) =>
@@ -69,26 +67,21 @@ export default function AuditDashboard() {
     }
 
     setIsLoading(true);
-    const response = await runAudit(selectedRecords, auditNotes);
+    // In a real app, this would be a server action
+    await new Promise(res => setTimeout(res, 1000));
+    
+    setRecords(records.filter(r => !selectedRecords.includes(r.id)));
+    
     setIsLoading(false);
 
-    if (response.success) {
-      toast({
+    toast({
         title: 'Audit Successful',
-        description: response.message,
+        description: `${selectedRecords.length} records have been audited.`,
         action: <FileCheck2 className="text-green-500" />,
-      });
-      // Records will update automatically due to real-time listener
-      setSelectedRecords([]);
-      setAuditNotes('');
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Audit Failed',
-        description: response.message,
-        action: <AlertCircle className="text-white" />,
-      });
-    }
+    });
+
+    setSelectedRecords([]);
+    setAuditNotes('');
   };
 
   return (
