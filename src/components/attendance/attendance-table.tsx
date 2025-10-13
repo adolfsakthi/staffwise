@@ -2,7 +2,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { getDepartments, getAttendanceRecords } from '@/lib/data';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where } from 'firebase/firestore';
+import { getDepartments } from '@/lib/data';
 import type { AttendanceRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -30,29 +33,34 @@ interface AttendanceTableProps {
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const firestore = useFirestore();
   const [departments, setDepartments] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-
+  
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'attendance_records'),
+      where('property_code', '==', propertyCode)
+    );
+  }, [firestore, propertyCode]);
+  
+  const { data: allRecords, isLoading, error } = useCollection<AttendanceRecord>(attendanceQuery);
+  
   useEffect(() => {
-    async function fetchData() {
-      setIsLoading(true);
-      const [recordsData, departmentsData] = await Promise.all([
-        getAttendanceRecords(propertyCode),
-        getDepartments(propertyCode),
-      ]);
-      setAllRecords(recordsData);
+    async function fetchDepartments() {
+      // Using mock departments temporarily to avoid another Firestore read on load
+      const departmentsData = await getDepartments(propertyCode);
       setDepartments(departmentsData);
-      setIsLoading(false);
     }
-    fetchData();
+    fetchDepartments();
   }, [propertyCode]);
 
   const filteredRecords = useMemo(() => {
+    if (!allRecords) return [];
     return allRecords.filter(record => {
         const dateMatch = !dateFilter || record.date === dateFilter;
         const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
@@ -91,6 +99,7 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
         </div>
       </CardHeader>
       <CardContent>
+        {error && <p className='text-destructive'>Error: {error.message}</p>}
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>

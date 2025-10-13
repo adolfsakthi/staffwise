@@ -23,7 +23,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { getAttendanceRecords } from '@/lib/data';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where } from 'firebase/firestore';
 import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
@@ -34,23 +36,28 @@ interface AuditDashboardProps {
 }
 
 export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
-  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
+  const firestore = useFirestore();
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
   const { toast } = useToast();
 
+  const unauditedQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+        collection(firestore, 'attendance_records'),
+        where('property_code', '==', propertyCode),
+        where('is_audited', '==', false)
+    );
+  }, [firestore, propertyCode]);
+  
+  const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedQuery);
+
+  // Clear selections if the data reloads
   useEffect(() => {
-    async function fetchUnaudited() {
-        setIsFetching(true);
-        const allRecords = await getAttendanceRecords(propertyCode);
-        const unaudited = allRecords.filter(r => !r.is_audited);
-        setUnauditedRecords(unaudited);
-        setIsFetching(false);
-    }
-    fetchUnaudited();
-  }, [propertyCode]);
+    setSelectedRecords([]);
+  }, [unauditedRecords]);
+
 
   const handleSelectRecord = (id: string) => {
     setSelectedRecords((prev) =>
@@ -59,7 +66,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
   };
 
   const handleSelectAll = () => {
-    if (unauditedRecords.length === 0) return;
+    if (!unauditedRecords || unauditedRecords.length === 0) return;
     if (selectedRecords.length === unauditedRecords.length) {
       setSelectedRecords([]);
     } else {
@@ -87,8 +94,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           description: result.message,
           action: <FileCheck2 className="text-green-500" />,
       });
-      // In a mock environment, we manually filter out the "audited" records.
-      setUnauditedRecords(prev => prev.filter(r => !selectedRecords.includes(r.id)));
+      // The real-time hook will automatically remove the audited records.
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -110,15 +116,16 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {error && <p className='text-destructive mb-4'>Error: {error.message}</p>}
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length}
+                      checked={unauditedRecords ? unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length : false}
                       onCheckedChange={handleSelectAll}
-                      disabled={unauditedRecords.length === 0}
+                      disabled={!unauditedRecords || unauditedRecords.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
@@ -135,7 +142,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : unauditedRecords.length > 0 ? (
+                ) : unauditedRecords && unauditedRecords.length > 0 ? (
                   unauditedRecords.map((record) => (
                     <TableRow
                       key={record.id}
