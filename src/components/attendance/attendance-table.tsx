@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type { AttendanceRecord } from '@/lib/data';
-import { getAttendanceRecords, getDepartments } from '@/lib/data';
+import { getDepartments } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -23,35 +23,55 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { useCollection } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 
 export default function AttendanceTable() {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const firestore = useFirestore();
   const [departments, setDepartments] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(true);
+
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    let q = query(collection(firestore, 'attendance_records'));
+    
+    // NOTE: Firestore requires an index for compound queries. 
+    // If you filter by both date and department, you'll need to create one in the Firebase console.
+    // For this demo, we'll filter client-side if both are active.
+    if (dateFilter && departmentFilter === 'all') {
+      q = query(q, where('date', '==', dateFilter));
+    } else if (dateFilter && departmentFilter !== 'all') {
+      q = query(q, where('date', '==', dateFilter), where('department', '==', departmentFilter));
+    } else if (!dateFilter && departmentFilter !== 'all') {
+        q = query(q, where('department', '==', departmentFilter));
+    }
+
+    return q;
+  }, [firestore, dateFilter, departmentFilter]);
+
+
+  const { data: records, isLoading: isLoadingRecords, error } = useCollection<AttendanceRecord>(attendanceQuery);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      const [recordsData, departmentsData] = await Promise.all([
-        getAttendanceRecords(),
-        getDepartments(),
-      ]);
-      setRecords(recordsData);
+    const fetchDepartments = async () => {
+      setIsLoadingDepartments(true);
+      const departmentsData = await getDepartments();
       setDepartments(departmentsData);
-      setIsLoading(false);
+      setIsLoadingDepartments(false);
     };
-    fetchData();
+    fetchDepartments();
   }, []);
 
-  const filteredRecords = records.filter(record => {
-    const dateMatch = !dateFilter || record.date === dateFilter;
-    const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
-    return dateMatch && departmentMatch;
-  });
+  if(error) {
+    console.error(error);
+  }
+
+  const isLoading = isLoadingRecords || isLoadingDepartments;
 
   return (
     <Card>
@@ -102,8 +122,8 @@ export default function AttendanceTable() {
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
-              ) : filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => (
+              ) : records && records.length > 0 ? (
+                records.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="font-medium">{record.employee_name}</div>

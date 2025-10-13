@@ -1,5 +1,7 @@
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import { initialAttendanceRecords, ATTENDANCE_RECORDS } from './attendance-data';
+import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction } from 'firebase/firestore';
+import { getSdks } from '@/firebase';
 
 export type AttendanceRecord = {
   id: string;
@@ -29,13 +31,37 @@ export type EmailLog = {
 
 const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations', 'Support', 'Admin', 'Finance'];
 
-// Initialize with the provided data, but allow it to be modified.
+// This will act as our in-memory database
 if (ATTENDANCE_RECORDS.length === 0) {
-  initialAttendanceRecords.forEach(record => ATTENDANCE_RECORDS.push(record));
+    initialAttendanceRecords.forEach(record => ATTENDANCE_RECORDS.push({
+        ...record,
+    }));
 }
 
-export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id'>[]) {
-    const newRecords: AttendanceRecord[] = records.map((record, index) => {
+
+async function seedInitialData() {
+    const { firestore } = getSdks();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    const snapshot = await getDocs(attendanceCollection);
+
+    if (snapshot.empty) {
+        console.log('No attendance records found, seeding initial data...');
+        const batch = writeBatch(firestore);
+        initialAttendanceRecords.forEach((record) => {
+            const docRef = collection(firestore, 'attendance_records').doc();
+            batch.set(docRef, record);
+        });
+        await batch.commit();
+        console.log('Initial data seeded.');
+    }
+}
+
+
+export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited'>[]) {
+    const { firestore } = getSdks();
+    const batch = writeBatch(firestore);
+
+    records.forEach(record => {
         const today = new Date();
         const entryTime = parse(record.entry_time, 'HH:mm', today);
         const shiftStart = parse(record.shift_start, 'HH:mm', today);
@@ -45,44 +71,66 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id'>
         const lateByMinutes = differenceInMinutes(entryTime, shiftStart);
         const overtimeMinutes = differenceInMinutes(exitTime, shiftEnd);
 
-        return {
+        const newRecord = {
             ...record,
-            id: `rec_${Date.now()}_${index}`,
             is_late: lateByMinutes > 0,
             late_by_minutes: Math.max(0, lateByMinutes),
             overtime_minutes: Math.max(0, overtimeMinutes),
             is_audited: false,
             date: format(new Date(), 'yyyy-MM-dd')
-        }
+        };
+        const docRef = collection(firestore, 'attendance_records').doc();
+        batch.set(docRef, newRecord);
     });
 
-    ATTENDANCE_RECORDS.unshift(...newRecords);
-    await new Promise(res => setTimeout(res, 300));
-    return newRecords;
+    await batch.commit();
 }
 
 
 export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
-    await new Promise(res => setTimeout(res, 500));
-    return ATTENDANCE_RECORDS;
+    await seedInitialData();
+    const { firestore } = getSdks();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    const snapshot = await getDocs(attendanceCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
 }
 
 export async function getUnauditedRecords(): Promise<AttendanceRecord[]> {
-    await new Promise(res => setTimeout(res, 500));
-    return ATTENDANCE_RECORDS.filter(r => !r.is_audited);
+    const { firestore } = getSdks();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    const q = query(attendanceCollection, where('is_audited', '==', false));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
 }
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    await new Promise(res => setTimeout(res, 100));
-    return ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
+    if (recordIds.length === 0) return [];
+    const { firestore } = getSdks();
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    // Firestore 'in' query is limited to 30 elements.
+    // We'll fetch documents in chunks of 30.
+    const chunks = [];
+    for (let i = 0; i < recordIds.length; i += 30) {
+        chunks.push(recordIds.slice(i, i + 30));
+    }
+
+    const records: AttendanceRecord[] = [];
+    for (const chunk of chunks) {
+        const q = query(attendanceCollection, where('__name__', 'in', chunk));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+            records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
+        });
+    }
+    return records;
 }
 
 export async function getAttendanceStats() {
-    await new Promise(res => setTimeout(res, 500));
-    const totalRecords = ATTENDANCE_RECORDS.length;
-    const lateCount = ATTENDANCE_RECORDS.filter(r => r.is_late).length;
-    const totalOvertimeMinutes = ATTENDANCE_RECORDS.reduce((sum, r) => sum + r.overtime_minutes, 0);
-    const departmentCount = [...new Set(ATTENDANCE_RECORDS.map(r => r.department))].length;
+    const records = await getAttendanceRecords();
+    const totalRecords = records.length;
+    const lateCount = records.filter(r => r.is_late).length;
+    const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
+    const departmentCount = [...new Set(records.map(r => r.department))].length;
     
     return {
         totalRecords,
@@ -99,31 +147,40 @@ export async function getDepartments(): Promise<string[]> {
 
 
 export async function getWeeklyAttendance() {
+    const records = await getAttendanceRecords();
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const data = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });
-        const recordsForDay = ATTENDANCE_RECORDS.filter(r => format(new Date(r.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
+        const recordsForDay = records.filter(r => format(new Date(r.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd'));
         return {
             name: format(date, 'EEE'),
             onTime: recordsForDay.filter(r => !r.is_late).length,
             late: recordsForDay.filter(r => r.is_late).length,
         };
     });
-    await new Promise(res => setTimeout(res, 500));
     return data;
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    console.log('Simulating auditing of records:', recordIds, 'with notes:', auditNotes);
-    recordIds.forEach(id => {
-        const record = ATTENDANCE_RECORDS.find(r => r.id === id);
-        if (record) {
-            record.is_audited = true;
-            record.audit_notes = auditNotes;
-        }
+    const { firestore } = getSdks();
+    
+    await runTransaction(firestore, async (transaction) => {
+        const recordsToUpdate = await Promise.all(recordIds.map(id => {
+            const docRef = collection(firestore, 'attendance_records').doc(id);
+            return transaction.get(docRef);
+        }));
+
+        recordsToUpdate.forEach(doc => {
+            if (doc.exists()) {
+                transaction.update(doc.ref, { 
+                    is_audited: true,
+                    audit_notes: auditNotes
+                });
+            }
+        });
     });
-    await new Promise(res => setTimeout(res, 1000));
 }
+
 
 export async function logEmail(email: EmailLog): Promise<void> {
     console.log('--- MOCK EMAIL LOG ---');

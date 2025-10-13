@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -23,28 +23,25 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import type { AttendanceRecord } from '@/lib/data';
-import { getUnauditedRecords } from '@/lib/data';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function AuditDashboard() {
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const firestore = useFirestore();
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingRecords, setIsLoadingRecords] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchRecords = async () => {
-      setIsLoadingRecords(true);
-      const unauditedRecords = await getUnauditedRecords();
-      setRecords(unauditedRecords);
-      setIsLoadingRecords(false);
-    }
-    fetchRecords();
-  }, []);
+  const unauditedQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'attendance_records'), where('is_audited', '==', false));
+  }, [firestore]);
+
+  const { data: records, isLoading: isLoadingRecords, error } = useCollection<AttendanceRecord>(unauditedQuery);
 
   const handleSelectRecord = (id: string) => {
     setSelectedRecords((prev) =>
@@ -53,7 +50,7 @@ export default function AuditDashboard() {
   };
 
   const handleSelectAll = () => {
-    if (records.length === 0) return;
+    if (!records || records.length === 0) return;
     if (selectedRecords.length === records.length) {
       setSelectedRecords([]);
     } else {
@@ -81,8 +78,7 @@ export default function AuditDashboard() {
           description: result.message,
           action: <FileCheck2 className="text-green-500" />,
       });
-      // Filter out audited records from the view
-      setRecords(records.filter(r => !selectedRecords.includes(r.id)));
+      // The real-time listener will automatically remove the audited records.
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -93,6 +89,10 @@ export default function AuditDashboard() {
       });
     }
   };
+
+  if (error) {
+    console.error(error);
+  }
 
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -110,9 +110,9 @@ export default function AuditDashboard() {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={records.length > 0 && selectedRecords.length === records.length}
+                      checked={records && records.length > 0 && selectedRecords.length === records.length}
                       onCheckedChange={handleSelectAll}
-                      disabled={records.length === 0}
+                      disabled={!records || records.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
@@ -128,7 +128,7 @@ export default function AuditDashboard() {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : records.length > 0 ? (
+                ) : records && records.length > 0 ? (
                   records.map((record) => (
                     <TableRow
                       key={record.id}

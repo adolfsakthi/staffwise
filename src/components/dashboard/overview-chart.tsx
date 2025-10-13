@@ -16,6 +16,7 @@ import {
   ChartLegendContent,
 } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
+import { Skeleton } from '../ui/skeleton';
 
 const chartConfig = {
   onTime: {
@@ -34,9 +35,23 @@ type OverviewChartProps = {
     onTime: number;
     late: number;
   }[];
+  isLoading: boolean;
 };
 
-export default function OverviewChart({ data }: OverviewChartProps) {
+export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
+  if (isLoading) {
+    return (
+        <Card>
+            <CardHeader>
+                <Skeleton className="h-7 w-1/3" />
+                <Skeleton className="h-4 w-2/3" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-[300px] w-full" />
+            </CardContent>
+        </Card>
+    )
+  }
   return (
     <Card>
       <CardHeader>

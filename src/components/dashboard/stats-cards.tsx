@@ -4,7 +4,9 @@ import {
   Clock,
   AlarmClockOff,
   Building,
+  Loader2,
 } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 
 type StatsCardsProps = {
   stats: {
@@ -13,9 +15,10 @@ type StatsCardsProps = {
     totalOvertimeMinutes: number;
     departmentCount: number;
   };
+  isLoading: boolean;
 };
 
-export default function StatsCards({ stats }: StatsCardsProps) {
+export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
   const {
     totalRecords,
     lateCount,
@@ -50,6 +53,24 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       color: 'text-purple-500',
     },
   ];
+
+  if (isLoading) {
+    return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {cardData.map((_, index) => (
+                <Card key={index}>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-5 w-5 rounded-full" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-8 w-1/3" />
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

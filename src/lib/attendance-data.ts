@@ -19,9 +19,8 @@ export type AttendanceRecord = {
 
 const today = new Date();
 
-export const initialAttendanceRecords: AttendanceRecord[] = [
+export const initialAttendanceRecords: Omit<AttendanceRecord, 'id'>[] = [
     {
-      id: 'rec_1',
       employee_name: 'John Doe',
       email: 'john@company.com',
       department: 'Engineering',
@@ -36,7 +35,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: false,
     },
     {
-      id: 'rec_2',
       employee_name: 'Jane Smith',
       email: 'jane@company.com',
       department: 'Sales',
@@ -51,7 +49,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: true,
     },
     {
-      id: 'rec_3',
       employee_name: 'Robert Brown',
       email: 'robert@company.com',
       department: 'HR',
@@ -66,7 +63,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: false,
     },
     {
-      id: 'rec_4',
       employee_name: 'Sarah Wilson',
       email: 'sarah@company.com',
       department: 'Engineering',
@@ -81,7 +77,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: false,
     },
      {
-      id: 'rec_5',
       employee_name: 'Michael Davis',
       email: 'michael@company.com',
       department: 'Sales',
@@ -96,7 +91,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: true,
     },
     {
-      id: 'rec_6',
       employee_name: 'Daniel Hall',
       email: 'daniel.hall@company.com',
       department: 'Support',
@@ -111,7 +105,6 @@ export const initialAttendanceRecords: AttendanceRecord[] = [
       is_audited: false,
     },
      {
-      id: 'rec_7',
       employee_name: 'Ava Lewis',
       email: 'adolfsakthi@gmail.com',
       department: 'Support',
