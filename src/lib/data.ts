@@ -2,6 +2,8 @@ import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import type { AttendanceRecord } from './types';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 export type EmailLog = {
@@ -52,24 +54,26 @@ export async function addAttendanceRecords(records: any[]) {
     const { firestore } = initializeFirebase();
     const attendanceCollection = collection(firestore, 'attendance_records');
     
-    try {
-        const batch = writeBatch(firestore);
-        records.forEach(record => {
-            const processed = processRecord(record);
-            const newRecordData = {
-                ...processed,
-                is_audited: false,
-                audit_notes: '',
-                createdAt: serverTimestamp(),
-            };
-            const docRef = doc(attendanceCollection);
-            batch.set(docRef, newRecordData);
+    const batch = writeBatch(firestore);
+    records.forEach(record => {
+        const processed = processRecord(record);
+        const newRecordData = {
+            ...processed,
+            is_audited: false,
+            audit_notes: '',
+            createdAt: serverTimestamp(),
+        };
+        const docRef = doc(attendanceCollection);
+        batch.set(docRef, newRecordData);
+    });
+
+    batch.commit().catch(error => {
+        const contextualError = new FirestorePermissionError({
+            operation: 'write',
+            path: attendanceCollection.path,
         });
-        await batch.commit();
-    } catch (error) {
-        console.error("Firestore write error in addAttendanceRecords:", error);
-        throw new Error("Failed to write to Firestore. Check security rules and data format.");
-    }
+        errorEmitter.emit('permission-error', contextualError);
+    });
 }
 
 
@@ -77,50 +81,65 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     const { firestore } = initializeFirebase();
     if (recordIds.length === 0) return [];
     
+    const attendanceCollection = collection(firestore, 'attendance_records');
+    const q = query(collection(firestore, 'attendance_records'), where('__name__', 'in', recordIds.slice(0, 30)));
     try {
-        const attendanceCollection = collection(firestore, 'attendance_records');
-        const q = query(collection(firestore, 'attendance_records'), where('__name__', 'in', recordIds.slice(0, 30)));
         const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch(error) {
-        console.error("Firestore read error in getRecordsByIds:", error);
-        throw error;
+        const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: attendanceCollection.path,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        // We need to re-throw something or return an empty array so the calling function doesn't break
+        return [];
     }
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
     const { firestore } = initializeFirebase();
-    try {
-        const batch = writeBatch(firestore);
-        recordIds.forEach(id => {
-            const docRef = doc(firestore, 'attendance_records', id);
-            batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
+    const batch = writeBatch(firestore);
+    recordIds.forEach(id => {
+        const docRef = doc(firestore, 'attendance_records', id);
+        batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
+    });
+
+    batch.commit().catch(error => {
+        // Since we are updating multiple docs, we can't provide a single path.
+        // Emitting an error for the collection path is a reasonable fallback.
+        const contextualError = new FirestorePermissionError({
+            operation: 'update',
+            path: 'attendance_records',
         });
-        await batch.commit();
-    } catch (error) {
-         console.error("Firestore write error in auditRecords:", error);
-         throw new Error("Failed to audit records. Check security rules for update permissions.");
-    }
+        errorEmitter.emit('permission-error', contextualError);
+    });
 }
 
 
 export async function logEmail(email: EmailLog): Promise<void> {
     const { firestore } = initializeFirebase();
-    try {
-        await addDoc(collection(firestore, 'email_logs'), {
-            ...email,
-            sentAt: serverTimestamp()
+    const emailLogsCollection = collection(firestore, 'email_logs');
+    
+    addDoc(emailLogsCollection, {
+        ...email,
+        sentAt: serverTimestamp()
+    }).catch(error => {
+        const contextualError = new FirestorePermissionError({
+            operation: 'create',
+            path: emailLogsCollection.path,
+            requestResourceData: email,
         });
-    } catch (error) {
-        console.error("Firestore write error in logEmail:", error);
-    }
+        errorEmitter.emit('permission-error', contextualError);
+    });
 }
 
 
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
     const { firestore } = initializeFirebase();
+    const attendanceCollection = collection(firestore, "attendance_records");
     try {
-        const q = query(collection(firestore, "attendance_records"), where("property_code", "==", propertyCode));
+        const q = query(attendanceCollection, where("property_code", "==", propertyCode));
         const querySnapshot = await getDocs(q);
         const records: AttendanceRecord[] = [];
         querySnapshot.forEach((doc) => {
@@ -128,8 +147,12 @@ export async function getAttendanceRecords(propertyCode: string): Promise<Attend
         });
         return records;
     } catch (error) {
-        console.error("Firestore read error in getAttendanceRecords:", error);
-        throw error;
+        const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: attendanceCollection.path,
+        });
+        errorEmitter.emit('permission-error', contextualError);
+        return []; // Return empty array on error
     }
 }
 
