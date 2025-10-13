@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -27,21 +28,22 @@ type Role = {
 };
 
 type RoleManagementProps = {
-    initialRoles: Role[]
+    initialRoles: Role[];
+    propertyCode: string;
 }
 
 
-export default function RoleManagement({ initialRoles }: RoleManagementProps) {
+export default function RoleManagement({ initialRoles, propertyCode }: RoleManagementProps) {
   const firestore = useFirestore();
   const [newRoleName, setNewRoleName] = useState('');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
   const handleAddRole = async () => {
-    if (newRoleName.trim() && firestore) {
+    if (newRoleName.trim() && firestore && propertyCode) {
       const newRole: Omit<Role, 'id'> = {
         name: newRoleName.trim(),
         permissions: ['read'],
-        property_code: 'PROP-001', // Placeholder
+        property_code: propertyCode,
       };
       const rolesCollection = collection(firestore, 'roles');
       await addDocumentNonBlocking(rolesCollection, newRole);
@@ -120,7 +122,7 @@ export default function RoleManagement({ initialRoles }: RoleManagementProps) {
                             <Input value={editingRole.name} onChange={(e) => setEditingRole({...editingRole, name: e.target.value})} />
                         </TableCell>
                         <TableCell>
-                            <Input value={editingRole.property_code} onChange={(e) => setEditingRole({...editingRole, property_code: e.target.value})} />
+                           {editingRole.property_code}
                         </TableCell>
                         <TableCell>
                             <div className="flex flex-wrap gap-2">

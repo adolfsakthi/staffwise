@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -30,7 +31,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, query, where } from 'firebase/firestore';
 
 type User = {
   id: string;
@@ -46,11 +47,17 @@ type Role = {
   name: string;
 };
 
-export default function UserList({ roles }: { roles: Role[] }) {
+type UserListProps = {
+    roles: Role[];
+    propertyCode: string;
+}
+
+export default function UserList({ roles, propertyCode }: UserListProps) {
   const firestore = useFirestore();
-  const usersQuery = useMemoFirebase(() => (
-    firestore ? collection(firestore, 'users') : null
-  ), [firestore]);
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    return query(collection(firestore, 'users'), where('property_code', '==', propertyCode));
+  }, [firestore, propertyCode]);
   const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
 
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -71,7 +78,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
   };
 
   const handleAddUser = async () => {
-    if (!newUserEmail.trim() || !newUserName.trim()) {
+    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode) {
       toast({ variant: 'destructive', title: 'Please fill name and email fields.' });
       return;
     }
@@ -80,14 +87,15 @@ export default function UserList({ roles }: { roles: Role[] }) {
     setIsCreatingUser(true);
 
     // NOTE: In a real app, createUserWithEmailAndPassword would be used,
-    // and the UID would come from the result.
+    // and the UID would come from the result. This requires a backend function
+    // to avoid exposing auth creation client-side.
     // For this mock, we'll simulate it.
     const newUser: Omit<User, 'id'> = {
         uid: `user_${Date.now()}`,
         displayName: newUserName,
         email: newUserEmail,
         role: newUserRole,
-        property_code: 'PROP-001', // Placeholder
+        property_code: propertyCode,
     };
     const usersCollection = collection(firestore, 'users');
     await addDocumentNonBlocking(usersCollection, newUser);
@@ -245,7 +253,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
             ) : (
                 <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
-                        No users found.
+                        No users found for this property.
                     </TableCell>
                 </TableRow>
             )}

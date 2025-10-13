@@ -1,6 +1,6 @@
 
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc, and, getDoc } from 'firebase/firestore';
 import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 export type AttendanceRecord = {
@@ -31,7 +31,7 @@ export type EmailLog = {
 }
 
 
-export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited' | 'property_code'>[]) {
+export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited'>[]) {
     const { firestore } = getSdks();
     const batch = writeBatch(firestore);
     const attendanceCollection = collection(firestore, 'attendance_records');
@@ -48,7 +48,6 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
 
         const newRecord = {
             ...record,
-            property_code: 'PROP-001', // Placeholder property code
             is_late: lateByMinutes > 0,
             late_by_minutes: Math.max(0, lateByMinutes),
             overtime_minutes: Math.max(0, overtimeMinutes),
@@ -73,12 +72,13 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
 }
 
 
-export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
+export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
+    const q = query(attendanceCollection, where('property_code', '==', propertyCode));
     
     try {
-        const snapshot = await getDocs(attendanceCollection);
+        const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
     } catch (error: any) {
         if (error.code === 'permission-denied') {
@@ -97,9 +97,8 @@ export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     if (recordIds.length === 0) return [];
     const { firestore } = getSdks();
-    const attendanceCollection = collection(firestore, 'attendance_records');
     const records: AttendanceRecord[] = [];
-
+    
     // Firestore 'in' query is limited to 30 elements.
     const chunks = [];
     for (let i = 0; i < recordIds.length; i += 30) {
@@ -108,17 +107,23 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     
     try {
         for (const chunk of chunks) {
-            const q = query(attendanceCollection, where('__name__', 'in', chunk));
-            const snapshot = await getDocs(q);
-            snapshot.forEach(doc => {
-                records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
+            // It's not possible to query documents by ID and another field in a single query easily.
+            // A better approach would be to fetch each doc individually if property_code needs to be enforced server-side.
+            // For now, we assume the IDs provided are already correctly scoped.
+            const docRefs = chunk.map(id => doc(firestore, 'attendance_records', id));
+            const snapshots = await Promise.all(docRefs.map(ref => getDoc(ref)));
+            
+            snapshots.forEach(docSnap => {
+                if (docSnap.exists()) {
+                    records.push({ id: docSnap.id, ...docSnap.data() } as AttendanceRecord);
+                }
             });
         }
     } catch (error: any) {
         if (error.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
-                path: attendanceCollection.path,
-                operation: 'list',
+                path: 'attendance_records', // Generic path as it's multiple docs
+                operation: 'get',
             });
             errorEmitter.emit('permission-error', permissionError);
             throw permissionError;
@@ -129,8 +134,8 @@ export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRe
     return records;
 }
 
-export async function getAttendanceStats() {
-    const records = await getAttendanceRecords();
+export async function getAttendanceStats(propertyCode: string) {
+    const records = await getAttendanceRecords(propertyCode);
     const totalRecords = records.length;
     const lateCount = records.filter(r => r.is_late).length;
     const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
@@ -144,14 +149,14 @@ export async function getAttendanceStats() {
     };
 }
 
-export async function getDepartments(): Promise<string[]> {
-    const records = await getAttendanceRecords();
+export async function getDepartments(propertyCode: string): Promise<string[]> {
+    const records = await getAttendanceRecords(propertyCode);
     return [...new Set(records.map(r => r.department))].sort();
 }
 
 
-export async function getWeeklyAttendance() {
-    const records = await getAttendanceRecords();
+export async function getWeeklyAttendance(propertyCode: string) {
+    const records = await getAttendanceRecords(propertyCode);
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const data = Array.from({ length: 7 }).map((_, i) => {
         const date = add(weekStart, { days: i });

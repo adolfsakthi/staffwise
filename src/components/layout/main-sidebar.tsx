@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -22,11 +23,15 @@ import {
   FileText,
   Fingerprint,
   Bell,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { useAuth } from '@/firebase';
+import { useUserProfile } from '@/firebase/auth/use-user-profile';
+import { Button } from '../ui/button';
 
 const navItems = [
   {
@@ -75,7 +80,9 @@ export default function MainSidebar() {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
-  
+  const auth = useAuth();
+  const { userProfile } = useUserProfile();
+
   const handleLinkClick = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -87,9 +94,8 @@ export default function MainSidebar() {
     return name.split(' ').map(n => n[0]).join('');
   }
 
-  const user = {
-      displayName: "Demo User",
-      email: "demo@staffwise.com",
+  const handleSignOut = () => {
+    auth.signOut();
   }
 
   return (
@@ -138,14 +144,17 @@ export default function MainSidebar() {
                   data-ai-hint={userAvatar.imageHint}
                 />
               )}
-              <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
+              <AvatarFallback>{getAvatarFallback(userProfile?.displayName)}</AvatarFallback>
             </Avatar>
             <div className="text-left group-data-[collapsible=icon]:hidden">
-              <p className="text-sm font-medium">{user?.displayName || 'Admin User'}</p>
+              <p className="text-sm font-medium">{userProfile?.displayName || 'Admin User'}</p>
               <p className="text-xs text-muted-foreground">
-                {user?.email || 'demo@staffwise.com'}
+                {userProfile?.email || 'demo@staffwise.com'}
               </p>
             </div>
+            <Button variant="ghost" size="icon" onClick={handleSignOut} className="group-data-[collapsible=icon]:hidden ml-auto">
+                <LogOut className="size-4" />
+            </Button>
           </div>
         </SidebarFooter>
     </Sidebar>

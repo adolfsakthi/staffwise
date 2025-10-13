@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -27,9 +28,13 @@ import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, and } from 'firebase/firestore';
 
-export default function AuditDashboard() {
+interface AuditDashboardProps {
+    propertyCode: string;
+}
+
+export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
   const firestore = useFirestore();
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
@@ -38,8 +43,11 @@ export default function AuditDashboard() {
 
   const unauditedQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'attendance_records'), where('is_audited', '==', false));
-  }, [firestore]);
+    return query(
+        collection(firestore, 'attendance_records'), 
+        and(where('is_audited', '==', false), where('property_code', '==', propertyCode))
+    );
+  }, [firestore, propertyCode]);
 
   const { data: records, isLoading: isLoadingRecords, error } = useCollection<AttendanceRecord>(unauditedQuery);
 
@@ -100,7 +108,7 @@ export default function AuditDashboard() {
         <CardHeader>
           <CardTitle>Manual Audit</CardTitle>
           <CardDescription>
-            Review and audit attendance records that require attention.
+            Review and audit attendance records for property {propertyCode} that require attention.
           </CardDescription>
         </CardHeader>
         <CardContent>

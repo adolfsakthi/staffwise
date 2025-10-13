@@ -1,8 +1,14 @@
+
 'use client';
 
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import Link from 'next/link';
+import { useAuth, initiateEmailSignIn } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -15,6 +21,29 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 export default function LoginPage() {
+  const auth = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState('demo@staffwise.com');
+  const [password, setPassword] = useState('password');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      // We are not awaiting this, the redirect is handled by the root layout's AuthWrapper
+      initiateEmailSignIn(auth, email, password);
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: error.message || 'An unknown error occurred.',
+      });
+      setIsLoading(false);
+    }
+    // Don't set isLoading to false here, as the page will redirect on success.
+    // A timeout can be added to handle cases where the redirect takes time or fails silently.
+    setTimeout(() => setIsLoading(false), 5000); 
+  };
   
   return (
     <div className="w-full min-h-screen grid lg:grid-cols-2">
@@ -41,14 +70,36 @@ export default function LoginPage() {
                 <HezeeLogo className="h-10 text-primary" />
                  <h1 className="text-3xl font-semibold tracking-tight">Admin Portal</h1>
                 <p className="text-muted-foreground">
-                    Authentication is temporarily disabled. You can proceed to the dashboard.
+                    Enter your credentials to access the dashboard.
                 </p>
             </div>
-            <Link href="/" passHref>
-                <Button asChild className="w-full h-12 text-base">
-                    <a>Go to Dashboard</a>
-                </Button>
-            </Link>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <Button onClick={handleLogin} disabled={isLoading} className="w-full h-12 text-base">
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Sign In
+              </Button>
+            </div>
         </div>
       </div>
     </div>
