@@ -15,7 +15,7 @@ import { Icons } from '@/components/icons';
 import {
   LayoutDashboard,
   CalendarCheck,
-  BrainCircuit,
+  ShieldCheck,
   Settings,
   User,
   LogOut,
@@ -46,9 +46,9 @@ const navItems = [
     label: 'Attendance',
   },
   {
-    href: '/schedule',
-    icon: BrainCircuit,
-    label: 'Smart Schedule',
+    href: '/audit',
+    icon: ShieldCheck,
+    label: 'Audit',
   },
   {
     href: '/settings',

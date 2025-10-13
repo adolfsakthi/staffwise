@@ -14,6 +14,7 @@ export type AttendanceRecord = {
   late_by_minutes: number;
   overtime_minutes: number;
   is_audited: boolean;
+  audit_notes?: string;
 };
 
 const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'Marketing', 'IT', 'Operations'];
@@ -68,15 +69,18 @@ const generateMockData = (numRecords: number): AttendanceRecord[] => {
     return records;
 };
 
-const MOCK_RECORDS = generateMockData(50);
+let MOCK_RECORDS = generateMockData(50);
 
-export async function getAttendanceRecords(filters?: { date?: string; department?: string }): Promise<AttendanceRecord[]> {
+export async function getAttendanceRecords(filters?: { date?: string; department?: string, audited?: boolean }): Promise<AttendanceRecord[]> {
     let filteredRecords = MOCK_RECORDS;
     if (filters?.date) {
         filteredRecords = filteredRecords.filter(r => r.date === filters.date);
     }
     if (filters?.department) {
         filteredRecords = filteredRecords.filter(r => r.department === filters.department);
+    }
+    if (filters?.audited !== undefined) {
+        filteredRecords = filteredRecords.filter(r => r.is_audited === filters.audited);
     }
     return filteredRecords;
 }
@@ -114,4 +118,14 @@ export async function getWeeklyAttendance() {
         };
     });
     return weeklyData;
+}
+
+export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
+    MOCK_RECORDS = MOCK_RECORDS.map(record => {
+        if (recordIds.includes(record.id)) {
+            return { ...record, is_audited: true, audit_notes: auditNotes };
+        }
+        return record;
+    });
+    return;
 }

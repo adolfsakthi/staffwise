@@ -1,6 +1,6 @@
 'use server';
 
-import { smartStaffingSchedule, type SmartStaffingScheduleInput } from "@/ai/flows/smart-staffing-schedule";
+import { auditRecords } from "@/lib/data";
 
 export async function uploadAttendance(formData: FormData) {
   const file = formData.get('file') as File;
@@ -18,12 +18,12 @@ export async function uploadAttendance(formData: FormData) {
   return { success: true, message: `Successfully processed ${file.name}.` };
 }
 
-export async function getSmartSchedule(input: SmartStaffingScheduleInput) {
+export async function runAudit(recordIds: string[], auditNotes: string) {
     try {
-        const result = await smartStaffingSchedule(input);
-        return { success: true, data: result };
+        await auditRecords(recordIds, auditNotes);
+        return { success: true, message: `${recordIds.length} records audited successfully.` };
     } catch (error) {
-        console.error("Error generating smart schedule:", error);
-        return { success: false, message: "Failed to generate schedule. Please try again." };
+        console.error("Error running audit:", error);
+        return { success: false, message: "Failed to audit records. Please try again." };
     }
 }
