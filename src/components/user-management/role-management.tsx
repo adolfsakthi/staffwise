@@ -14,18 +14,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit, X, Check } from 'lucide-react';
-import { useFirestore, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import type { Role } from '@/lib/types';
 
-// This can be fetched from a 'settings' collection in Firestore
+
+// This can be fetched from a 'settings' collection in a real app
 export const ALL_PERMISSIONS = ['read', 'write', 'delete', 'manage_users'];
-
-type Role = {
-  id: string;
-  property_code: string;
-  name: string;
-  permissions: string[];
-};
 
 type RoleManagementProps = {
     initialRoles: Role[];
@@ -34,28 +27,25 @@ type RoleManagementProps = {
 
 
 export default function RoleManagement({ initialRoles, propertyCode }: RoleManagementProps) {
-  const firestore = useFirestore();
+  const [roles, setRoles] = useState(initialRoles);
   const [newRoleName, setNewRoleName] = useState('');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
   const handleAddRole = async () => {
-    if (newRoleName.trim() && firestore && propertyCode) {
-      const newRole: Omit<Role, 'id'> = {
+    if (newRoleName.trim() && propertyCode) {
+      const newRole: Role = {
+        id: `role_${Date.now()}`,
         name: newRoleName.trim(),
         permissions: ['read'],
         property_code: propertyCode,
       };
-      const rolesCollection = collection(firestore, 'roles');
-      await addDocumentNonBlocking(rolesCollection, newRole);
+      setRoles(prev => [...prev, newRole]);
       setNewRoleName('');
     }
   };
 
   const handleDeleteRole = (id: string) => {
-    if (firestore) {
-        const roleDoc = doc(firestore, 'roles', id);
-        deleteDocumentNonBlocking(roleDoc);
-    }
+    setRoles(prev => prev.filter(role => role.id !== id));
   };
 
   const handleStartEdit = (role: Role) => {
@@ -67,10 +57,8 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
   };
 
   const handleSaveEdit = async () => {
-    if (editingRole && firestore) {
-        const { id, ...roleData } = editingRole;
-        const roleDoc = doc(firestore, 'roles', id);
-        await updateDocumentNonBlocking(roleDoc, roleData);
+    if (editingRole) {
+        setRoles(prev => prev.map(r => r.id === editingRole.id ? editingRole : r));
         setEditingRole(null);
     }
   };
@@ -114,7 +102,7 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialRoles.map((role) => (
+              {roles.map((role) => (
                 <TableRow key={role.id}>
                   {editingRole?.id === role.id ? (
                      <>

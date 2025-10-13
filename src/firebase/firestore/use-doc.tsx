@@ -1,3 +1,4 @@
+
 'use client';
     
 import { useState, useEffect } from 'react';
@@ -8,8 +9,6 @@ import {
   FirestoreError,
   DocumentSnapshot,
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -57,7 +56,6 @@ export function useDoc<T = any>(
 
     setIsLoading(true);
     setError(null);
-    // Optional: setData(null); // Clear previous data instantly
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -65,32 +63,21 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
-          // Document does not exist
           setData(null);
         }
-        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
+        setError(null); 
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // Since auth is removed, permission errors are expected.
-        // We will log them and set state appropriately, but not crash the app.
         console.error("Firestore Permission Error in useDoc:", error.message);
         setError(error);
         setData(null);
         setIsLoading(false);
-        
-        // We are no longer throwing a critical error, so we comment this out.
-        // const contextualError = new FirestorePermissionError({
-        //   operation: 'get',
-        //   path: memoizedDocRef.path,
-        // })
-        // setError(contextualError)
-        // errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+  }, [memoizedDocRef]);
 
   return { data, isLoading, error };
 }

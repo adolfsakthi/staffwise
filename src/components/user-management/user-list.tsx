@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Table,
   TableBody,
@@ -30,22 +30,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection, useFirestore, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
-
-type User = {
-  id: string;
-  property_code: string;
-  displayName: string;
-  email: string;
-  role: string;
-  uid: string;
-};
-
-type Role = {
-  id: string;
-  name: string;
-};
+import type { User, Role } from '@/lib/types';
+import { MOCK_USERS } from '@/lib/mock-data';
 
 type UserListProps = {
     roles: Role[];
@@ -53,28 +39,31 @@ type UserListProps = {
 }
 
 export default function UserList({ roles, propertyCode }: UserListProps) {
-  const firestore = useFirestore();
-  const usersQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
-    return query(collection(firestore, 'users'), where('property_code', '==', propertyCode));
-  }, [firestore, propertyCode]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState(roles[0]?.name || 'Staff');
+  const [newUserRole, setNewUserRole] = useState(roles[0]?.name || '');
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
   const { toast } = useToast();
 
+  useEffect(() => {
+    setIsLoadingUsers(true);
+    setTimeout(() => {
+        const propertyUsers = MOCK_USERS.filter(u => u.property_code === propertyCode);
+        setUsers(propertyUsers);
+        setIsLoadingUsers(false);
+    }, 500);
+  }, [propertyCode]);
+
+
   const handleRoleChange = async (userId: string, newRole: string) => {
-    if (firestore) {
-      const userDoc = doc(firestore, 'users', userId);
-      await updateDocumentNonBlocking(userDoc, { role: newRole });
-      toast({ title: "User role updated" });
-    }
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    toast({ title: "User role updated (mock)" });
   };
 
   const handleAddUser = async () => {
@@ -82,34 +71,32 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
       toast({ variant: 'destructive', title: 'Please fill name and email fields.' });
       return;
     }
-    if (!firestore) return;
-
+    
     setIsCreatingUser(true);
-
-    // NOTE: In a real app, createUserWithEmailAndPassword would be used,
-    // and the UID would come from the result. This requires a backend function
-    // to avoid exposing auth creation client-side.
-    // For this mock, we'll simulate it.
-    const newUser: Omit<User, 'id'> = {
-        uid: `user_${Date.now()}`,
+    
+    const newUser: User = {
+        id: `user_${Date.now()}`,
+        uid: `uid_${Date.now()}`,
         displayName: newUserName,
         email: newUserEmail,
         role: newUserRole,
         property_code: propertyCode,
     };
-    const usersCollection = collection(firestore, 'users');
-    await addDocumentNonBlocking(usersCollection, newUser);
+    
+    setTimeout(() => {
+        setUsers(prev => [...prev, newUser]);
 
-    toast({
-        title: 'User Created Successfully',
-        description: 'The user has been added to the list.',
-    });
+        toast({
+            title: 'User Created Successfully (Mock)',
+            description: 'The user has been added to the list.',
+        });
 
-    setNewUserEmail('');
-    setNewUserPassword('');
-    setNewUserName('');
-    setNewUserRole(roles[0]?.name || 'Staff');
-    setIsCreatingUser(false);
+        setNewUserEmail('');
+        setNewUserPassword('');
+        setNewUserName('');
+        setNewUserRole(roles[0]?.name || 'Staff');
+        setIsCreatingUser(false);
+    }, 500);
   };
 
   return (
@@ -137,7 +124,6 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
                             value={newUserPassword} 
                             onChange={e => setNewUserPassword(e.target.value)} 
                             className="pr-10"
-                            // In a real app, you wouldn't re-fetch passwords. This is for UI mock only.
                         />
                          <Button
                             type="button"

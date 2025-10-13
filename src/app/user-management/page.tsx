@@ -16,26 +16,25 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { MOCK_ROLES } from '@/lib/mock-data';
+import type { Role } from '@/lib/types';
+
 
 const propertyCode = 'PROP-001'; // Hardcoded property code
-
-type Role = {
-  id: string;
-  name: string;
-  permissions: string[];
-  property_code: string;
-};
   
 export default function UserManagementPage() {
-    const firestore = useFirestore();
-
-    const rolesQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
-      return query(collection(firestore, 'roles'), where('property_code', '==', propertyCode));
-    }, [firestore]);
-    const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
+    const [roles, setRoles] = useState<Role[]>([]);
+    const [isLoadingRoles, setIsLoadingRoles] = useState(true);
+    
+    useEffect(() => {
+        setIsLoadingRoles(true);
+        setTimeout(() => {
+            const propertyRoles = MOCK_ROLES.filter(r => r.property_code === propertyCode);
+            setRoles(propertyRoles);
+            setIsLoadingRoles(false);
+        }, 500);
+    }, []);
 
     if (isLoadingRoles) {
         return (

@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
     Card,
     CardContent,
@@ -25,20 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import type { LiveLog } from '@/lib/types';
+import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
 
 const propertyCode = 'PROP-001'; // Hardcoded property code
-
-type LiveLog = {
-    id: string;
-    property_code: string;
-    type: 'late' | 'overtime' | 'early' | 'on_time';
-    employee: string;
-    department: string;
-    time: string;
-    deviation: number;
-}
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -49,13 +40,18 @@ const logConfig = {
 
 
 export default function LiveLogsPage() {
-    const firestore = useFirestore();
+    const [logs, setLogs] = useState<LiveLog[]>([]);
+    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
 
-    const logsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'live_logs'), where('property_code', '==', propertyCode));
-    }, [firestore]);
-    const { data: logs, isLoading: isLoadingLogs } = useCollection<LiveLog>(logsQuery);
+    useEffect(() => {
+        setIsLoadingLogs(true);
+        // Simulate fetching data
+        setTimeout(() => {
+            const propertyLogs = MOCK_LIVE_LOGS.filter(l => l.property_code === propertyCode);
+            setLogs(propertyLogs);
+            setIsLoadingLogs(false);
+        }, 500);
+    }, []);
 
   return (
     <Card>

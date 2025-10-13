@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,32 +32,25 @@ import {
   WifiOff,
   Loader2,
 } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import type { Device } from '@/lib/types';
+import { MOCK_DEVICES } from '@/lib/mock-data';
+
 
 const propertyCode = "PROP-001"; // Hardcoded property code
 
-type Device = {
-  id: string;
-  property_code: string;
-  name: string;
-  model: string;
-  ip: string;
-  status: 'online' | 'offline';
-  branch: string;
-};
-
 export default function DeviceManagementPage() {
-  const firestore = useFirestore();
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(true);
 
-  const devicesQuery = useMemoFirebase(
-    () => {
-      if (!firestore) return null;
-      return query(collection(firestore, 'devices'), where('property_code', '==', propertyCode));
-    },
-    [firestore]
-  );
-  const { data: devices, isLoading: isLoadingDevices } = useCollection<Device>(devicesQuery);
+  useEffect(() => {
+    setIsLoadingDevices(true);
+    // Simulate fetching data
+    setTimeout(() => {
+        const propertyDevices = MOCK_DEVICES.filter(d => d.property_code === propertyCode);
+        setDevices(propertyDevices);
+        setIsLoadingDevices(false);
+    }, 500);
+  }, []);
 
   return (
     <Card>
