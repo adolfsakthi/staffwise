@@ -21,6 +21,8 @@ import {
   User,
   LogOut,
   Users,
+  FileText,
+  Fingerprint,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -52,6 +54,16 @@ const navItems = [
     href: '/audit',
     icon: ShieldCheck,
     label: 'Audit',
+  },
+  {
+    href: '/reports',
+    icon: FileText,
+    label: 'Reports',
+  },
+  {
+    href: '/device-management',
+    icon: Fingerprint,
+    label: 'Device Management',
   },
   {
     href: '/user-management',
