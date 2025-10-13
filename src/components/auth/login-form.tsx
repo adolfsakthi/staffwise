@@ -51,21 +51,20 @@ export default function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSignIn} className="space-y-6">
-        <div className="space-y-2 text-left">
+    <form onSubmit={handleSignIn} className="space-y-4">
+        <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
             id="email"
             type="email"
-            placeholder="thiru.vikram@gmail.com"
+            placeholder="m@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={isLoading}
-            className="bg-input border-border/50 focus:border-primary"
             />
         </div>
-        <div className="space-y-2 text-left">
+        <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
             id="password"
@@ -74,20 +73,19 @@ export default function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             disabled={isLoading}
-            placeholder="••••••••"
-            className="bg-input border-border/50 focus:border-primary"
             />
         </div>
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-between">
+            <div/>
             <Link href="#" className="text-sm text-primary/80 hover:text-primary hover:underline">
                 Forgot Password?
             </Link>
         </div>
-        <Button type="submit" className="w-full !mt-8" size="lg" disabled={isLoading}>
+        <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : null}
-            SIGN IN
+            Sign In
         </Button>
     </form>
   );
