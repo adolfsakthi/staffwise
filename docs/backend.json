@@ -1,214 +1,310 @@
-
 {
   "entities": {
-    "Client": {
-      "title": "Client",
-      "description": "Represents a tenant company using the service.",
+    "AttendanceRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AttendanceRecord",
       "type": "object",
+      "description": "Represents an employee's attendance record.",
       "properties": {
-        "name": {
+        "id": {
           "type": "string",
-          "description": "The legal name of the client company."
+          "description": "Unique identifier for the attendance record."
         },
-        "createdAt": {
+        "employeeName": {
           "type": "string",
-          "format": "date-time",
-          "description": "The timestamp when the client was created."
-        }
-      },
-      "required": ["name", "createdAt"]
-    },
-    "Branch": {
-      "title": "Branch",
-      "description": "Represents a physical branch location of a client.",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "The name of the branch (e.g., 'Head Office', 'Warehouse A')."
-        },
-        "location": {
-          "type": "string",
-          "description": "The physical address of the branch."
-        }
-      },
-      "required": ["name"]
-    },
-    "Device": {
-      "title": "Device",
-      "description": "Represents a biometric device (e.g., ESSL).",
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "A user-friendly name for the device."
-        },
-        "model": {
-          "type": "string",
-          "description": "The model of the device (e.g., 'ESSL x990')."
-        },
-        "ipAddress": {
-          "type": "string",
-          "description": "The local IP address of the device."
-        },
-        "status": {
-          "type": "string",
-          "enum": ["online", "offline"],
-          "description": "The current connection status of the device."
-        }
-      },
-      "required": ["name", "model", "status"]
-    },
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents an employee or user of the system.",
-      "type": "object",
-      "properties": {
-        "clientId": {
-          "type": "string",
-          "description": "The ID of the client company this user belongs to."
-        },
-        "branchId": {
-          "type": "string",
-          "description": "The ID of the branch this user is assigned to."
-        },
-        "name": {
-          "type": "string",
-          "description": "The full name of the user."
+          "description": "Name of the employee."
         },
         "email": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address, used for login."
-        },
-        "role": {
-          "type": "string",
-          "description": "The user's role within the system (e.g., 'Admin', 'HR Manager', 'Employee')."
+          "description": "Email address of the employee.",
+          "format": "email"
         },
         "department": {
           "type": "string",
-          "description": "The department the user belongs to."
+          "description": "Department the employee belongs to."
         },
         "shiftStart": {
           "type": "string",
-          "format": "time",
-          "description": "The official start time of the user's shift."
+          "description": "Scheduled start time of the employee's shift (HH:MM)."
         },
         "shiftEnd": {
           "type": "string",
-          "format": "time",
-          "description": "The official end time of the user's shift."
-        }
-      },
-      "required": ["clientId", "name", "email", "role"]
-    },
-    "PunchLog": {
-      "title": "Punch Log",
-      "description": "An individual punch record from a biometric device.",
-      "type": "object",
-      "properties": {
-        "employeeId": {
-          "type": "string",
-          "description": "The ID of the employee who punched."
-        },
-        "deviceId": {
-          "type": "string",
-          "description": "The ID of the device that recorded the punch."
-        },
-        "timestamp": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The exact time the punch occurred."
-        }
-      },
-      "required": ["employeeId", "deviceId", "timestamp"]
-    },
-    "AttendanceRecord": {
-      "title": "Attendance Record",
-      "description": "A daily summary of an employee's attendance.",
-      "type": "object",
-      "properties": {
-        "employeeId": {
-          "type": "string"
-        },
-        "date": {
-          "type": "string",
-          "format": "date"
+          "description": "Scheduled end time of the employee's shift (HH:MM)."
         },
         "entryTime": {
           "type": "string",
-          "format": "time"
+          "description": "Actual time the employee entered (HH:MM)."
         },
         "exitTime": {
           "type": "string",
-          "format": "time"
+          "description": "Actual time the employee exited (HH:MM)."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the attendance record (YYYY-MM-DD)."
         },
         "isLate": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Indicates whether the employee was late."
         },
         "lateByMinutes": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of minutes the employee was late."
         },
         "overtimeMinutes": {
-          "type": "number"
+          "type": "number",
+          "description": "Number of overtime minutes worked by the employee."
         },
         "isAudited": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Indicates whether the attendance record has been audited."
         },
-        "auditNotes": {
-          "type": "string"
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was created.",
+          "format": "date-time"
         }
       },
-      "required": ["employeeId", "date", "entryTime", "exitTime", "isLate"]
+      "required": [
+        "id",
+        "employeeName",
+        "email",
+        "department",
+        "shiftStart",
+        "shiftEnd",
+        "entryTime",
+        "exitTime",
+        "date",
+        "isLate",
+        "lateByMinutes",
+        "overtimeMinutes",
+        "isAudited",
+        "createdAt"
+      ]
+    },
+    "GraceSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GraceSetting",
+      "type": "object",
+      "description": "Represents grace time settings for late entry detection, either globally or for a specific department.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the grace setting."
+        },
+        "department": {
+          "type": "string",
+          "description": "Department this grace setting applies to.  Null indicates a global setting.",
+          "format": "string"
+        },
+        "graceMinutes": {
+          "type": "number",
+          "description": "Grace time in minutes."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the grace setting was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "graceMinutes",
+        "updatedAt"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Represents a log of an audit execution.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audit log."
+        },
+        "auditDate": {
+          "type": "string",
+          "description": "Date the audit was performed for (YYYY-MM-DD)."
+        },
+        "totalRecords": {
+          "type": "number",
+          "description": "Total number of attendance records processed during the audit."
+        },
+        "lateCount": {
+          "type": "number",
+          "description": "Number of late entries detected during the audit."
+        },
+        "executedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the audit was executed.",
+          "format": "date-time"
+        },
+        "triggeredBy": {
+          "type": "string",
+          "description": "Indicates whether the audit was triggered manually or automatically ('manual' or 'auto')."
+        }
+      },
+      "required": [
+        "id",
+        "auditDate",
+        "totalRecords",
+        "lateCount",
+        "executedAt",
+        "triggeredBy"
+      ]
+    },
+    "EmailLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmailLog",
+      "type": "object",
+      "description": "Represents a log of an email notification.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the email log."
+        },
+        "to": {
+          "type": "string",
+          "description": "Recipient email address."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject of the email."
+        },
+        "body": {
+          "type": "string",
+          "description": "HTML body of the email."
+        },
+        "emailType": {
+          "type": "string",
+          "description": "Type of email ('late_notice', 'admin_report', 'department_report')."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the email was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "to",
+        "subject",
+        "body",
+        "emailType",
+        "sentAt"
+      ]
+    },
+    "AutoAuditSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutoAuditSetting",
+      "type": "object",
+      "description": "Represents the configuration for the auto-audit feature.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the auto audit settings. Must be 'auto_audit_config'."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Indicates whether the auto-audit is enabled."
+        },
+        "auditTime": {
+          "type": "string",
+          "description": "Time of day to run the auto-audit (HH:MM)."
+        }
+      },
+      "required": [
+        "id",
+        "enabled",
+        "auditTime"
+      ]
     }
   },
   "auth": {
-    "providers": ["email-password"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/clients/{clientId}": {
-      "schema": {
-        "$ref": "#/entities/Client"
+    "structure": [
+      {
+        "path": "/attendance_records/{attendanceRecordId}",
+        "definition": {
+          "entityName": "AttendanceRecord",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceRecord"
+          },
+          "description": "Stores individual employee attendance records.",
+          "params": [
+            {
+              "name": "attendanceRecordId",
+              "description": "Unique identifier for the attendance record."
+            }
+          ]
+        }
       },
-      "description": "Top-level collection for all tenant clients."
-    },
-    "/clients/{clientId}/branches/{branchId}": {
-      "schema": {
-        "$ref": "#/entities/Branch"
+      {
+        "path": "/grace_settings/{graceSettingId}",
+        "definition": {
+          "entityName": "GraceSetting",
+          "schema": {
+            "$ref": "#/backend/entities/GraceSetting"
+          },
+          "description": "Stores grace time settings for late entry detection, either globally or for a specific department. The document ID 'global' represents global settings; otherwise, the ID is the department name.",
+          "params": [
+            {
+              "name": "graceSettingId",
+              "description": "Unique identifier for the grace setting. Use 'global' for global settings, or a department name for department-specific settings."
+            }
+          ]
+        }
       },
-      "description": "Sub-collection for a client's branches."
-    },
-    "/clients/{clientId}/branches/{branchId}/devices/{deviceId}": {
-      "schema": {
-        "$ref": "#/entities/Device"
+      {
+        "path": "/audit_logs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Stores audit logs with details about each audit execution.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "Unique identifier for the audit log."
+            }
+          ]
+        }
       },
-      "description": "Sub-collection for devices within a specific branch."
-    },
-    "/clients/{clientId}/employees/{employeeId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
+      {
+        "path": "/email_logs/{emailLogId}",
+        "definition": {
+          "entityName": "EmailLog",
+          "schema": {
+            "$ref": "#/backend/entities/EmailLog"
+          },
+          "description": "Stores email logs for tracking notifications.",
+          "params": [
+            {
+              "name": "emailLogId",
+              "description": "Unique identifier for the email log."
+            }
+          ]
+        }
       },
-      "description": "Sub-collection for all employees of a client."
-    },
-     "/clients/{clientId}/punchLogs/{punchLogId}": {
-      "schema": {
-        "$ref": "#/entities/PunchLog"
-      },
-      "description": "Collection of all raw punch logs for a client."
-    },
-    "/clients/{clientId}/attendanceRecords/{attendanceRecordId}": {
-      "schema": {
-        "$ref": "#/entities/AttendanceRecord"
-      },
-      "description": "Collection of processed daily attendance records for a client."
-    },
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
-      },
-      "description": "A global collection of all users for authentication purposes."
-    }
+      {
+        "path": "/auto_audit_settings/auto_audit_config",
+        "definition": {
+          "entityName": "AutoAuditSetting",
+          "schema": {
+            "$ref": "#/backend/entities/AutoAuditSetting"
+          },
+          "description": "Stores the configuration for auto-auditing. There is only one document with the fixed ID 'auto_audit_config'.",
+          "params": []
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to support the StaffWise application's features, including attendance tracking, late entry detection, overtime calculation, email notifications, daily audit reporting, smart scheduling and dashboard analytics. The structure prioritizes authorization independence and enables secure list operations.\n\n1.  **Authorization Independence (CRITICAL):** The design avoids hierarchical authorization dependencies (`get()`). Each document contains the necessary information for access control, preventing reliance on parent document data. This ensures atomic operations (transactions/batches) are robust and easily debugged.\n\n2.  **Structural Segregation (Homogeneous Security Posture):** Each collection is designed to contain documents with the same security requirements, simplifying rules and enhancing security.\n\n3.  **Access Modeling (Standardization and Consistency):** Path-based ownership is used where applicable (`/users/{userId}/drafts`). Collaborative data uses Membership Maps (`members: {uid1: \"role\", uid2: \"role\"}`).\n\n4.  **Data Clarity and Predictability:** Explicit state modeling uses a dedicated `status` field. Predictable schema avoids dynamic keys. Radical consistency enforces semantic naming conventions.\n\n*   `/attendance_records`: Stores all attendance records.\n*   `/grace_settings`: Stores global and department-specific grace time settings. A single document with `id: \"global\"` stores global settings; other documents are keyed by `department`.\n*   `/audit_logs`: Stores audit logs with details about each audit execution.\n*   `/email_logs`: Stores email logs for tracking notifications.\n*   `/auto_audit_settings`: Stores the configuration for auto-auditing. There should be only one document with the fixed ID 'auto_audit_config'."
   }
 }
-
-    

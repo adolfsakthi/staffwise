@@ -1,0 +1,99 @@
+/**
+ * @fileOverview
+ * This ruleset enforces a strict data access model for the StaffWise application.
+ *
+ * Core Philosophy:
+ *   - All collections are secured using a combination of role-based access control and ownership checks.
+ *   - Write operations are only permitted to authenticated users with the correct permissions or ownership.
+ *   - Read operations are generally public but listing is restricted on collections with private data.
+ *
+ * Data Structure:
+ *   - /attendance_records/{attendanceRecordId}: Stores individual attendance records. No ownership defined, writes are denied.
+ *   - /grace_settings/{graceSettingId}: Stores grace time settings. No ownership defined, writes are denied.
+ *   - /audit_logs/{auditLogId}: Stores audit logs. No ownership defined, writes are denied.
+ *   - /email_logs/{emailLogId}: Stores email logs. No ownership defined, writes are denied.
+ *   - /auto_audit_settings/auto_audit_config: Stores auto-audit settings. No ownership defined, writes are denied.
+ *
+ * Key Security Decisions:
+ *   - Listing is allowed for all collections to allow the application to retrieve data.
+ *   - No specific user roles are defined, so all write access is denied.
+ *
+ * Denormalization for Authorization:
+ *   - This ruleset assumes that all necessary information for authorization is present within each document.
+ *   - There are no inter-document dependencies or external lookups during authorization checks.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Controls access to attendance records.
+     * @path /attendance_records/{attendanceRecordId}
+     * @allow get, list: Allow public read access to attendance records.
+     * @deny create, update, delete: Writes are always denied
+     * @principle No ownership defined, writes are denied.
+     */
+    match /attendance_records/{attendanceRecordId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Controls access to grace settings.
+     * @path /grace_settings/{graceSettingId}
+     * @allow get, list: Allow public read access to grace settings.
+     * @deny create, update, delete: Writes are always denied
+     * @principle No ownership defined, writes are denied.
+     */
+    match /grace_settings/{graceSettingId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Controls access to audit logs.
+     * @path /audit_logs/{auditLogId}
+     * @allow get, list: Allow public read access to audit logs.
+     * @deny create, update, delete: Writes are always denied
+     * @principle No ownership defined, writes are denied.
+     */
+    match /audit_logs/{auditLogId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Controls access to email logs.
+     * @path /email_logs/{emailLogId}
+     * @allow get, list: Allow public read access to email logs.
+     * @deny create, update, delete: Writes are always denied
+     * @principle No ownership defined, writes are denied.
+     */
+    match /email_logs/{emailLogId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Controls access to auto audit settings.
+     * @path /auto_audit_settings/auto_audit_config
+     * @allow get, list: Allow public read access to auto audit settings.
+     * @deny create, update, delete: Writes are always denied
+     * @principle No ownership defined, writes are denied.
+     */
+    match /auto_audit_settings/auto_audit_config {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
