@@ -31,7 +31,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 
 type User = {
@@ -87,8 +87,6 @@ export default function UserList({ roles }: { roles: Role[] }) {
       // This avoids signing in the admin as the new user
       const { user } = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
       
-      await sendEmailVerification(user);
-
       if(firestore) {
         await setDoc(doc(firestore, 'users', user.uid), {
             uid: user.uid,
@@ -102,7 +100,7 @@ export default function UserList({ roles }: { roles: Role[] }) {
 
       toast({
         title: 'User Created Successfully',
-        description: 'An email verification has been sent.',
+        description: 'The user can now log in.',
       });
 
       setNewUserEmail('');
@@ -275,5 +273,3 @@ export default function UserList({ roles }: { roles: Role[] }) {
     </div>
   );
 }
-
-    

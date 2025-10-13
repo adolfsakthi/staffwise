@@ -50,18 +50,6 @@ export default function LoginPage() {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        if (!user.emailVerified) {
-            await signOut(auth);
-            toast({
-                variant: 'destructive',
-                title: 'Email Not Verified',
-                description: 'Please check your inbox and verify your email address before logging in.',
-                duration: 6000,
-            });
-            setIsLoading(false);
-            return;
-        }
-
         if (user && firestore) {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
@@ -197,5 +185,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
