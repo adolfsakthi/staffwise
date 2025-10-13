@@ -1,6 +1,6 @@
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -9,15 +9,7 @@ import { getFirestore } from 'firebase/firestore';
 
 let app: FirebaseApp;
 if (!getApps().length) {
-  // This logic handles both Vercel/App Hosting env vars and local config.
-  try {
-    // This will throw if the default app is not initialized, which is expected
-    // in some environments.
-    app = getApp();
-  } catch (e) {
-    // Fallback to config for local dev or environments where auto-init isn't set up.
-    app = initializeApp(firebaseConfig);
-  }
+  app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
