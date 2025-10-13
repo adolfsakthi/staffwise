@@ -17,7 +17,7 @@ export default function LoginPage() {
             />
             <div className="relative z-10 flex h-full flex-col justify-end bg-black/40 p-10 text-white">
                 <div className="mb-4 flex items-center gap-3">
-                    <Icons.hezeeLogo className="size-10" />
+                    <Icons.logo className="size-10" />
                     <h1 className="text-3xl font-bold">StaffWise</h1>
                 </div>
                 <p className="max-w-lg text-lg">
@@ -25,12 +25,12 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
-        <div className="flex items-center justify-center bg-accent p-6">
+        <div className="flex items-center justify-center bg-background p-6">
             <div className="w-full max-w-sm space-y-6">
                 <div className="text-left">
                     <div className="mb-2 flex items-center gap-2">
-                        <Icons.hezeeLogo className="size-8 text-primary" />
-                         <h2 className="text-2xl font-bold text-primary">HEZEE</h2>
+                        <Icons.logo className="size-8 text-primary" />
+                         <h2 className="text-2xl font-bold text-primary">StaffWise</h2>
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">
                         Login to your account

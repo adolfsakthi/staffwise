@@ -26,10 +26,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 
-// Mock user for frontend-only mode
-const useUser = () => ({ propertyCode: 'D001' });
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -40,19 +39,18 @@ const logConfig = {
 
 
 export default function LiveLogsPage() {
-    const { propertyCode } = useUser();
-    const [logs, setLogs] = useState<LiveLog[]>([]);
-    const [isLoadingLogs, setIsLoadingLogs] = useState(true);
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
 
-    useEffect(() => {
-        if (!propertyCode) return;
-        setIsLoadingLogs(true);
-        setTimeout(() => {
-            const propertyLogs = MOCK_LIVE_LOGS.filter(l => l.property_code === propertyCode);
-            setLogs(propertyLogs);
-            setIsLoadingLogs(false);
-        }, 500);
-    }, [propertyCode]);
+    // @ts-ignore
+    const propertyCode = user?.property_code || 'D001';
+
+    const logsQuery = useMemoFirebase(() => {
+        if (!firestore || !propertyCode) return null;
+        return query(collection(firestore, 'live_logs'), where('property_code', '==', propertyCode), orderBy('timestamp', 'desc'), limit(50));
+    }, [firestore, propertyCode]);
+    
+    const { data: logs, isLoading: isLoadingLogs, error } = useCollection<LiveLog>(logsQuery);
 
   return (
     <Card>
@@ -81,11 +79,17 @@ export default function LiveLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingLogs ? (
+              {isUserLoading || isLoadingLogs ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-destructive">
+                    Error: {error.message}
+                  </TableCell>
                 </TableRow>
               ) : logs && logs.length > 0 ? (
                 logs.map((log) => {

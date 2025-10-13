@@ -22,42 +22,51 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+
 
 interface AttendanceTableProps {
     propertyCode: string;
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
-  useEffect(() => {
-    setIsLoading(true);
-    setTimeout(() => {
-        const propertyRecords = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
-        setAllRecords(propertyRecords);
-        setIsLoading(false);
-    }, 500);
-  }, [propertyCode]);
+  const recordsQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    
+    const conditions = [
+      where('property_code', '==', propertyCode),
+      where('date', '==', dateFilter)
+    ];
+
+    if (departmentFilter !== 'all') {
+      conditions.push(where('department', '==', departmentFilter));
+    }
+    
+    return query(collection(firestore, 'attendance_records'), ...conditions);
+
+  }, [firestore, propertyCode, dateFilter, departmentFilter]);
+  
+  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
+
+  const departmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'roles')); // Assuming departments can be inferred from roles or another collection
+  }, [firestore]);
+  const {data: departmentsData} = useCollection(departmentsQuery);
 
   const departments = useMemo(() => {
-    if (!allRecords) return [];
-    return [...new Set(allRecords.map(rec => rec.department))];
-  }, [allRecords]);
-
-  const filteredRecords = useMemo(() => {
-    if (!allRecords) return [];
-    return allRecords.filter(record => {
-        const dateMatch = !dateFilter || record.date === dateFilter;
-        const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
-        return dateMatch && departmentMatch;
-    });
-  }, [allRecords, dateFilter, departmentFilter]);
+    // In a real app, departments might be its own collection.
+    // For now, we'll derive it from records.
+    if (!records) return [];
+    return [...new Set(records.map(rec => rec.department))];
+  }, [records]);
 
 
   return (
@@ -111,8 +120,14 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
-              ) : filteredRecords && filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => (
+              ) : error ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                    Error: {error.message}
+                  </TableCell>
+                </TableRow>
+              ) : records && records.length > 0 ? (
+                records.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="font-medium">{record.employee_name}</div>

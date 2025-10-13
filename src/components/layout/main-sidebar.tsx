@@ -23,12 +23,14 @@ import {
   Fingerprint,
   Bell,
   LogOut,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
+import { useAuth, useUser } from '@/firebase';
 
 const navItems = [
   {
@@ -66,6 +68,11 @@ const navItems = [
     icon: Users,
     label: 'Users',
   },
+    {
+    href: '/email-logs',
+    icon: Mail,
+    label: 'Email Logs',
+  },
   {
     href: '/settings',
     icon: Settings,
@@ -73,13 +80,12 @@ const navItems = [
   },
 ];
 
-// Mock user for frontend-only mode
-const useUser = () => ({ user: { email: 'demo@staffwise.com', displayName: 'Demo User', photoURL: null } });
 
 export default function MainSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUser();
+  const auth = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
@@ -95,8 +101,7 @@ export default function MainSidebar() {
   }
 
   const handleSignOut = async () => {
-    // In a real app, this would sign out from Firebase
-    console.log("Signing out...");
+    await auth.signOut();
     router.push('/login');
   }
 

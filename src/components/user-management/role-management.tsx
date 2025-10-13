@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -15,6 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit, X, Check } from 'lucide-react';
 import type { Role } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 // This can be fetched from a 'settings' collection in a real app
@@ -27,25 +31,51 @@ type RoleManagementProps = {
 
 
 export default function RoleManagement({ initialRoles, propertyCode }: RoleManagementProps) {
+  const firestore = useFirestore();
+  const { toast } = useToast();
   const [roles, setRoles] = useState(initialRoles);
   const [newRoleName, setNewRoleName] = useState('');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
 
+  useState(() => {
+    setRoles(initialRoles);
+  });
+
   const handleAddRole = async () => {
     if (newRoleName.trim() && propertyCode) {
-      const newRole: Role = {
-        id: `role_${Date.now()}`,
+      const newRole: Omit<Role, 'id'> = {
         name: newRoleName.trim(),
         permissions: ['read'],
         property_code: propertyCode,
       };
-      setRoles(prev => [...prev, newRole]);
-      setNewRoleName('');
+
+      const rolesCollection = collection(firestore, 'roles');
+      addDoc(rolesCollection, newRole)
+        .then(() => {
+            toast({title: 'Role added', description: `Role "${newRole.name}" created.`})
+            setNewRoleName('');
+        }).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'roles',
+                operation: 'create',
+                requestResourceData: newRole
+            }));
+        })
     }
   };
 
   const handleDeleteRole = (id: string) => {
-    setRoles(prev => prev.filter(role => role.id !== id));
+    const roleRef = doc(firestore, 'roles', id);
+    deleteDoc(roleRef)
+    .then(() => {
+        toast({title: 'Role deleted'})
+    })
+    .catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `roles/${id}`,
+            operation: 'delete'
+        }));
+    });
   };
 
   const handleStartEdit = (role: Role) => {
@@ -58,8 +88,20 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
 
   const handleSaveEdit = async () => {
     if (editingRole) {
-        setRoles(prev => prev.map(r => r.id === editingRole.id ? editingRole : r));
-        setEditingRole(null);
+        const { id, ...roleData } = editingRole;
+        const roleRef = doc(firestore, 'roles', id);
+        setDoc(roleRef, roleData, { merge: true })
+            .then(() => {
+                setEditingRole(null);
+                toast({ title: 'Role updated' });
+            })
+            .catch(err => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: `roles/${id}`,
+                    operation: 'update',
+                    requestResourceData: roleData
+                }));
+            });
     }
   };
 

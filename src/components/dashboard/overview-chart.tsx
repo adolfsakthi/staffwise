@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/chart';
 import type { ChartConfig } from '@/components/ui/chart';
 import { Skeleton } from '../ui/skeleton';
-import { Info } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 const chartConfig = {
   onTime: {
@@ -37,9 +37,10 @@ type OverviewChartProps = {
     late: number;
   }[];
   isLoading: boolean;
+  error?: Error | null;
 };
 
-export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
+export default function OverviewChart({ data, isLoading, error }: OverviewChartProps) {
   if (isLoading) {
     return (
         <Card>
@@ -53,6 +54,29 @@ export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
         </Card>
     )
   }
+
+  if (error) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Attendance Overview</CardTitle>
+                <CardDescription>On-time vs. late entries for the last 7 days.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-center text-destructive">
+                    <AlertTriangle className="h-10 w-10" />
+                    <div className="space-y-1">
+                        <h3 className="font-semibold">Error Loading Chart</h3>
+                        <p className="text-sm">
+                            Could not load attendance data. Please check permissions.
+                        </p>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -84,7 +108,7 @@ export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
                 <div className="space-y-1">
                     <h3 className="font-semibold">No Data to Display</h3>
                     <p className="text-sm text-muted-foreground">
-                        Upload attendance data to see the weekly overview chart.
+                        There is no attendance data for the selected property.
                     </p>
                 </div>
             </div>

@@ -1,0 +1,146 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Loader2, Mail, Eye } from 'lucide-react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import type { EmailLog } from '@/lib/types';
+import { format } from 'date-fns';
+
+export default function EmailLogsPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
+
+  const emailLogsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'email_logs'), orderBy('sentAt', 'desc'), limit(100));
+  }, [firestore]);
+
+  const { data: emailLogs, isLoading: isLoadingLogs, error } = useCollection<EmailLog>(emailLogsQuery);
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'N/A';
+    // Firestore Timestamps can be converted to JS Date objects
+    const date = timestamp.toDate();
+    return format(date, 'PPP p');
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Email Logs</CardTitle>
+        <CardDescription>
+          A log of all automated emails sent by the system.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]"></TableHead>
+                <TableHead>Recipient</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Sent At</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isUserLoading || isLoadingLogs ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-destructive">
+                        Error: {error.message}
+                    </TableCell>
+                </TableRow>
+              ) : emailLogs && emailLogs.length > 0 ? (
+                emailLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell>
+                      <Mail className="text-muted-foreground" />
+                    </TableCell>
+                    <TableCell className="font-medium">{log.to}</TableCell>
+                    <TableCell className="text-muted-foreground">{log.subject}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{log.emailType}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(log.sentAt)}
+                    </TableCell>
+                    <TableCell>
+                      <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedEmail(null)}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => setSelectedEmail(log)}>
+                            <Eye className="mr-2 h-4 w-4" /> Preview
+                          </Button>
+                        </DialogTrigger>
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No email logs found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {selectedEmail && (
+            <Dialog open={!!selectedEmail} onOpenChange={(isOpen) => !isOpen && setSelectedEmail(null)}>
+                 <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Email Preview</DialogTitle>
+                        <div className="text-sm text-muted-foreground space-y-1 pt-2">
+                            <p><strong>To:</strong> {selectedEmail.to}</p>
+                            <p><strong>Subject:</strong> {selectedEmail.subject}</p>
+                            <p><strong>Date:</strong> {formatDate(selectedEmail.sentAt)}</p>
+                        </div>
+                    </DialogHeader>
+                    <div className="mt-4 rounded-md border bg-white">
+                        <iframe
+                        srcDoc={selectedEmail.body}
+                        className="h-[500px] w-full"
+                        />
+                    </div>
+                </DialogContent>
+            </Dialog>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

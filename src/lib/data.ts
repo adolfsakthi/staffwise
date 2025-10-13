@@ -1,10 +1,8 @@
-
 import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import type { AttendanceRecord, Role } from './types';
-import { MOCK_DEPARTMENTS } from './mock-data';
-import { errorEmitter } from './error-emitter';
-import { FirestorePermissionError } from './errors';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 export type EmailLog = {
@@ -52,13 +50,13 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
 
 export async function addAttendanceRecords(db: Firestore, records: any[]): Promise<void> {
     const batch = writeBatch(db);
+    const attendanceCollection = collection(db, 'attendance_records');
 
     records.forEach((recordData) => {
         const processed = processRecord(recordData);
-        const newRecordRef = doc(collection(db, 'attendance_records'));
+        const newRecordRef = doc(attendanceCollection);
         const recordWithAudited = {
             ...processed,
-            id: newRecordRef.id,
             is_audited: false,
             audit_notes: ''
         };
@@ -72,7 +70,46 @@ export async function addAttendanceRecords(db: Firestore, records: any[]): Promi
             requestResourceData: records.map(processRecord),
         });
         errorEmitter.emit('permission-error', permissionError);
-        // We still throw the original error to not swallow it completely
+        throw serverError;
+    });
+}
+
+export async function addEmployees(db: Firestore, employees: any[]): Promise<void> {
+    const batch = writeBatch(db);
+    const employeeCollection = collection(db, 'employees');
+
+    employees.forEach((emp) => {
+        const newDocRef = doc(employeeCollection);
+        batch.set(newDocRef, emp);
+    });
+    
+    return batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: 'employees',
+            operation: 'create',
+            requestResourceData: employees,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    });
+}
+
+export async function addPunchLogs(db: Firestore, logs: any[]): Promise<void> {
+    const batch = writeBatch(db);
+    const punchLogCollection = collection(db, 'punch_logs');
+    
+    logs.forEach((log) => {
+        const newDocRef = doc(punchLogCollection);
+        batch.set(newDocRef, log);
+    });
+    
+    return batch.commit().catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: 'punch_logs',
+            operation: 'create',
+            requestResourceData: logs,
+        });
+        errorEmitter.emit('permission-error', permissionError);
         throw serverError;
     });
 }
@@ -90,7 +127,7 @@ export async function getRecordsByIds(db: Firestore, recordIds: string[]): Promi
         try {
             const querySnapshot = await getDocs(recordsQuery);
             querySnapshot.forEach(doc => {
-                records.push(doc.data() as AttendanceRecord);
+                records.push({ ...doc.data(), id: doc.id } as AttendanceRecord);
             });
         } catch (serverError: any) {
             const permissionError = new FirestorePermissionError({
@@ -123,17 +160,42 @@ export async function auditRecords(db: Firestore, recordIds: string[], auditNote
 }
 
 
-export async function logEmail(email: EmailLog): Promise<void> {
-    console.log('Simulating email log:', email);
-    // In a real app, this would write to Firestore.
-    // For now, we'll just log to the console.
-    return Promise.resolve();
+export async function logEmail(email: Omit<EmailLog, 'id' | 'sentAt'>): Promise<void> {
+    const db = (await import('@/firebase/server')).getDb();
+    const emailLogCollection = collection(db, 'email_logs');
+    const newLog = {
+        ...email,
+        sentAt: new Date()
+    };
+    
+    addDoc(emailLogCollection, newLog).catch(async (serverError) => {
+         const permissionError = new FirestorePermissionError({
+            path: 'email_logs',
+            operation: 'create',
+            requestResourceData: newLog
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
+    });
 }
 
 
-export async function getDepartments(): Promise<string[]> {
-    // This now fetches unique department values from the 'roles' collection.
-    // In a real app, this would be a Firestore query.
-    console.log("Fetching mock departments");
-    return Promise.resolve(MOCK_DEPARTMENTS);
+export async function getDepartments(db: Firestore, propertyCode: string): Promise<string[]> {
+    const rolesQuery = query(collection(db, 'roles'), where('property_code', '==', propertyCode));
+    try {
+        const querySnapshot = await getDocs(rolesQuery);
+        // This is a simplification. A real app might have a dedicated 'departments' collection.
+        // Here, we assume roles might imply departments or can be used as a proxy.
+        const departments = new Set<string>();
+        querySnapshot.forEach(doc => {
+            const role = doc.data() as Role;
+            if (role.name) { // Simple logic to add role name as a department
+                departments.add(role.name);
+            }
+        });
+        return Array.from(departments);
+    } catch(e) {
+        console.error("Error fetching departments (roles)", e);
+        return ['Engineering', 'Housekeeping', 'Front Desk']; // Fallback
+    }
 }

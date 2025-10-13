@@ -6,23 +6,22 @@ import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
 import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
-
-// Mock user for frontend-only mode
-const useUser = () => ({ propertyCode: 'D001' });
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function DashboardPage() {
-  const { propertyCode } = useUser();
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-      setRecords(MOCK_ATTENDANCE_RECORDS);
-      setIsLoading(false);
-    }, 1000);
-  }, []);
+  // @ts-ignore
+  const propertyCode = user?.property_code || 'D001';
+
+  const recordsQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
+  }, [firestore, propertyCode]);
+  
+  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
 
   const stats = useMemo(() => {
     if (!records || records.length === 0) {
@@ -58,8 +57,9 @@ export default function DashboardPage() {
     return data;
   }, [records]);
   
+  // In a real app, we would re-fetch or optimistically update
   const handleDataUpload = () => {
-    console.log("Data upload finished, dashboard refreshed.");
+    console.log("Data upload finished, dashboard will refresh automatically.");
   }
 
   return (
@@ -67,10 +67,10 @@ export default function DashboardPage() {
       <div className="flex justify-between items-start">
         <h1 className="text-3xl font-bold">Dashboard</h1>
       </div>
-      <StatsCards stats={stats} isLoading={isLoading} propertyCode={propertyCode} />
+      <StatsCards stats={stats} isLoading={isLoading || isUserLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <OverviewChart data={weeklyData} isLoading={isLoading} />
+          <OverviewChart data={weeklyData} isLoading={isLoading || isUserLoading} error={error}/>
         </div>
         <div>
           <DataUpload propertyCode={propertyCode} onUploadComplete={handleDataUpload} />

@@ -15,29 +15,31 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { MOCK_ROLES } from '@/lib/mock-data';
-import type { Role } from '@/lib/types';
-
-// Mock user for frontend-only mode
-const useUser = () => ({ propertyCode: 'D001' });
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { Role, UserProfile } from '@/lib/types';
 
 export default function UserManagementPage() {
-    const { propertyCode } = useUser();
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [isLoadingRoles, setIsLoadingRoles] = useState(true);
-    
-    useEffect(() => {
-        if (!propertyCode) return;
-        setIsLoadingRoles(true);
-        setTimeout(() => {
-            const propertyRoles = MOCK_ROLES.filter(r => r.property_code === propertyCode);
-            setRoles(propertyRoles);
-            setIsLoadingRoles(false);
-        }, 500);
-    }, [propertyCode]);
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
 
-    if (isLoadingRoles || !propertyCode) {
+    // @ts-ignore
+    const propertyCode = user?.property_code || 'D001';
+
+    const rolesQuery = useMemoFirebase(() => {
+        if (!firestore || !propertyCode) return null;
+        return query(collection(firestore, 'roles'), where('property_code', '==', propertyCode));
+    }, [firestore, propertyCode]);
+
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore || !propertyCode) return null;
+        return query(collection(firestore, 'users'), where('property_code', '==', propertyCode));
+    }, [firestore, propertyCode]);
+    
+    const { data: roles, isLoading: isLoadingRoles, error: rolesError } = useCollection<Role>(rolesQuery);
+    const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile>(usersQuery);
+
+    if (isUserLoading || isLoadingRoles || isLoadingUsers) {
         return (
             <div className="flex min-h-[400px] w-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -60,7 +62,7 @@ export default function UserManagementPage() {
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList roles={roles || []} propertyCode={propertyCode} />
+                <UserList roles={roles || []} users={users || []} propertyCode={propertyCode} />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
                 <RoleManagement initialRoles={roles || []} propertyCode={propertyCode} />

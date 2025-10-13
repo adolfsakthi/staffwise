@@ -27,65 +27,106 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { getDepartments } from '@/lib/data';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 type SettingsFormProps = {
-  // currentSettings?: any; // Removed to make component self-contained
+  propertyCode: string;
 };
 
 const DEFAULT_GRACE_TIME = 15;
 const DEFAULT_AUTO_AUDIT_TIME = '00:00';
 
-export default function SettingsForm({
-  // currentSettings = {}, // No longer needed
-}: SettingsFormProps) {
+export default function SettingsForm({ propertyCode }: SettingsFormProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const [departments, setDepartments] = useState<string[]>([]);
   const [graceDepartment, setGraceDepartment] = useState('global');
   
-  // State is now managed internally with default values
+  const settingsRef = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    return doc(firestore, `properties/${propertyCode}/settings/config`);
+  }, [firestore, propertyCode]);
+
+  const { data: settingsData, isLoading: isLoadingSettings } = useDoc(settingsRef);
+
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_TIME);
   const [autoAuditEnabled, setAutoAuditEnabled] = useState(true);
   const [autoAuditTime, setAutoAuditTime] = useState(DEFAULT_AUTO_AUDIT_TIME);
 
   useEffect(() => {
+    if(settingsData) {
+        setGraceMinutes(settingsData.grace_minutes || DEFAULT_GRACE_TIME);
+        setAutoAuditEnabled(settingsData.auto_audit_enabled ?? true);
+        setAutoAuditTime(settingsData.auto_audit_time || DEFAULT_AUTO_AUDIT_TIME);
+    }
+  }, [settingsData]);
+
+
+  useEffect(() => {
     async function fetchDepartments() {
-      const depts = await getDepartments();
+        if (!propertyCode) return;
+      const depts = await getDepartments(firestore, propertyCode);
       setDepartments(depts);
     }
     fetchDepartments();
-  }, []);
+  }, [firestore, propertyCode]);
 
-  const handleGraceDepartmentChange = (value: string) => {
-    setGraceDepartment(value);
-    // In a real app, you would fetch the specific grace time for the selected department
-    // For now, we'll just reset to the global default for simplicity
-    setGraceMinutes(DEFAULT_GRACE_TIME);
+  const handleSaveGraceTime = async () => {
+    if (!settingsRef) return;
+    const settingToSave = { grace_minutes: graceMinutes };
+    
+    setDoc(settingsRef, settingToSave, { merge: true })
+      .then(() => {
+        toast({
+          title: 'Settings Saved',
+          description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
+        });
+      }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: settingsRef.path,
+            operation: 'update',
+            requestResourceData: settingToSave
+        }));
+      });
   };
 
-  const handleSaveGraceTime = () => {
-    // In a real app, you'd call a server action here to save to Firestore
-    console.log(`Saving grace time for ${graceDepartment}: ${graceMinutes} minutes`);
-    toast({
-      title: 'Settings Saved',
-      description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
-    });
+  const handleSaveAutoAudit = async () => {
+    if (!settingsRef) return;
+    const settingToSave = { auto_audit_enabled: autoAuditEnabled, auto_audit_time: autoAuditTime };
+
+    setDoc(settingsRef, settingToSave, { merge: true })
+        .then(() => {
+            toast({
+                title: 'Settings Saved',
+                description: `Auto-audit settings have been updated.`,
+            });
+        }).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: settingsRef.path,
+                operation: 'update',
+                requestResourceData: settingToSave
+            }));
+        });
   };
 
-  const handleSaveAutoAudit = () => {
-    // In a real app, you'd call a server action here to save to Firestore
-    console.log(`Saving auto-audit settings: enabled=${autoAuditEnabled}, time=${autoAuditTime}`);
-    toast({
-      title: 'Settings Saved',
-      description: `Auto-audit settings have been updated.`,
-    });
-  };
-
+  if(isLoadingSettings) {
+    return (
+        <div className="flex min-h-[400px] w-full items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <Card className="max-w-2xl mx-auto">
         <CardHeader>
             <CardTitle>Application Settings</CardTitle>
-            <CardDescription>Manage system-wide configurations for attendance and audits.</CardDescription>
+            <CardDescription>Manage system-wide configurations for attendance and audits for property {propertyCode}.</CardDescription>
         </CardHeader>
         <CardContent>
             <Tabs defaultValue="grace-time">
@@ -101,7 +142,7 @@ export default function SettingsForm({
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                             <Label htmlFor="department-select">Department</Label>
-                            <Select value={graceDepartment} onValueChange={handleGraceDepartmentChange}>
+                            <Select value={graceDepartment} onValueChange={setGraceDepartment}>
                                 <SelectTrigger id="department-select">
                                     <SelectValue placeholder="Select department" />
                                 </SelectTrigger>

@@ -34,6 +34,7 @@ export type LiveLog = {
     department: string;
     time: string;
     deviation: number;
+    timestamp: any; // Firestore timestamp
 };
 
 export type UserProfile = {
@@ -43,6 +44,7 @@ export type UserProfile = {
   email: string;
   role: string;
   property_code: string;
+  photoURL?: string;
 };
 
 // This type is deprecated, use UserProfile instead.
@@ -55,3 +57,12 @@ export type Role = {
   name: string;
   permissions: string[];
 };
+
+export type EmailLog = {
+  id: string;
+  to: string;
+  subject: string;
+  body: string;
+  emailType: 'late_notice' | 'admin_report' | 'department_report';
+  sentAt: any; // Firestore timestamp
+}

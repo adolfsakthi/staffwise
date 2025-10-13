@@ -30,16 +30,22 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, Role } from '@/lib/types';
-import { MOCK_USERS } from '@/lib/mock-data';
+import { useAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+
 
 type UserListProps = {
     roles: Role[];
+    users: UserProfile[];
     propertyCode: string;
 }
 
-export default function UserList({ roles, propertyCode }: UserListProps) {
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+export default function UserList({ roles, users, propertyCode }: UserListProps) {
+  const auth = useAuth();
+  const firestore = useFirestore();
 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -51,53 +57,81 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsLoadingUsers(true);
-    setTimeout(() => {
-        const propertyUsers = MOCK_USERS.filter(u => u.property_code === propertyCode);
-        setUsers(propertyUsers);
-        setIsLoadingUsers(false);
-    }, 500);
-  }, [propertyCode]);
-
+    if (roles.length > 0 && !newUserRole) {
+        setNewUserRole(roles[0].name);
+    }
+  }, [roles, newUserRole]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    // In a real app, this would be an updateDoc call to Firestore
-    console.log(`Updating role for user ${userId} to ${newRole}`);
-    setUsers(prev => prev.map(u => u.id === userId ? {...u, role: newRole} : u));
-    toast({ title: "User role updated" });
+    const userRef = doc(firestore, 'users', userId);
+    setDoc(userRef, { role: newRole }, { merge: true })
+        .then(() => {
+            toast({ title: "User role updated" });
+        })
+        .catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `users/${userId}`,
+                operation: 'update',
+                requestResourceData: { role: newRole }
+            }))
+        })
   };
 
   const handleAddUser = async () => {
-    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode) {
-      toast({ variant: 'destructive', title: 'Please fill name and email fields.' });
+    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode || !newUserPassword) {
+      toast({ variant: 'destructive', title: 'Please fill all fields.' });
       return;
     }
     
     setIsCreatingUser(true);
     
-    setTimeout(() => {
-        const newUser: UserProfile = {
-            id: `usr_${Date.now()}`,
-            uid: `usr_${Date.now()}`,
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
+        const user = userCredential.user;
+
+        const newUserProfile: Omit<UserProfile, 'id'> = {
+            uid: user.uid,
             displayName: newUserName,
             email: newUserEmail,
             role: newUserRole,
             property_code: propertyCode,
         };
 
-        setUsers(prev => [...prev, newUser]);
-        
+        // We use setDoc with user.uid to keep user doc ID and auth UID in sync
+        const userCollection = collection(firestore, 'users');
+        await setDoc(doc(userCollection, user.uid), newUserProfile);
+
         toast({
             title: 'User Created Successfully',
-            description: 'The user has been added and can now log in (mock).',
+            description: 'The user has been added and can now log in.',
         });
 
         setNewUserEmail('');
         setNewUserPassword('');
         setNewUserName('');
-        setNewUserRole(roles[0]?.name || 'Staff');
+        setNewUserRole(roles[0]?.name || '');
+
+    } catch(error: any) {
+        let description = "An unexpected error occurred."
+        if (error.code) {
+            switch(error.code) {
+                case 'auth/email-already-in-use':
+                    description = "This email is already registered.";
+                    break;
+                case 'auth/invalid-email':
+                    description = "The email address is not valid.";
+                    break;
+                case 'auth/weak-password':
+                    description = "The password is too weak.";
+                    break;
+                default:
+                    description = error.message;
+            }
+        }
+        toast({ variant: 'destructive', title: 'User creation failed', description});
+    } finally {
         setIsCreatingUser(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -173,19 +207,13 @@ export default function UserList({ roles, propertyCode }: UserListProps) {
             </TableRow>
             </TableHeader>
             <TableBody>
-            {isLoadingUsers ? (
-                <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                </TableRow>
-            ) : users && users.length > 0 ? (
+             {users && users.length > 0 ? (
                 users.map((user) => (
                 <TableRow key={user.id}>
                 <TableCell>
                     <div className="flex items-center gap-3">
                     <Avatar>
-                        <AvatarImage src={`https://i.pravatar.cc/150?u=${user.email}`} alt={user.displayName || ""} />
+                        <AvatarImage src={user.photoURL || `https://i.pravatar.cc/150?u=${user.email}`} alt={user.displayName || ""} />
                         <AvatarFallback>
                         {user.displayName
                             ?.split(' ')

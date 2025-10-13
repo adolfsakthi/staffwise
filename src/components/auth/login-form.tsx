@@ -8,6 +8,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+
 
 export default function LoginForm() {
   const [email, setEmail] = useState('demo@staffwise.com');
@@ -15,28 +18,43 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock sign-in logic
-    setTimeout(() => {
-      if (email === 'demo@staffwise.com' && password === 'demopass') {
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
         toast({
           title: 'Signed in successfully!',
           description: "Welcome back!",
         });
         router.push('/');
-      } else {
+    } catch (error: any) {
+        let description = 'An unexpected error occurred.';
+        if (error.code) {
+            switch(error.code) {
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential':
+                    description = 'Invalid email or password. Please try again.';
+                    break;
+                case 'auth/invalid-email':
+                    description = 'Please enter a valid email address.';
+                    break;
+                default:
+                    description = 'Please check your credentials and try again.';
+            }
+        }
         toast({
           variant: 'destructive',
           title: 'Sign in failed',
-          description: 'Please use the demo credentials.',
+          description,
         });
-      }
-      setIsLoading(false);
-    }, 1000);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (

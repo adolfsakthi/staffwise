@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { uploadAttendance } from '@/app/actions';
+import { uploadData } from '@/app/actions';
 
 type UploadType = 'attendance' | 'employees' | 'punch_logs';
 
@@ -87,7 +87,7 @@ export default function DataUpload({ propertyCode, onUploadComplete }: DataUploa
     formData.append('uploadType', uploadType);
     formData.append('propertyCode', propertyCode);
 
-    const result = await uploadAttendance(formData);
+    const result = await uploadData(formData);
 
     if (result.success) {
         toast({

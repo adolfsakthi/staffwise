@@ -1,8 +1,19 @@
+'use client';
+
 import SettingsForm from "@/components/settings/settings-form";
+import { useUser } from "@/firebase";
+import { Loader2 } from "lucide-react";
+
 
 export default function SettingsPage() {
-    // The SettingsForm component now manages its own state internally.
-    // In a real application, you would fetch settings here and pass them as props,
-    // or the form itself would fetch them.
-    return <SettingsForm />
+    const { user, isUserLoading } = useUser();
+
+    if (isUserLoading) {
+        return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
+    }
+
+    // @ts-ignore
+    const propertyCode = user?.property_code || 'D001';
+
+    return <SettingsForm propertyCode={propertyCode} />
 }
