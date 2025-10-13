@@ -18,23 +18,19 @@ const fontSans = FontSans({
 });
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const { userProfile, isLoading, user } = useUserProfile();
+  const { isUserLoading, user } = useUserProfile();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     // If auth is done loading and there's no user, redirect to login (if not already there)
-    if (!isLoading && !user && pathname !== '/login') {
+    if (!isUserLoading && !user && pathname !== '/login') {
       router.push('/login');
     }
-    // If auth is done loading and there IS a user, redirect from login to home
-    if (!isLoading && user && pathname === '/login') {
-        router.push('/');
-    }
-  }, [user, isLoading, router, pathname]);
+  }, [user, isUserLoading, router, pathname]);
 
-  // While checking auth state or loading the profile, show a loader
-  if (isLoading && pathname !== '/login') {
+  // While checking auth state show a loader (on any page other than login)
+  if (isUserLoading && pathname !== '/login') {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -42,17 +38,13 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // On the login page, render immediately
-  if (pathname === '/login') {
+  // If we are on the login page or we have a user, render the children.
+  // The login page itself handles the redirect *after* a successful login.
+  if (pathname === '/login' || user) {
      return <>{children}</>;
   }
 
-  // If we have a user and their profile, render the app
-  if (user && userProfile) {
-    return <>{children}</>;
-  }
-
-  // Fallback while redirecting or if profile is missing after login
+  // Fallback while redirecting or for any other unhandled case
   return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

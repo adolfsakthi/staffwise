@@ -1,16 +1,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -24,6 +25,7 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function LoginPage() {
   const auth = useAuth();
+  const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +48,7 @@ export default function LoginPage() {
       const user = userCredential.user;
 
       if (user) {
+        // This Firestore read now acts as our gatekeeper.
         const firestore = getFirestore();
         const userDocRef = doc(firestore, 'users', user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -58,7 +61,9 @@ export default function LoginPage() {
         if (userProfile.property_code !== propertyCode) {
           throw new Error('Property code does not match.');
         }
-        // Success! Redirect is handled by the root layout's AuthWrapper
+        
+        // Only redirect AFTER the Firestore read is successful.
+        router.push('/');
       }
     } catch (error: any) {
       // Sign out if any part of the custom verification fails
@@ -71,7 +76,7 @@ export default function LoginPage() {
         title: 'Login Failed',
         description: error.message || 'An unknown error occurred.',
       });
-       setIsLoading(false); // Only set to false on error
+      setIsLoading(false);
     }
   };
   
