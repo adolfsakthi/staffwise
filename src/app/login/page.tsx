@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -45,9 +44,9 @@ export default function LoginPage() {
                     Authentication is temporarily disabled. You can proceed to the dashboard.
                 </p>
             </div>
-            <Link href="/" legacyBehavior>
-                <Button className="w-full h-12 text-base">
-                    Go to Dashboard
+            <Link href="/" passHref>
+                <Button asChild className="w-full h-12 text-base">
+                    <a>Go to Dashboard</a>
                 </Button>
             </Link>
         </div>
@@ -55,4 +54,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

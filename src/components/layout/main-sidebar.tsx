@@ -38,9 +38,6 @@ import {
 } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { signOut } from 'firebase/auth';
-import { useAuth } from '@/firebase';
 
 const navItems = [
   {
@@ -90,8 +87,6 @@ export default function MainSidebar() {
   const router = useRouter();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
-  const { user } = useUser();
-  const auth = useAuth();
   
   const handleLinkClick = () => {
     if (isMobile) {
@@ -100,15 +95,18 @@ export default function MainSidebar() {
   };
 
   const handleLogout = async () => {
-    if (auth) {
-        await signOut(auth);
-    }
     router.push('/login');
   };
 
   const getAvatarFallback = (name?: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('');
+  }
+
+  const user = {
+      displayName: "Demo User",
+      email: "demo@staffwise.com",
+      photoURL: null
   }
 
   return (
