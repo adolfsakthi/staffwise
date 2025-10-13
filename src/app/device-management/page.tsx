@@ -1,7 +1,13 @@
-
 'use client';
 
-import { useEffect, useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,15 +24,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { MoreVertical, PlusCircle, Wifi, WifiOff } from 'lucide-react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { getDevices } from '@/lib/data';
+  MoreVertical,
+  PlusCircle,
+  Wifi,
+  WifiOff,
+  Loader2,
+} from 'lucide-react';
+import { collection } from 'firebase/firestore';
 
 type Device = {
   id: string;
@@ -38,22 +43,14 @@ type Device = {
 };
 
 export default function DeviceManagementPage() {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    async function fetchDevices() {
-      try {
-        const fetchedDevices = await getDevices();
-        setDevices(fetchedDevices);
-      } catch (error) {
-        console.error("Failed to fetch devices", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchDevices();
-  }, []);
+  const devicesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'devices');
+  }, [firestore]);
+
+  const { data: devices, isLoading } = useCollection<Device>(devicesQuery);
 
   return (
     <Card>
@@ -61,7 +58,8 @@ export default function DeviceManagementPage() {
         <div>
           <CardTitle>Device Management</CardTitle>
           <CardDescription>
-            Manage and monitor your connected biometric devices across all branches.
+            Manage and monitor your connected biometric devices across all
+            branches.
           </CardDescription>
         </div>
         <Button>
@@ -82,23 +80,43 @@ export default function DeviceManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        Loading devices...
-                    </TableCell>
-                 </TableRow>
-              ) : devices.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : devices && devices.length > 0 ? (
                 devices.map((device) => (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">{device.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{device.branch}</TableCell>
-                    <TableCell className="text-muted-foreground">{device.model}</TableCell>
-                    <TableCell className="text-muted-foreground">{device.ip}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.branch}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.model}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.ip}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant={device.status === 'online' ? 'secondary' : 'destructive'} className={device.status === 'online' ? 'text-emerald-500 bg-emerald-50 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'}>
-                        {device.status === 'online' ? <Wifi className="mr-2" /> : <WifiOff className="mr-2" />}
-                        {device.status.charAt(0).toUpperCase() + device.status.slice(1)}
+                      <Badge
+                        variant={
+                          device.status === 'online' ? 'secondary' : 'destructive'
+                        }
+                        className={
+                          device.status === 'online'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-500'
+                            : 'border-red-200 bg-red-50 text-red-500'
+                        }
+                      >
+                        {device.status === 'online' ? (
+                          <Wifi className="mr-2" />
+                        ) : (
+                          <WifiOff className="mr-2" />
+                        )}
+                        {device.status.charAt(0).toUpperCase() +
+                          device.status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -122,9 +140,9 @@ export default function DeviceManagementPage() {
                 ))
               ) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        No devices found.
-                    </TableCell>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No devices found.
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>

@@ -1,158 +1,203 @@
 /**
- * @fileoverview Firestore Security Rules for the Attendance Tracking Application.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure data access based on user roles, ownership, and administrative privileges.
- * It enforces strict access control to prevent unauthorized data modification and exposure.
+ * @file Overview
+ * This ruleset enforces a user-ownership model for user profiles,
+ * and allows public read access to attendance records, grace settings, audit logs and email logs with owner-only writes.
+ * The auto-audit settings are protected by requiring an authenticated user.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only to the user themselves.
- * - /attendance_records/{attendanceRecordId}: Stores employee attendance records, accessible for reading by all, but writable only by an admin role.
- * - /grace_settings/{graceSettingId}: Stores grace period settings, accessible for reading by all, but writable only by an admin role.
- * - /audit_logs/{auditLogId}: Stores logs of audit executions, accessible for reading by all, but writable only by an admin role.
- * - /email_logs/{emailLogId}: Stores logs of sent emails, accessible for reading by all, but writable only by an admin role.
- * - /auto_audit_settings/auto_audit_config: Stores the configuration for auto-audits, accessible for reading by all, but writable only by an admin role.
+ * - /users/{userId}: Stores user profile information, accessible only to the user themselves.
+ * - /attendance_records/{attendanceRecordId}: Stores attendance records, publicly readable, but only writeable by an authenticated user.
+ * - /grace_settings/{graceSettingId}: Stores grace period settings, publicly readable, but only writeable by an authenticated user.
+ * - /audit_logs/{auditLogId}: Stores audit logs, publicly readable, but only writeable by an authenticated user.
+ * - /email_logs/{emailLogId}: Stores email logs, publicly readable, but only writeable by an authenticated user.
+ * - /auto_audit_settings/auto_audit_config: Stores auto-audit settings, accessible only to authenticated users.
  *
  * Key Security Decisions:
- * - Users can only read and write their own user profile data.
- * - Listing of users is disallowed to prevent enumeration.
- * - Attendance Records, Grace Settings, Audit Logs, Email Logs, and Auto Audit Settings are readable by anyone but only writable by admins.
- * - Admin role is determined by the email address sakthi@hezee.co.in
+ * - Users can only read and write their own profile data.
+ * - Listing of users is not allowed.
+ * - Attendance records, grace settings, audit logs and email logs are publicly readable but only writeable by authenticated users.
+ * - Auto-audit settings are accessible only to authenticated users.
  *
  * Denormalization for Authorization:
- * - The User document contains a `role` field. This allows central control, but no data is denormalized onto other documents.  If collection-group queries are needed, consider role denormalization.
+ *  - The current data model does not require denormalization. However, if we wanted to restrict access to attendance records, grace settings, audit logs and email logs to specific users or roles,
+ *  we would need to add an `ownerId` or `allowedUsers` field to each document and adjust the security rules accordingly.
  *
  * Structural Segregation:
- * - No structural segregation is used. All data for an entity lives in a single collection.
+ *  - No structural segregation is currently implemented. If there were a need to have public and private attendance records, for example,
+ *  we could create separate collections for each.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Restricts access to user profile data.  Users can only read/write their own profile.
+     * @description Controls access to user profile documents.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their profile if authenticated as 'user123'.
-     * @allow (get, update, delete) User with ID 'user123' can read/write their profile if authenticated as 'user123'.
-     * @deny (create) User with ID 'user123' cannot be created by someone else.
-     * @deny (get, update, delete) User with ID 'user123' cannot be read/written by someone else.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (create) - If the user's auth UID matches the userId.
+     * @allow (get, update, delete) - If the user's auth UID matches the userId, and the resource exists.
+     * @deny (list) - Listing users is not allowed.
+     * @deny (create, update, delete) - If the user's auth UID does not match the userId.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Helper function to check if the user is signed in
+      // Helper function to check if the user is signed in and owns the document.
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Helper function to check if the user is signed in and owns the existing document.
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      // Allow the user to create their own profile if the UID matches.
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+
+      // Allow the user to read their own profile if it exists.
+      allow get: if isExistingOwner(userId);
+
+      // Allow the user to update their own profile if it exists.
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+
+      // Allow the user to delete their own profile if it exists.
+      allow delete: if isExistingOwner(userId);
+
+      // Listing users is not allowed.
+      allow list: if false;
+    }
+
+    /**
+     * @description Controls access to attendance records.
+     * @path /attendance_records/{attendanceRecordId}
+     * @allow (get, list) - All reads are allowed.
+     * @allow (create, update, delete) - Only authenticated users can write.
+     * @deny (create, update, delete) - If the user is not authenticated.
+     * @principle Public read with owner-only writes (authenticated users are treated as owners).
+     */
+    match /attendance_records/{attendanceRecordId} {
       function isSignedIn() {
         return request.auth != null;
       }
 
-      // Helper function to check if the authenticated user is the owner of the document.
-      function isOwner(userId) {
-        return isSignedIn() && request.auth.uid == userId;
-      }
-
-      // Helper function to check if the authenticated user is the owner of the document and it exists.
-      function isExistingOwner(userId) {
-        return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
-      }
-
-      // Allow the user to read their own profile.
-      allow get: if isOwner(userId);
-      // Prevent listing of all users.
-      allow list: if false;
-
-      // Allow a user to create their own profile if the userId matches their auth.uid.
-      allow create: if isOwner(userId);
-
-      // Allow a user to update their own profile. The uid is immutable.
-      allow update: if isExistingOwner(userId);
-
-      // Allow a user to delete their own profile if it exists.
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Controls access to attendance records. Anyone can read, but only admins can create, update, or delete.
-     * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) Any user can read attendance records.
-     * @allow (create, update, delete) User with sakthi@hezee.co.in email can create, update, or delete attendance records.
-     * @deny (create, update, delete) Non-admin users cannot create, update, or delete attendance records.
-     * @principle Restricts write access to attendance records to administrators.
-     */
-    match /attendance_records/{attendanceRecordId} {
-      function isAdmin() {
-        return isSignedIn() && request.auth.token.email == 'sakthi@hezee.co.in';
-      }
-
+      // Allow anyone to read attendance records.
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+
+      // Allow only authenticated users to create attendance records.
+      allow create: if isSignedIn();
+
+      // Allow only authenticated users to update attendance records.
+      allow update: if isSignedIn() && resource != null;
+
+      // Allow only authenticated users to delete attendance records.
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to grace period settings. Anyone can read, but only admins can create, update, or delete.
+     * @description Controls access to grace period settings.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) Any user can read grace settings.
-     * @allow (create, update, delete) User with sakthi@hezee.co.in email can create, update, or delete grace settings.
-     * @deny (create, update, delete) Non-admin users cannot create, update, or delete grace settings.
-     * @principle Restricts write access to grace settings to administrators.
+     * @allow (get, list) - All reads are allowed.
+     * @allow (create, update, delete) - Only authenticated users can write.
+     * @deny (create, update, delete) - If the user is not authenticated.
+     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /grace_settings/{graceSettingId} {
-      function isAdmin() {
-        return isSignedIn() && request.auth.token.email == 'sakthi@hezee.co.in';
+      function isSignedIn() {
+        return request.auth != null;
       }
 
+      // Allow anyone to read grace settings.
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+
+      // Allow only authenticated users to create grace settings.
+      allow create: if isSignedIn();
+
+      // Allow only authenticated users to update grace settings.
+      allow update: if isSignedIn() && resource != null;
+
+      // Allow only authenticated users to delete grace settings.
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to audit logs. Anyone can read, but only admins can create, update, or delete.
+     * @description Controls access to audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) Any user can read audit logs.
-     * @allow (create, update, delete) User with sakthi@hezee.co.in email can create, update, or delete audit logs.
-     * @deny (create, update, or delete) Non-admin users cannot create, update, or delete audit logs.
-     * @principle Restricts write access to audit logs to administrators.
+     * @allow (get, list) - All reads are allowed.
+     * @allow (create, update, delete) - Only authenticated users can write.
+     * @deny (create, update, delete) - If the user is not authenticated.
+     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /audit_logs/{auditLogId} {
-      function isAdmin() {
-        return isSignedIn() && request.auth.token.email == 'sakthi@hezee.co.in';
+      function isSignedIn() {
+        return request.auth != null;
       }
 
+      // Allow anyone to read audit logs.
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+
+      // Allow only authenticated users to create audit logs.
+      allow create: if isSignedIn();
+
+      // Allow only authenticated users to update audit logs.
+      allow update: if isSignedIn() && resource != null;
+
+      // Allow only authenticated users to delete audit logs.
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to email logs. Anyone can read, but only admins can create, update, or delete.
+     * @description Controls access to email logs.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) Any user can read email logs.
-     * @allow (create, update, delete) User with sakthi@hezee.co.in email can create, update, or delete email logs.
-     * @deny (create, update, delete) Non-admin users cannot create, update, or delete email logs.
-     * @principle Restricts write access to email logs to administrators.
+     * @allow (get, list) - All reads are allowed.
+     * @allow (create, update, delete) - Only authenticated users can write.
+     * @deny (create, update, delete) - If the user is not authenticated.
+     * @principle Public read with owner-only writes (authenticated users are treated as owners).
      */
     match /email_logs/{emailLogId} {
-      function isAdmin() {
-        return isSignedIn() && request.auth.token.email == 'sakthi@hezee.co.in';
+      function isSignedIn() {
+        return request.auth != null;
       }
 
+      // Allow anyone to read email logs.
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+
+      // Allow only authenticated users to create email logs.
+      allow create: if isSignedIn();
+
+      // Allow only authenticated users to update email logs.
+      allow update: if isSignedIn() && resource != null;
+
+      // Allow only authenticated users to delete email logs.
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Controls access to auto audit settings. Anyone can read, but only admins can create, update, or delete.
+     * @description Controls access to auto-audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) Any user can read the auto audit settings.
-     * @allow (create, update, delete) User with sakthi@hezee.co.in email can create, update, or delete the auto audit settings.
-     * @deny (create, update, delete) Non-admin users cannot create, update, or delete the auto audit settings.
-     * @principle Restricts write access to auto audit settings to administrators.
+     * @allow (get) - Only authenticated users can read the settings.
+     * @allow (create, update, delete) - Only authenticated users can write the settings.
+     * @deny (create, update, delete) - If the user is not authenticated.
+     * @deny (list) - Listing is not allowed.
+     * @principle Requires authentication for access.
      */
-    match /auto_audit_settings/{auto_audit_config} {
-      function isAdmin() {
-        return isSignedIn() && request.auth.token.email == 'sakthi@hezee.co.in';
+    match /auto_audit_settings/auto_audit_config {
+      function isSignedIn() {
+        return request.auth != null;
       }
 
-      allow get: if true;
+      // Allow only authenticated users to read the settings.
+      allow get: if isSignedIn();
+
+      // Allow only authenticated users to create the settings.
+      allow create: if isSignedIn();
+
+      // Allow only authenticated users to update the settings.
+      allow update: if isSignedIn() && resource != null;
+
+      // Allow only authenticated users to delete the settings.
+      allow delete: if isSignedIn() && resource != null;
+
+      // Listing is not allowed
       allow list: if false;
-      allow create, update, delete: if isAdmin();
     }
   }
 }

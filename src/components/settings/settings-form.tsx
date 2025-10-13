@@ -26,14 +26,20 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+
+type GraceSetting = {
+  id: string;
+  department: string;
+  graceMinutes: number;
+}
 
 type SettingsFormProps = {
-  departments: string[];
   currentSettings: any; // Replace with actual types
 };
 
 export default function SettingsForm({
-  departments,
   currentSettings,
 }: SettingsFormProps) {
   const { toast } = useToast();
@@ -47,6 +53,17 @@ export default function SettingsForm({
   const [autoAuditTime, setAutoAuditTime] = useState(
     currentSettings.autoAudit.time
   );
+  
+  const firestore = useFirestore();
+
+  const departmentsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'grace_settings'), where('department', '!=', null));
+  }, [firestore]);
+
+  const { data: departmentSettings } = useCollection<GraceSetting>(departmentsQuery);
+  const departments = departmentSettings?.map(d => d.department) || [];
+
 
   const handleGraceDepartmentChange = (value: string) => {
     setGraceDepartment(value);

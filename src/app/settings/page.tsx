@@ -1,8 +1,6 @@
 import SettingsForm from "@/components/settings/settings-form";
-import { getDepartments } from "@/lib/data";
 
-export default async function SettingsPage() {
-    const departments = await getDepartments();
+export default function SettingsPage() {
     // In a real app, you would fetch current settings here
     const currentSettings = {
         globalGraceTime: 15,
@@ -15,5 +13,5 @@ export default async function SettingsPage() {
         }
     };
 
-    return <SettingsForm departments={departments} currentSettings={currentSettings} />
+    return <SettingsForm currentSettings={currentSettings} />
 }
