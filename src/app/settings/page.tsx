@@ -1,17 +1,8 @@
 import SettingsForm from "@/components/settings/settings-form";
 
 export default function SettingsPage() {
-    // In a real app, you would fetch current settings here
-    const currentSettings = {
-        globalGraceTime: 15,
-        departmentGraceTimes: {
-            'Engineering': 10
-        },
-        autoAudit: {
-            enabled: true,
-            time: '00:00'
-        }
-    };
-
-    return <SettingsForm currentSettings={currentSettings} />
+    // The SettingsForm component now manages its own state internally.
+    // In a real application, you would fetch settings here and pass them as props,
+    // or the form itself would fetch them.
+    return <SettingsForm />
 }

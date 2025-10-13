@@ -29,24 +29,23 @@ import { useToast } from '@/hooks/use-toast';
 import { getDepartments } from '@/lib/data';
 
 type SettingsFormProps = {
-  currentSettings: any; // Replace with actual types
+  // currentSettings?: any; // Removed to make component self-contained
 };
 
+const DEFAULT_GRACE_TIME = 15;
+const DEFAULT_AUTO_AUDIT_TIME = '00:00';
+
 export default function SettingsForm({
-  currentSettings,
+  // currentSettings = {}, // No longer needed
 }: SettingsFormProps) {
   const { toast } = useToast();
   const [departments, setDepartments] = useState<string[]>([]);
   const [graceDepartment, setGraceDepartment] = useState('global');
-  const [graceMinutes, setGraceMinutes] = useState(
-    currentSettings.globalGraceTime
-  );
-  const [autoAuditEnabled, setAutoAuditEnabled] = useState(
-    currentSettings.autoAudit.enabled
-  );
-  const [autoAuditTime, setAutoAuditTime] = useState(
-    currentSettings.autoAudit.time
-  );
+  
+  // State is now managed internally with default values
+  const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_TIME);
+  const [autoAuditEnabled, setAutoAuditEnabled] = useState(true);
+  const [autoAuditTime, setAutoAuditTime] = useState(DEFAULT_AUTO_AUDIT_TIME);
 
   useEffect(() => {
     async function fetchDepartments() {
@@ -58,15 +57,13 @@ export default function SettingsForm({
 
   const handleGraceDepartmentChange = (value: string) => {
     setGraceDepartment(value);
-    if (value === 'global') {
-      setGraceMinutes(currentSettings.globalGraceTime);
-    } else {
-      setGraceMinutes(currentSettings.departmentGraceTimes[value] || currentSettings.globalGraceTime);
-    }
+    // In a real app, you would fetch the specific grace time for the selected department
+    // For now, we'll just reset to the global default for simplicity
+    setGraceMinutes(DEFAULT_GRACE_TIME);
   };
 
   const handleSaveGraceTime = () => {
-    // In a real app, you'd call a server action here
+    // In a real app, you'd call a server action here to save to Firestore
     console.log(`Saving grace time for ${graceDepartment}: ${graceMinutes} minutes`);
     toast({
       title: 'Settings Saved',
@@ -75,7 +72,7 @@ export default function SettingsForm({
   };
 
   const handleSaveAutoAudit = () => {
-    // In a real app, you'd call a server action here
+    // In a real app, you'd call a server action here to save to Firestore
     console.log(`Saving auto-audit settings: enabled=${autoAuditEnabled}, time=${autoAuditTime}`);
     toast({
       title: 'Settings Saved',
