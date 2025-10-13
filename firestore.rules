@@ -1,133 +1,129 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict user-ownership model for user profiles and open access for some data.
+ * @fileOverview Firestore Security Rules for the Attendance Tracking Application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes security by requiring users to be authenticated before accessing any data.
+ * No authorization checks beyond authentication are performed in this initial version, providing a basic level of protection.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile information. Access is restricted to the user themselves.
- * - /attendance_records/{attendanceRecordId}: Stores attendance records. No write rule implemented, require an ownership field.
- * - /grace_settings/{graceSettingId}: Stores grace period settings. No write rule implemented, require an ownership field.
- * - /audit_logs/{auditLogId}: Stores audit logs. No write rule implemented, require an ownership field.
- * - /email_logs/{emailLogId}: Stores email logs. No write rule implemented, require an ownership field.
- * - /auto_audit_settings/auto_audit_config: Stores settings for the auto-audit process. No write rule implemented, require an ownership field.
- * - /devices/{deviceId}: Stores biometric device information. No write rule implemented, require an ownership field.
+ * The Firestore database contains collections for users, attendance records, grace settings, audit logs, email logs, auto-audit settings, and devices.
+ * Each collection stores documents related to its respective entity.
  *
  * Key Security Decisions:
- * - Users can only read and write their own profile data under `/users/{userId}`.
- * - Listing of users is not allowed to prevent enumeration.
- * - Other collections are not writeable until an owner field is defined.
+ * - All read and write access requires authentication (`isSignedIn()`).
+ * - No specific role-based access control is enforced yet, defaulting to authenticated access.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants a user access to their own profile data.
+     * @description Enforces that only authenticated users can access user profiles.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) User with matching {userId} can access their data.
-     * @deny (get, create, update, delete) User attempts to access another user's data.
-     * @principle Enforces user-ownership for profile data.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to user data.
      */
     match /users/{userId} {
-      function isOwner(userId) {
-        return request.auth != null && request.auth.uid == userId;
-      }
-
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to attendance records.
+     * @description Enforces that only authenticated users can access attendance records.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) Allow anyone to read.
-     * @deny (create, update, delete) Deny all writes until ownership is implemented.
-     * @principle Read is public, but write operations are disabled until an ownership field is defined.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to attendance records.
      */
     match /attendance_records/{attendanceRecordId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to grace period settings.
+     * @description Enforces that only authenticated users can access grace settings.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) Allow anyone to read.
-     * @deny (create, update, delete) Deny all writes until ownership is implemented.
-     * @principle Read is public, but write operations are disabled until an ownership field is defined.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to grace settings.
      */
     match /grace_settings/{graceSettingId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to audit logs.
+     * @description Enforces that only authenticated users can access audit logs.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) Allow anyone to read.
-     * @deny (create, update, delete) Deny all writes until ownership is implemented.
-     * @principle Read is public, but write operations are disabled until an ownership field is defined.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to audit logs.
      */
     match /audit_logs/{auditLogId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to email logs.
+     * @description Enforces that only authenticated users can access email logs.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) Allow anyone to read.
-     * @deny (create, update, delete) Deny all writes until ownership is implemented.
-     * @principle Read is public, but write operations are disabled until an ownership field is defined.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to email logs.
      */
     match /email_logs/{emailLogId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to auto-audit settings.
+     * @description Enforces that only authenticated users can access auto-audit settings.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get, list) Allow anyone to read.
-     * @deny (create, update, delete) Deny all writes until ownership is implemented.
-     * @principle Read is public, but write operations are disabled until an ownership field is defined.
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to auto-audit settings.
      */
     match /auto_audit_settings/auto_audit_config {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-     /**
-      * @description Controls access to biometric devices.
-      * @path /devices/{deviceId}
-      * @allow (get, list) Allow anyone to read.
-      * @deny (create, update, delete) Deny all writes until ownership is implemented.
-      */
-    match /devices/{deviceId} {
-         allow get, list: if true;
-         allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the roles collection.
-     * @path /roles
-     * @allow list: if false;
-     * @deny get, create, update, delete: if false;
-     * @principle Only authenticated users can read roles.
+     * @description Enforces that only authenticated users can access device information.
+     * @path /devices/{deviceId}
+     * @allow (get, list, create, update, delete) - Authenticated user.
+     * @deny (get, list, create, update, delete) - Unauthenticated user.
+     * @principle Requires authentication for all access to device information.
      */
-     match /roles {
-        allow get, create, update, delete: if false;
-        allow list: if isSignedIn();
+    match /devices/{deviceId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
-  }
 
     function isSignedIn() {
-        return request.auth != null;
+      return request.auth != null;
     }
+  }
 }
