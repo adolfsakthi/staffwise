@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '../ui/button';
-import { MoreVertical, PlusCircle } from 'lucide-react';
+import { MoreVertical, PlusCircle, Eye, EyeOff } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +53,7 @@ export default function UserList({ initialUsers, roles }: UserListProps) {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('Guest');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleRoleChange = (userId: string, newRole: string) => {
     setUsers(
@@ -93,9 +94,28 @@ export default function UserList({ initialUsers, roles }: UserListProps) {
                         <Label htmlFor="new-user-email">Email</Label>
                         <Input id="new-user-email" placeholder="user@example.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} />
                     </div>
-                     <div className="space-y-2">
+                     <div className="relative space-y-2">
                         <Label htmlFor="new-user-password">Password</Label>
-                        <Input id="new-user-password" type="password" placeholder="********" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} />
+                        <Input 
+                            id="new-user-password" 
+                            type={showPassword ? 'text' : 'password'} 
+                            placeholder="********" 
+                            value={newUserPassword} 
+                            onChange={e => setNewUserPassword(e.target.value)} 
+                            className="pr-10"
+                        />
+                         <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-6 h-7 px-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            <span className="sr-only">
+                                {showPassword ? 'Hide password' : 'Show password'}
+                            </span>
+                        </Button>
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="new-user-role">Role</Label>
