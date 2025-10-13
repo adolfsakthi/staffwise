@@ -11,9 +11,8 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -26,11 +25,10 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [propertyCode, setPropertyCode] = useState('');
+  const [email, setEmail] = useState('demo@staffwise.com');
+  const [password, setPassword] = useState('Demo@123');
+  const [propertyCode, setPropertyCode] = useState('D001');
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState('');
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
@@ -56,7 +54,7 @@ export default function LoginPage() {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
 
-            if (userDoc.exists() && userDoc.data().property_code === propertyCode) {
+            if (userDoc.exists() && userDoc.data().property_code?.toLowerCase() === propertyCode.toLowerCase()) {
                 toast({
                     title: 'Login Successful',
                     description: "Welcome back!",
@@ -67,7 +65,7 @@ export default function LoginPage() {
                 toast({
                     variant: 'destructive',
                     title: 'Login Failed',
-                    description: 'Invalid Property Code for this user.',
+                    description: 'Invalid Property Code for this user or profile not found.',
                 });
             }
         }
@@ -87,56 +85,6 @@ export default function LoginPage() {
         setIsLoading(false);
     }
   };
-
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !propertyCode || !name) {
-        toast({
-            variant: 'destructive',
-            title: 'Sign Up Failed',
-            description: 'Please fill in all fields.',
-        });
-        return;
-    }
-    setIsLoading(true);
-
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        if (user && firestore) {
-            // Create user profile in Firestore
-            await setDoc(doc(firestore, 'users', user.uid), {
-                uid: user.uid,
-                email: user.email,
-                name: name,
-                property_code: propertyCode,
-                role: 'Admin', // First user is an Admin
-                createdAt: new Date().toISOString(),
-            });
-            
-            toast({
-                title: 'Account Created',
-                description: "You have been successfully signed up.",
-            });
-            router.push('/');
-        }
-    } catch (error: any) {
-        let description = 'An unknown error occurred.';
-        if (error.code === 'auth/email-already-in-use') {
-            description = 'This email is already associated with an account.';
-        } else {
-            description = error.message;
-        }
-        toast({
-            variant: 'destructive',
-            title: 'Sign Up Failed',
-            description,
-        });
-    } finally {
-        setIsLoading(false);
-    }
-  }
 
   return (
     <div className="w-full min-h-screen grid lg:grid-cols-2">
@@ -161,127 +109,62 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[380px] gap-8 z-10">
             <div className="grid gap-4">
                 <HezeeLogo className="h-10 text-primary" />
+                 <h1 className="text-3xl font-semibold tracking-tight">Admin Portal</h1>
                 <p className="text-muted-foreground">
-                    For the purpose of industry regulation, your details are required.
+                    Enter your credentials to access the dashboard.
                 </p>
             </div>
 
-            <Tabs defaultValue="signin">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="signin">Sign In</TabsTrigger>
-                    <TabsTrigger value="signup">Create Account</TabsTrigger>
-                </TabsList>
-                <TabsContent value="signin" className="pt-6">
-                    <form onSubmit={handleSignIn} className="grid gap-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="email-signin">Email</Label>
-                            <Input
-                                id="email-signin"
-                                type="email"
-                                placeholder="admin@staffwise.com"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="password-signin">Password</Label>
-                            <Input
-                                id="password-signin"
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="property-code-signin">Property Code</Label>
-                            <Input
-                                id="property-code-signin"
-                                type="text"
-                                placeholder="Enter your property code"
-                                required
-                                value={propertyCode}
-                                onChange={(e) => setPropertyCode(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
+            <form onSubmit={handleSignIn} className="grid gap-6">
+                <div className="grid gap-2">
+                    <Label htmlFor="email-signin">Email</Label>
+                    <Input
+                        id="email-signin"
+                        type="email"
+                        placeholder="admin@staffwise.com"
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="password-signin">Password</Label>
+                    <Input
+                        id="password-signin"
+                        type="password"
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="property-code-signin">Property Code</Label>
+                    <Input
+                        id="property-code-signin"
+                        type="text"
+                        placeholder="Enter your property code"
+                        required
+                        value={propertyCode}
+                        onChange={(e) => setPropertyCode(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
 
-                        <div className="flex items-center justify-end">
-                            <Link href="#" className="text-sm font-medium text-primary hover:underline">
-                                Forgot Password?
-                            </Link>
-                        </div>
+                <div className="flex items-center justify-end">
+                    <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                        Forgot Password?
+                    </Link>
+                </div>
 
-                        <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            SIGN IN
-                        </Button>
-                    </form>
-                </TabsContent>
-                <TabsContent value="signup" className="pt-6">
-                    <form onSubmit={handleSignUp} className="grid gap-6">
-                         <div className="grid gap-2">
-                            <Label htmlFor="name-signup">Full Name</Label>
-                            <Input
-                                id="name-signup"
-                                type="text"
-                                placeholder="John Doe"
-                                required
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="email-signup">Email</Label>
-                            <Input
-                                id="email-signup"
-                                type="email"
-                                placeholder="admin@staffwise.com"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="password-signup">Password</Label>
-                            <Input
-                                id="password-signup"
-                                type="password"
-                                required
-                                minLength={6}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="property-code-signup">Property Code</Label>
-                            <Input
-                                id="property-code-signup"
-                                type="text"
-                                placeholder="Enter your property code"
-                                required
-                                value={propertyCode}
-                                onChange={(e) => setPropertyCode(e.target.value)}
-                                disabled={isLoading}
-                            />
-                        </div>
-                        <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            CREATE ACCOUNT
-                        </Button>
-                    </form>
-                </TabsContent>
-            </Tabs>
+                <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    SIGN IN
+                </Button>
+            </form>
         </div>
       </div>
     </div>
   );
 }
-
-    
