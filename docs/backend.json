@@ -1,0 +1,214 @@
+
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Represents a tenant company using the service.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The legal name of the client company."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the client was created."
+        }
+      },
+      "required": ["name", "createdAt"]
+    },
+    "Branch": {
+      "title": "Branch",
+      "description": "Represents a physical branch location of a client.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the branch (e.g., 'Head Office', 'Warehouse A')."
+        },
+        "location": {
+          "type": "string",
+          "description": "The physical address of the branch."
+        }
+      },
+      "required": ["name"]
+    },
+    "Device": {
+      "title": "Device",
+      "description": "Represents a biometric device (e.g., ESSL).",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "A user-friendly name for the device."
+        },
+        "model": {
+          "type": "string",
+          "description": "The model of the device (e.g., 'ESSL x990')."
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "The local IP address of the device."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["online", "offline"],
+          "description": "The current connection status of the device."
+        }
+      },
+      "required": ["name", "model", "status"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents an employee or user of the system.",
+      "type": "object",
+      "properties": {
+        "clientId": {
+          "type": "string",
+          "description": "The ID of the client company this user belongs to."
+        },
+        "branchId": {
+          "type": "string",
+          "description": "The ID of the branch this user is assigned to."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address, used for login."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role within the system (e.g., 'Admin', 'HR Manager', 'Employee')."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department the user belongs to."
+        },
+        "shiftStart": {
+          "type": "string",
+          "format": "time",
+          "description": "The official start time of the user's shift."
+        },
+        "shiftEnd": {
+          "type": "string",
+          "format": "time",
+          "description": "The official end time of the user's shift."
+        }
+      },
+      "required": ["clientId", "name", "email", "role"]
+    },
+    "PunchLog": {
+      "title": "Punch Log",
+      "description": "An individual punch record from a biometric device.",
+      "type": "object",
+      "properties": {
+        "employeeId": {
+          "type": "string",
+          "description": "The ID of the employee who punched."
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "The ID of the device that recorded the punch."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The exact time the punch occurred."
+        }
+      },
+      "required": ["employeeId", "deviceId", "timestamp"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "A daily summary of an employee's attendance.",
+      "type": "object",
+      "properties": {
+        "employeeId": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "entryTime": {
+          "type": "string",
+          "format": "time"
+        },
+        "exitTime": {
+          "type": "string",
+          "format": "time"
+        },
+        "isLate": {
+          "type": "boolean"
+        },
+        "lateByMinutes": {
+          "type": "number"
+        },
+        "overtimeMinutes": {
+          "type": "number"
+        },
+        "isAudited": {
+          "type": "boolean"
+        },
+        "auditNotes": {
+          "type": "string"
+        }
+      },
+      "required": ["employeeId", "date", "entryTime", "exitTime", "isLate"]
+    }
+  },
+  "auth": {
+    "providers": ["email-password"]
+  },
+  "firestore": {
+    "/clients/{clientId}": {
+      "schema": {
+        "$ref": "#/entities/Client"
+      },
+      "description": "Top-level collection for all tenant clients."
+    },
+    "/clients/{clientId}/branches/{branchId}": {
+      "schema": {
+        "$ref": "#/entities/Branch"
+      },
+      "description": "Sub-collection for a client's branches."
+    },
+    "/clients/{clientId}/branches/{branchId}/devices/{deviceId}": {
+      "schema": {
+        "$ref": "#/entities/Device"
+      },
+      "description": "Sub-collection for devices within a specific branch."
+    },
+    "/clients/{clientId}/employees/{employeeId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Sub-collection for all employees of a client."
+    },
+     "/clients/{clientId}/punchLogs/{punchLogId}": {
+      "schema": {
+        "$ref": "#/entities/PunchLog"
+      },
+      "description": "Collection of all raw punch logs for a client."
+    },
+    "/clients/{clientId}/attendanceRecords/{attendanceRecordId}": {
+      "schema": {
+        "$ref": "#/entities/AttendanceRecord"
+      },
+      "description": "Collection of processed daily attendance records for a client."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "A global collection of all users for authentication purposes."
+    }
+  }
+}
+
+    
