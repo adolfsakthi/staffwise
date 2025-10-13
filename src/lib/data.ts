@@ -1,10 +1,8 @@
 
 
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
-import { MOCK_DEPARTMENTS } from './mock-data';
+import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from './mock-data';
 import type { AttendanceRecord } from './types';
-import { initializeFirebase } from '@/firebase';
-import { collection, addDoc, doc, updateDoc, getDocs, query, where } from 'firebase/firestore';
 
 
 export type EmailLog = {
@@ -51,42 +49,32 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
 
 
 export async function addAttendanceRecords(records: any[]) {
-    const { firestore } = initializeFirebase();
-    const attendanceCollection = collection(firestore, 'attendance_records');
-
-    const promises = records.map(record => {
+    // This now simulates adding to the mock data.
+    console.log('Simulating adding records:', records);
+    records.forEach(record => {
         const processed = processRecord(record);
-        return addDoc(attendanceCollection, {
+        const newRecord: AttendanceRecord = {
             ...processed,
-            is_audited: false, // New records are not audited
+            id: `rec_${Date.now()}_${Math.random()}`,
+            is_audited: false,
             audit_notes: '',
-        });
+        };
+        MOCK_ATTENDANCE_RECORDS.push(newRecord);
     });
-
-    await Promise.all(promises);
+    // In a real mock scenario, you might want to emit an event to update UI
+    await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     if (recordIds.length === 0) return [];
     
-    const { firestore } = initializeFirebase();
-    const recordsCollection = collection(firestore, 'attendance_records');
-    const q = query(recordsCollection, where('__name__', 'in', recordIds));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    const records = MOCK_ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
+    return records;
 }
 
-// NOTE: The functions below now fetch from Firestore but are not used by the real-time components.
-// They can be used for server-side logic or components that do not need real-time updates.
-
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
-    const { firestore } = initializeFirebase();
-    const recordsCollection = collection(firestore, 'attendance_records');
-    const q = query(recordsCollection, where('property_code', '==', propertyCode));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    return MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
 }
 
 export async function getAttendanceStats(propertyCode: string) {
@@ -105,8 +93,6 @@ export async function getAttendanceStats(propertyCode: string) {
 }
 
 export async function getDepartments(propertyCode?: string): Promise<string[]> {
-    // In a real app with many records, this is inefficient.
-    // It's better to have a separate 'departments' collection.
     if (!propertyCode) return MOCK_DEPARTMENTS;
     const records = await getAttendanceRecords(propertyCode);
     const uniqueDepartments = [...new Set(records.map(r => r.department))];
@@ -130,24 +116,21 @@ export async function getWeeklyAttendance(propertyCode: string) {
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    const { firestore } = initializeFirebase();
-    const promises = recordIds.map(id => {
-        const docRef = doc(firestore, 'attendance_records', id);
-        return updateDoc(docRef, {
-            is_audited: true,
-            audit_notes: auditNotes,
-        });
+    // This now simulates auditing in the mock data.
+    console.log(`Simulating auditing for records: ${recordIds.join(', ')}`);
+    recordIds.forEach(id => {
+        const record = MOCK_ATTENDANCE_RECORDS.find(r => r.id === id);
+        if (record) {
+            record.is_audited = true;
+            record.audit_notes = auditNotes;
+        }
     });
-    await Promise.all(promises);
+    await new Promise(resolve => setTimeout(resolve, 500));
 }
 
 
 export async function logEmail(email: EmailLog): Promise<void> {
-    const { firestore } = initializeFirebase();
-    const emailsCollection = collection(firestore, 'sent_emails');
-    await addDoc(emailsCollection, {
-        ...email,
-        sentAt: new Date(),
-    });
-    console.log(`Email to ${email.to} logged to Firestore.`);
+    console.log(`Simulating logging email to ${email.to}.`);
+    // In a real app, this would write to Firestore.
+    await new Promise(resolve => setTimeout(resolve, 100));
 }

@@ -2,9 +2,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
 import type { AttendanceRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,35 +23,34 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 interface AttendanceTableProps {
     propertyCode: string;
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const firestore = useFirestore();
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [departments, setDepartments] = useState<string[]>([]);
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
-  const attendanceQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-      collection(firestore, 'attendance_records'),
-      where('property_code', '==', propertyCode)
-    );
-  }, [firestore, propertyCode]);
-  
-  const { data: allRecords, isLoading, error } = useCollection<AttendanceRecord>(attendanceQuery);
-  
   useEffect(() => {
-    if (allRecords) {
-      const uniqueDepartments = [...new Set(allRecords.map(r => r.department))];
-      setDepartments(uniqueDepartments);
-    }
-  }, [allRecords]);
+    setIsLoading(true);
+    // Simulate fetching data
+    setTimeout(() => {
+        const propertyRecords = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
+        setAllRecords(propertyRecords);
+
+        const uniqueDepartments = [...new Set(propertyRecords.map(r => r.department))];
+        setDepartments(uniqueDepartments);
+        
+        setIsLoading(false);
+    }, 500);
+  }, [propertyCode]);
 
   const filteredRecords = useMemo(() => {
     if (!allRecords) return [];
@@ -96,7 +92,6 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
         </div>
       </CardHeader>
       <CardContent>
-        {error && <p className='text-destructive'>Error: {error.message}</p>}
         <div className="overflow-x-auto rounded-md border">
           <Table>
             <TableHeader>

@@ -23,35 +23,33 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where } from 'firebase/firestore';
 import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 interface AuditDashboardProps {
     propertyCode: string;
 }
 
 export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
-  const firestore = useFirestore();
+  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
+  const [isFetching, setIsFetching] = useState(true);
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-
-  const unauditedQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(
-        collection(firestore, 'attendance_records'),
-        where('property_code', '==', propertyCode),
-        where('is_audited', '==', false)
-    );
-  }, [firestore, propertyCode]);
   
-  const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedQuery);
+  useEffect(() => {
+    setIsFetching(true);
+    // Simulate fetching data
+    setTimeout(() => {
+        const records = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode && !r.is_audited);
+        setUnauditedRecords(records);
+        setIsFetching(false);
+    }, 500);
+  }, [propertyCode]);
 
   // Clear selections if the data reloads
   useEffect(() => {
@@ -85,6 +83,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
     }
 
     setIsLoading(true);
+    // This will call the server action which now uses mock data
     const result = await runAudit(selectedRecords, auditNotes);
     setIsLoading(false);
 
@@ -94,7 +93,8 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           description: result.message,
           action: <FileCheck2 className="text-green-500" />,
       });
-      // The real-time hook will automatically remove the audited records.
+      // Manually filter out audited records from local state
+      setUnauditedRecords(prev => prev.filter(r => !selectedRecords.includes(r.id)));
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -116,16 +116,15 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {error && <p className='text-destructive mb-4'>Error: {error.message}</p>}
           <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={unauditedRecords ? unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length : false}
+                      checked={unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length}
                       onCheckedChange={handleSelectAll}
-                      disabled={!unauditedRecords || unauditedRecords.length === 0}
+                      disabled={unauditedRecords.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
