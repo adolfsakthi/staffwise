@@ -15,10 +15,53 @@ export type EmailLog = {
 }
 
 
-export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' | 'is_audited'>[]) {
-    console.log("Simulating adding records. In a real app, this would write to Firestore.", records);
-    // In a mock environment, we don't need to do anything here as data isn't persistent.
-    // We'll just log it to simulate the action.
+// A helper function to calculate late minutes and overtime
+function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited'> {
+    const shiftStart = parse(record.shift_start, 'HH:mm', new Date(record.date));
+    const entryTime = parse(record.entry_time, 'HH:mm', new Date(record.date));
+    const lateByMinutes = differenceInMinutes(entryTime, shiftStart) > 15 
+        ? differenceInMinutes(entryTime, shiftStart) 
+        : 0;
+
+    const shiftEnd = parse(record.shift_end, 'HH:mm', new Date(record.date));
+    const exitTime = parse(record.exit_time, 'HH:mm', new Date(record.date));
+    const overtimeMinutes = differenceInMinutes(exitTime, shiftEnd) > 0 
+        ? differenceInMinutes(exitTime, shiftEnd)
+        : 0;
+    
+    return {
+        property_code: record.property_code,
+        employee_name: record.employee_name,
+        email: record.email,
+        department: record.department,
+        shift_start: record.shift_start,
+        shift_end: record.shift_end,
+        entry_time: record.entry_time,
+        exit_time: record.exit_time,
+        date: format(new Date(record.date), 'yyyy-MM-dd'),
+        is_late: lateByMinutes > 0,
+        late_by_minutes: lateByMinutes,
+        overtime_minutes: overtimeMinutes,
+    };
+}
+
+
+export async function addAttendanceRecords(records: any[]) {
+    console.log("Simulating adding records. In a real app, this would write to Firestore.");
+    
+    const newRecords: AttendanceRecord[] = records.map((record, index) => {
+        const processed = processRecord(record);
+        return {
+            ...processed,
+            id: `new_rec_${Date.now()}_${index}`,
+            is_audited: false,
+        };
+    });
+
+    // In a mock environment, we can't persist this, but we can log what would be added.
+    console.log("Records to be added:", newRecords);
+    
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 }
 

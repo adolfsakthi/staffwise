@@ -24,6 +24,7 @@ async function parseCsv(file: File): Promise<any[]> {
 export async function uploadAttendance(formData: FormData) {
   const file = formData.get('file') as File;
   const uploadType = formData.get('uploadType') as string;
+  const propertyCode = 'PROP-001'; // Fallback property code since auth is removed
 
   if (!file || file.size === 0) {
     return { success: false, message: 'No file provided.' };
@@ -35,17 +36,24 @@ export async function uploadAttendance(formData: FormData) {
         return { success: false, message: 'CSV file is empty or invalid.' };
     }
 
+    // Add property_code if it's missing from the records
+    const processedRecords = recordsToCreate.map(rec => ({
+      ...rec,
+      property_code: rec.property_code || propertyCode
+    }));
+
+
     switch(uploadType) {
         case 'attendance':
-             await addAttendanceRecords(recordsToCreate);
+             await addAttendanceRecords(processedRecords);
             break;
         // In a real app, you would have functions like `addEmployees` or `addPunchLogs`
         case 'employees':
-            console.log('Simulating processing of employee details...', recordsToCreate);
+            console.log('Simulating processing of employee details...', processedRecords);
             await new Promise(resolve => setTimeout(resolve, 1000));
             break;
         case 'punch_logs':
-             console.log('Simulating processing of punch logs...', recordsToCreate);
+             console.log('Simulating processing of punch logs...', processedRecords);
             await new Promise(resolve => setTimeout(resolve, 1000));
             break;
         default:

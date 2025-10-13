@@ -28,19 +28,19 @@ const uploadTypes = {
   attendance: {
     label: 'Bulk Attendance',
     icon: FileClock,
-    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30',
+    template: 'property_code,employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date\n,John Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22',
     templateName: 'attendance_template.csv',
   },
   employees: {
     label: 'Employee Details',
     icon: Users,
-    template: 'employee_id,employee_name,email,department,role\nEMP001,Jane Doe,jane@company.com,Sales,Employee',
+    template: 'employee_id,employee_name,email,department,role,property_code\nEMP001,Jane Doe,jane@company.com,Sales,Employee,PROP-001',
     templateName: 'employee_template.csv',
   },
   punch_logs: {
     label: 'Punch Logs',
     icon: FileClock,
-    template: 'device_id,employee_id,punch_time\nDEV001,EMP001,2024-05-21 09:05:12',
+    template: 'device_id,employee_id,punch_time,property_code\nDEV001,EMP001,2024-05-21 09:05:12,PROP-001',
     templateName: 'punch_log_template.csv',
   },
 };
@@ -81,6 +81,7 @@ export default function DataUpload() {
             description: result.message,
             action: <FileCheck2 className="text-green-500" />,
         });
+        // You might want to trigger a refresh of the dashboard data here
     } else {
         toast({
             variant: 'destructive',
