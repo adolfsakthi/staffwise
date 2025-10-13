@@ -1,7 +1,8 @@
+
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import { initialAttendanceRecords } from './attendance-data';
 import { collection, writeBatch, getDocs, query, where, getFirestore, runTransaction, doc } from 'firebase/firestore';
-import { getSdks } from '@/firebase';
+import { getSdks, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 export type AttendanceRecord = {
   id: string;
@@ -35,17 +36,30 @@ const MOCK_DEPARTMENTS = ['Engineering', 'Sales', 'HR', 'IT', 'Operations', 'Sup
 async function seedInitialData() {
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
-    const snapshot = await getDocs(attendanceCollection);
+    
+    try {
+        const snapshot = await getDocs(attendanceCollection);
 
-    if (snapshot.empty) {
-        console.log('No attendance records found, seeding initial data...');
-        const batch = writeBatch(firestore);
-        initialAttendanceRecords.forEach((record) => {
-            const docRef = doc(collection(firestore, 'attendance_records'));
-            batch.set(docRef, record);
-        });
-        await batch.commit();
-        console.log('Initial data seeded.');
+        if (snapshot.empty) {
+            console.log('No attendance records found, seeding initial data...');
+            const batch = writeBatch(firestore);
+            initialAttendanceRecords.forEach((record) => {
+                const docRef = doc(attendanceCollection);
+                batch.set(docRef, record);
+            });
+            await batch.commit();
+            console.log('Initial data seeded.');
+        }
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            throw permissionError;
+        }
+        throw error;
     }
 }
 
@@ -77,7 +91,17 @@ export async function addAttendanceRecords(records: Omit<AttendanceRecord, 'id' 
         batch.set(docRef, newRecord);
     });
 
-    await batch.commit();
+    await batch.commit().catch(error => {
+         if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'write',
+                requestResourceData: records
+            });
+            errorEmitter.emit('permission-error', permissionError);
+         }
+         throw error;
+    });
 }
 
 
@@ -85,37 +109,73 @@ export async function getAttendanceRecords(): Promise<AttendanceRecord[]> {
     await seedInitialData();
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
-    const snapshot = await getDocs(attendanceCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    
+    try {
+        const snapshot = await getDocs(attendanceCollection);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw error;
+    }
 }
 
 export async function getUnauditedRecords(): Promise<AttendanceRecord[]> {
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
     const q = query(attendanceCollection, where('is_audited', '==', false));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    
+    try {
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    } catch (error: any) {
+         if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw error;
+    }
 }
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
     if (recordIds.length === 0) return [];
     const { firestore } = getSdks();
     const attendanceCollection = collection(firestore, 'attendance_records');
+    const records: AttendanceRecord[] = [];
+
     // Firestore 'in' query is limited to 30 elements.
-    // We'll fetch documents in chunks of 30.
     const chunks = [];
     for (let i = 0; i < recordIds.length; i += 30) {
         chunks.push(recordIds.slice(i, i + 30));
     }
-
-    const records: AttendanceRecord[] = [];
-    for (const chunk of chunks) {
-        const q = query(attendanceCollection, where('__name__', 'in', chunk));
-        const snapshot = await getDocs(q);
-        snapshot.forEach(doc => {
-            records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
-        });
+    
+    try {
+        for (const chunk of chunks) {
+            const q = query(attendanceCollection, where('__name__', 'in', chunk));
+            const snapshot = await getDocs(q);
+            snapshot.forEach(doc => {
+                records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
+            });
+        }
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: attendanceCollection.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw error;
     }
+    
     return records;
 }
 
@@ -157,23 +217,34 @@ export async function getWeeklyAttendance() {
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
     const { firestore } = getSdks();
-    const attendanceCollection = collection(firestore, 'attendance_records');
     
-    await runTransaction(firestore, async (transaction) => {
-        const recordsToUpdate = await Promise.all(recordIds.map(id => {
-            const docRef = doc(attendanceCollection, id);
-            return transaction.get(docRef);
-        }));
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const recordsToUpdate = await Promise.all(recordIds.map(id => {
+                const docRef = doc(firestore, 'attendance_records', id);
+                return transaction.get(docRef);
+            }));
 
-        recordsToUpdate.forEach(doc => {
-            if (doc.exists()) {
-                transaction.update(doc.ref, { 
-                    is_audited: true,
-                    audit_notes: auditNotes
-                });
-            }
+            recordsToUpdate.forEach(doc => {
+                if (doc.exists()) {
+                    transaction.update(doc.ref, { 
+                        is_audited: true,
+                        audit_notes: auditNotes
+                    });
+                }
+            });
         });
-    });
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: 'attendance_records', // Path is dynamic, providing collection
+                operation: 'update',
+                requestResourceData: { audit_notes: auditNotes, is_audited: true }
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        }
+        throw error;
+    }
 }
 
 
