@@ -1,46 +1,62 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
-import { getAttendanceStats, getWeeklyAttendance } from '@/lib/data';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { AttendanceRecord } from '@/lib/types';
+import { add, format, startOfWeek } from 'date-fns';
 
 export default function DashboardPage() {
   const { propertyCode } = useUser();
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
 
-  const [stats, setStats] = useState({
-    totalRecords: 0,
-    lateCount: 0,
-    totalOvertimeMinutes: 0,
-    departmentCount: 0,
-  });
-  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyCode) return null;
+    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
+  }, [firestore, propertyCode]);
+  
+  const { data: records, isLoading } = useCollection<AttendanceRecord>(attendanceQuery);
 
-  useEffect(() => {
-    async function fetchData() {
-        if (!propertyCode) return;
-        setIsLoading(true);
-        try {
-            const [statsData, weekly] = await Promise.all([
-                getAttendanceStats(propertyCode),
-                getWeeklyAttendance(propertyCode)
-            ]);
-            setStats(statsData);
-            setWeeklyData(weekly);
-        } catch (error) {
-            console.error("Failed to fetch dashboard data:", error);
-            setStats({ totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 });
-            setWeeklyData([]);
-        } finally {
-            setIsLoading(false);
-        }
+  const stats = useMemo(() => {
+    if (!records) {
+      return { totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
     }
-    fetchData();
+    const totalRecords = records.length;
+    const lateCount = records.filter(r => r.is_late).length;
+    const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
+    const departmentCount = [...new Set(records.map(r => r.department))].length;
+    
+    return {
+        totalRecords,
+        lateCount,
+        totalOvertimeMinutes,
+        departmentCount,
+    };
+  }, [records]);
 
-  }, [propertyCode]);
+  const weeklyData = useMemo(() => {
+    if (!records) return [];
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const data = Array.from({ length: 7 }).map((_, i) => {
+        const date = add(weekStart, { days: i });
+        const recordsForDay = records.filter(r => r.date === format(date, 'yyyy-MM-dd'));
+        return {
+            name: format(date, 'EEE'),
+            onTime: recordsForDay.filter(r => !r.is_late).length,
+            late: recordsForDay.filter(r => r.is_late).length,
+        };
+    });
+    return data;
+  }, [records]);
+  
+  const handleDataUpload = () => {
+    // The useCollection hook will automatically refresh the data.
+    // This function can be used for any additional side effects after upload.
+    console.log("Data upload finished, dashboard refreshed.");
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -50,7 +66,7 @@ export default function DashboardPage() {
           <OverviewChart data={weeklyData} isLoading={isLoading} />
         </div>
         <div>
-          <DataUpload propertyCode={propertyCode} />
+          <DataUpload propertyCode={propertyCode} onUploadComplete={handleDataUpload} />
         </div>
       </div>
     </div>

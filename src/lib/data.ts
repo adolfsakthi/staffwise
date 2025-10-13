@@ -67,12 +67,14 @@ export async function addAttendanceRecords(records: any[]) {
         batch.set(docRef, newRecordData);
     });
 
-    batch.commit().catch(error => {
+    return batch.commit().catch(error => {
         const contextualError = new FirestorePermissionError({
             operation: 'write',
             path: attendanceCollection.path,
         });
         errorEmitter.emit('permission-error', contextualError);
+        // Re-throw the original error to be caught by the caller if needed
+        throw error;
     });
 }
 
@@ -138,8 +140,10 @@ export async function logEmail(email: EmailLog): Promise<void> {
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
     const { firestore } = initializeFirebase();
     const attendanceCollection = collection(firestore, "attendance_records");
+    
+    const q = query(attendanceCollection, where("property_code", "==", propertyCode));
+    
     try {
-        const q = query(attendanceCollection, where("property_code", "==", propertyCode));
         const querySnapshot = await getDocs(q);
         const records: AttendanceRecord[] = [];
         querySnapshot.forEach((doc) => {
@@ -156,39 +160,9 @@ export async function getAttendanceRecords(propertyCode: string): Promise<Attend
     }
 }
 
-export async function getAttendanceStats(propertyCode: string) {
-    const records = await getAttendanceRecords(propertyCode);
-    const totalRecords = records.length;
-    const lateCount = records.filter(r => r.is_late).length;
-    const totalOvertimeMinutes = records.reduce((sum, r) => sum + r.overtime_minutes, 0);
-    const departmentCount = [...new Set(records.map(r => r.department))].length;
-    
-    return {
-        totalRecords,
-        lateCount,
-        totalOvertimeMinutes,
-        departmentCount,
-    };
-}
 
 export async function getDepartments(propertyCode: string): Promise<string[]> {
     const records = await getAttendanceRecords(propertyCode);
     const uniqueDepartments = [...new Set(records.map(r => r.department))];
     return uniqueDepartments.length > 0 ? uniqueDepartments : [];
-}
-
-
-export async function getWeeklyAttendance(propertyCode: string) {
-    const records = await getAttendanceRecords(propertyCode);
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    const data = Array.from({ length: 7 }).map((_, i) => {
-        const date = add(weekStart, { days: i });
-        const recordsForDay = records.filter(r => r.date === format(date, 'yyyy-MM-dd'));
-        return {
-            name: format(date, 'EEE'),
-            onTime: recordsForDay.filter(r => !r.is_late).length,
-            late: recordsForDay.filter(r => r.is_late).length,
-        };
-    });
-    return data;
 }

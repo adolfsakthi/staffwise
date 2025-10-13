@@ -47,9 +47,10 @@ const uploadTypes = {
 
 type DataUploadProps = {
   propertyCode: string | null;
+  onUploadComplete?: () => void;
 }
 
-export default function DataUpload({ propertyCode }: DataUploadProps) {
+export default function DataUpload({ propertyCode, onUploadComplete }: DataUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadType, setUploadType] = useState<UploadType>('attendance');
@@ -94,6 +95,9 @@ export default function DataUpload({ propertyCode }: DataUploadProps) {
             description: result.message,
             action: <FileCheck2 className="text-green-500" />,
         });
+        if (onUploadComplete) {
+            onUploadComplete();
+        }
     } else {
         toast({
             variant: 'destructive',
