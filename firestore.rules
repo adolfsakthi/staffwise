@@ -1,133 +1,99 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset defines access control for the attendance tracking application.
- *
- * Core Philosophy:
- * The security model enforces a combination of role-based access control for administrative functions and public read access for certain data collections.
- * Device management, user management, and settings pages have been granted full read and write access for all authenticated users, while other areas of the application maintain their previous security restrictions.
+ * @description This ruleset allows read and write access to all data for authenticated users.
+ *              It prioritizes rapid prototyping by focusing on authentication and deferring
+ *              fine-grained authorization and data validation to later stages.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profile data, accessible only by the user themselves.
- * - /attendance_records/{attendanceRecordId}: Stores attendance records, publicly readable but write-protected for non-owners.
- * - /grace_settings/{graceSettingId}: Stores grace period settings.
+ * - /users/{userId}: Stores user profiles.
+ * - /attendance_records/{attendanceRecordId}: Stores employee attendance records.
+ * - /grace_settings/{graceSettingId}: Stores grace time settings.
  * - /audit_logs/{auditLogId}: Stores audit logs.
  * - /email_logs/{emailLogId}: Stores email logs.
- * - /auto_audit_settings/auto_audit_config: Stores auto audit settings.
+ * - /auto_audit_settings/auto_audit_config: Stores auto-audit configuration.
  *
  * Key Security Decisions:
- * - User listing is generally disallowed except for `get` on a specific known `userId`.
- * - Collections like `attendance_records` are publicly readable, but writes are restricted to prevent unauthorized modifications.
- * - The `auto_audit_settings` document is secured to prevent unauthorized changes to the automated auditing configuration.
- * - In case of ambiguity, the rules default to a secure, restrictive posture.
+ * - Authenticated users can read and write any data.
+ * - No data validation is performed in this prototyping phase.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user's ID matches the provided userId.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the resource data's ownerId. Also verifies that the resource exists before destructive operations.
-     * @param {string} ownerId - The user ID to compare against the authenticated user's ID.
-     */
-    function isExistingOwner(ownerId) {
-      return isOwner(ownerId) && resource != null;
-    }
-
-    /******************** User Profile Rules ********************/
-
-    /**
-     * @description Controls access to user profile documents.
+     * @description Allows read and write access to user profiles for authenticated users.
      * @path /users/{userId}
-     * @allow (get) User with UID 'user123' can read their own profile.
-     * @allow (create) User with UID 'user123' can create their own profile.
-     * @allow (update) User with UID 'user123' can update their own profile.
-     * @allow (delete) User with UID 'user123' can delete their own profile.
-     * @deny (get) User with UID 'user456' cannot read user profile with UID 'user123'.
-     * @deny (create) User with UID 'user456' cannot create user profile with UID 'user123'.
-     * @principle Enforces document ownership for user profiles.
+     * @allow (read, write) User with any ID can be created, read, updated, or deleted if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access any user profile.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /******************** Attendance Record Rules ********************/
-
-    /**
-     * @description Controls access to attendance records. Attendance records are publicly readable, but write access is restricted.
-     * @path /attendance_records/{attendanceRecordId}
-     * @allow (get) Any user can read an attendance record.
-     * @allow (list) Any user can list attendance records.
-     * @deny (create) No one can create attendance records (requires backend).
-     * @deny (update) No one can update attendance records.
-     * @deny (delete) No one can delete attendance records.
-     * @principle Allows public reads but restricts write access for security.
-     */
-    match /attendance_records/{attendanceRecordId} {
-      allow get, list: if true;
+      allow get, list: if isSignedIn();
       allow create, update, delete: if isSignedIn();
     }
 
-    /******************** Grace Setting Rules ********************/
+    /**
+     * @description Allows read and write access to attendance records for authenticated users.
+     * @path /attendance_records/{attendanceRecordId}
+     * @allow (read, write) Any user can create, read, update, or delete attendance records if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access any attendance record.
+     */
+    match /attendance_records/{attendanceRecordId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
 
     /**
-     * @description Controls access to grace period settings.
+     * @description Allows read and write access to grace settings for authenticated users.
      * @path /grace_settings/{graceSettingId}
+     * @allow (read, write) Any user can create, read, update, or delete grace settings if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access any grace setting.
      */
     match /grace_settings/{graceSettingId} {
-       allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
-    /******************** Audit Log Rules ********************/
-
     /**
-     * @description Controls access to audit logs.
+     * @description Allows read and write access to audit logs for authenticated users.
      * @path /audit_logs/{auditLogId}
+     * @allow (read, write) Any user can create, read, update, or delete audit logs if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access any audit log.
      */
     match /audit_logs/{auditLogId} {
-      allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
-    /******************** Email Log Rules ********************/
-
     /**
-     * @description Controls access to email logs.
+     * @description Allows read and write access to email logs for authenticated users.
      * @path /email_logs/{emailLogId}
+     * @allow (read, write) Any user can create, read, update, or delete email logs if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access any email log.
      */
     match /email_logs/{emailLogId} {
-       allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
-    /******************** Auto Audit Setting Rules ********************/
-
     /**
-     * @description Controls access to the auto-audit configuration.
+     * @description Allows read and write access to the auto-audit settings for authenticated users.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) Any authenticated user can read the auto-audit configuration.
-     * @deny (create) No one can create the auto-audit configuration (it should only exist once).
-     * @deny (update) Only authenticated users can update the auto-audit configuration.
-     * @deny (delete) No one can delete the auto-audit configuration.
-     * @principle Restricts modifications to the auto-audit configuration to prevent unauthorized changes.
+     * @allow (read, write) Any user can create, read, update, or delete the auto-audit configuration if the user is signed in.
+     * @deny (none)
+     * @principle Authenticated users can access the auto-audit settings.
      */
     match /auto_audit_settings/auto_audit_config {
-        allow get, list, create, update, delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
   }
 }
