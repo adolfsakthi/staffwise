@@ -23,7 +23,9 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { getAttendanceRecords, getDepartments } from '@/lib/data';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where } from 'firebase/firestore';
 
 
 interface AttendanceTableProps {
@@ -31,37 +33,27 @@ interface AttendanceTableProps {
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
   
-  const [departments, setDepartments] = useState<string[]>([]);
+  const attendanceQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'attendance_records'), where('property_code', '==', propertyCode));
+  }, [firestore, propertyCode]);
+  
+  const { data: allRecords, isLoading, error } = useCollection<AttendanceRecord>(attendanceQuery);
+
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
-  useEffect(() => {
-    async function fetchData() {
-        setIsLoading(true);
-        try {
-            const [records, depts] = await Promise.all([
-                getAttendanceRecords(propertyCode),
-                getDepartments(propertyCode)
-            ]);
-            setAllRecords(records);
-            setDepartments(depts);
-        } catch (error) {
-            console.error("Failed to fetch attendance data:", error);
-            setAllRecords([]);
-            setDepartments([]);
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    fetchData();
-  }, [propertyCode]);
+  const departments = useMemo(() => {
+    if (!allRecords) return [];
+    return [...new Set(allRecords.map(rec => rec.department))];
+  }, [allRecords]);
 
   const filteredRecords = useMemo(() => {
+    if (!allRecords) return [];
     return allRecords.filter(record => {
         const dateMatch = !dateFilter || record.date === dateFilter;
         const departmentMatch = departmentFilter === 'all' || record.department === departmentFilter;
@@ -84,6 +76,7 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
           <Select
             value={departmentFilter}
             onValueChange={setDepartmentFilter}
+            disabled={departments.length === 0}
           >
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filter by department" />
@@ -119,6 +112,12 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
                   <TableCell colSpan={7} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
+                </TableRow>
+              ) : error ? (
+                <TableRow>
+                   <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                      Error: Could not fetch data. Check Firestore security rules.
+                   </TableCell>
                 </TableRow>
               ) : filteredRecords && filteredRecords.length > 0 ? (
                 filteredRecords.map((record) => (

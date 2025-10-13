@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
-import type { AttendanceRecord } from '@/lib/types';
 import { getAttendanceStats, getWeeklyAttendance } from '@/lib/data';
 
 const propertyCode = 'D001'; // Hardcoded property code
@@ -40,7 +39,15 @@ export default function DashboardPage() {
             setIsLoading(false);
         }
     }
+    // Fetch data initially
     fetchData();
+
+    // And set up an interval to refetch data periodically
+    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+
   }, []);
 
   return (

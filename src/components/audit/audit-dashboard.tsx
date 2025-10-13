@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -27,31 +27,34 @@ import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
+import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, where } from 'firebase/firestore';
+
 
 interface AuditDashboardProps {
     propertyCode: string;
 }
 
 export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
-  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
-  const [isFetching, setIsFetching] = useState(true);
+  const firestore = useFirestore();
+  
+  const auditQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+        collection(firestore, 'attendance_records'), 
+        where('property_code', '==', propertyCode),
+        where('is_audited', '==', false)
+    );
+  }, [firestore, propertyCode]);
+  
+  const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(auditQuery);
+
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
-  
-  useEffect(() => {
-    setIsFetching(true);
-    // Simulate fetching data
-    setTimeout(() => {
-        const records = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode && !r.is_audited);
-        setUnauditedRecords(records);
-        setIsFetching(false);
-    }, 500);
-  }, [propertyCode]);
 
-  // Clear selections if the data reloads
   useEffect(() => {
     setSelectedRecords([]);
   }, [unauditedRecords]);
@@ -82,10 +85,9 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
       return;
     }
 
-    setIsLoading(true);
-    // This will call the server action which now uses mock data
+    setIsAuditing(true);
     const result = await runAudit(selectedRecords, auditNotes);
-    setIsLoading(false);
+    setIsAuditing(false);
 
     if (result.success) {
       toast({
@@ -93,8 +95,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           description: result.message,
           action: <FileCheck2 className="text-green-500" />,
       });
-      // Manually filter out audited records from local state
-      setUnauditedRecords(prev => prev.filter(r => !selectedRecords.includes(r.id)));
+      // Data will refresh automatically due to useCollection hook
       setSelectedRecords([]);
       setAuditNotes('');
     } else {
@@ -122,9 +123,9 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
                 <TableRow>
                   <TableHead className="w-[50px]">
                     <Checkbox
-                      checked={unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length}
+                      checked={!!unauditedRecords && unauditedRecords.length > 0 && selectedRecords.length === unauditedRecords.length}
                       onCheckedChange={handleSelectAll}
-                      disabled={unauditedRecords.length === 0}
+                      disabled={!unauditedRecords || unauditedRecords.length === 0}
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
@@ -141,6 +142,12 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
+                ) : error ? (
+                    <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-destructive">
+                            Error: Could not fetch data. Check Firestore security rules.
+                        </TableCell>
+                    </TableRow>
                 ) : unauditedRecords && unauditedRecords.length > 0 ? (
                   unauditedRecords.map((record) => (
                     <TableRow
@@ -216,10 +223,10 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
           </Alert>
           <Button
             onClick={handleRunAudit}
-            disabled={isLoading || selectedRecords.length === 0}
+            disabled={isAuditing || selectedRecords.length === 0}
             className="w-full"
           >
-            {isLoading ? (
+            {isAuditing ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <ShieldCheck className="mr-2" />

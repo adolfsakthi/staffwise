@@ -4,7 +4,6 @@ import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from './mock-data';
 import type { AttendanceRecord } from './types';
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
 
@@ -74,45 +73,69 @@ export async function addAttendanceRecords(records: any[]) {
     } catch (error) {
         // This will catch permission errors or other issues during the write.
         console.error("Firestore write error in addAttendanceRecords:", error);
-        // Re-throw the error to be caught by the server action
-        throw new Error("Failed to write to Firestore. Check server logs and security rules.");
+        // Re-throw a more user-friendly error to be caught by the server action
+        throw new Error("Failed to write to Firestore. This is likely a security rule issue. Please ensure your Firestore rules allow unauthenticated writes to the 'attendance_records' collection.");
     }
 }
 
 
 export async function getRecordsByIds(recordIds: string[]): Promise<AttendanceRecord[]> {
-    // Using mock data for reads to prevent permission errors
-    console.log(`Simulating getRecordsByIds for ${recordIds.length} records.`);
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async
-    return MOCK_ATTENDANCE_RECORDS.filter(r => recordIds.includes(r.id));
+    // This is now using live data, but will likely return empty if rules don't allow reads.
+    const { firestore } = initializeFirebase();
+    if (recordIds.length === 0) return [];
+    
+    try {
+        const attendanceCollection = collection(firestore, 'attendance_records');
+        // Firestore 'in' queries are limited to 30 elements.
+        // For a real app, you might need to batch this.
+        const q = query(attendanceCollection, where('__name__', 'in', recordIds.slice(0, 30)));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRecord));
+    } catch(error) {
+        console.error("Firestore read error in getRecordsByIds:", error);
+        return [];
+    }
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    // Simulating audit for mock data
-    console.log(`Simulating audit for ${recordIds.length} records with notes: "${auditNotes}"`);
-    recordIds.forEach(id => {
-        const record = MOCK_ATTENDANCE_RECORDS.find(r => r.id === id);
-        if (record) {
-            record.is_audited = true;
-            record.audit_notes = auditNotes;
-        }
-    });
-    await new Promise(resolve => setTimeout(resolve, 200)); // Simulate async
+    const { firestore } = initializeFirebase();
+    try {
+        const batch = writeBatch(firestore);
+        recordIds.forEach(id => {
+            const docRef = doc(firestore, 'attendance_records', id);
+            batch.update(docRef, { is_audited: true, audit_notes: auditNotes });
+        });
+        await batch.commit();
+    } catch (error) {
+         console.error("Firestore write error in auditRecords:", error);
+         throw new Error("Failed to audit records. Check security rules for update permissions.");
+    }
 }
 
 
 export async function logEmail(email: EmailLog): Promise<void> {
     console.log(`Simulating logging email to ${email.to}.`);
-    // In a real app, this would write to Firestore.
+    // In a real app, this would write to Firestore. We keep this as-is to avoid another write failure.
     await new Promise(resolve => setTimeout(resolve, 100));
 }
 
-// These functions below will use mock data to avoid read errors.
+// These functions below are now wrappers around live queries.
+// If Firestore rules block reads, they will return empty arrays instead of crashing.
 
 export async function getAttendanceRecords(propertyCode: string): Promise<AttendanceRecord[]> {
-    console.log(`Fetching MOCK attendance records for property: ${propertyCode}`);
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate async
-    return MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
+    const { firestore } = initializeFirebase();
+    try {
+        const q = query(collection(firestore, "attendance_records"), where("property_code", "==", propertyCode));
+        const querySnapshot = await getDocs(q);
+        const records: AttendanceRecord[] = [];
+        querySnapshot.forEach((doc) => {
+            records.push({ id: doc.id, ...doc.data() } as AttendanceRecord);
+        });
+        return records;
+    } catch (error) {
+        console.error("Firestore read error in getAttendanceRecords:", error);
+        return []; // Return empty array on permission error
+    }
 }
 
 export async function getAttendanceStats(propertyCode: string) {
@@ -134,7 +157,7 @@ export async function getDepartments(propertyCode?: string): Promise<string[]> {
     if (!propertyCode) return MOCK_DEPARTMENTS;
     const records = await getAttendanceRecords(propertyCode);
     const uniqueDepartments = [...new Set(records.map(r => r.department))];
-    return uniqueDepartments.length > 0 ? uniqueDepartments : MOCK_DEPARTMENTS;
+    return uniqueDepartments.length > 0 ? uniqueDepartments : [];
 }
 
 

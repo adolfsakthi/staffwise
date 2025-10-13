@@ -57,7 +57,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -82,12 +82,11 @@ export function useCollection<T = any>(
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // Since auth is removed, permission errors are expected.
-        // We will log them and set state appropriately, but not crash the app.
-        console.error("Firestore Permission Error in useCollection:", error.message);
-        setError(error);
-        setData([]); // Set data to an empty array to stop loading states
+      (err: FirestoreError) => {
+        // Instead of crashing, log the error and set state to indicate failure.
+        console.error("Firestore Permission Error in useCollection:", err.message);
+        setError(err);
+        setData([]); // Set data to an empty array to stop loading states in UI.
         setIsLoading(false);
       }
     );
@@ -96,7 +95,7 @@ export function useCollection<T = any>(
   }, [memoizedTargetRefOrQuery]);
   
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
-    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+    throw new Error('A firestore query was not properly memoized using useMemoFirebase. This will cause infinite loops.');
   }
   return { data, isLoading, error };
 }

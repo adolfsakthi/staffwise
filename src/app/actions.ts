@@ -1,3 +1,4 @@
+
 'use server';
 
 import { auditRecords, getRecordsByIds, logEmail, addAttendanceRecords } from "@/lib/data";
@@ -24,7 +25,7 @@ async function parseCsv(file: File): Promise<any[]> {
 export async function uploadAttendance(formData: FormData) {
   const file = formData.get('file') as File;
   const uploadType = formData.get('uploadType') as string;
-  const propertyCode = 'D001'; // Fallback property code since auth is removed
+  const propertyCode = 'D001'; // Default property code
 
   if (!file || file.size === 0) {
     return { success: false, message: 'No file provided.' };
@@ -50,20 +51,18 @@ export async function uploadAttendance(formData: FormData) {
         // In a real app, you would have functions like `addEmployees` or `addPunchLogs`
         case 'employees':
             console.log('Simulating processing of employee details...', processedRecords);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            break;
+            return { success: false, message: 'Employee upload is not implemented yet.' };
         case 'punch_logs':
              console.log('Simulating processing of punch logs...', processedRecords);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            break;
+             return { success: false, message: 'Punch log upload is not implemented yet.' };
         default:
             return { success: false, message: 'Invalid upload type.' };
     }
 
     return { success: true, message: `Successfully processed ${recordsToCreate.length} records from ${file.name}.` };
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error processing file for ${uploadType}:`, error);
-    return { success: false, message: `Failed to process ${file.name}. Please check the file format.` };
+    return { success: false, message: error.message || `Failed to process ${file.name}. Please check the file format and security rules.` };
   }
 }
 
@@ -76,6 +75,10 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
         const adminEmail = 'adolfsakthi@gmail.com'; // In a real app, this would be a configured admin email
         const subject = `Audit Completed: ${new Date().toLocaleString()}`;
         
+        if (auditedRecords.length === 0) {
+            return { success: false, message: 'Could not find records to generate email summary.' };
+        }
+
         const auditedList = auditedRecords.map(r => 
             `<li>${r.employee_name} (${r.department}) - Date: ${r.date} - Status: ${r.is_late ? `Late by ${r.late_by_minutes} mins` : 'On Time'}</li>`
         ).join('');
@@ -114,8 +117,8 @@ export async function runAudit(recordIds: string[], auditNotes: string) {
 
 
         return { success: true, message: `${recordIds.length} records audited successfully. A summary email has been logged.` };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error running audit:", error);
-        return { success: false, message: "Failed to audit records. Please try again." };
+        return { success: false, message: error.message || "Failed to audit records. Please try again." };
     }
 }

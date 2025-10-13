@@ -43,7 +43,7 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start with loading true
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -68,11 +68,10 @@ export function useDoc<T = any>(
         setError(null); 
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // Since auth is removed, permission errors are expected.
-        // We will log them and set state appropriately, but not crash the app.
-        console.error("Firestore Permission Error in useDoc:", error.message);
-        setError(error);
+      (err: FirestoreError) => {
+        // Instead of crashing, log the error and set state to indicate failure.
+        console.error("Firestore Permission Error in useDoc:", err.message);
+        setError(err);
         setData(null);
         setIsLoading(false);
       }
