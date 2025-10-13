@@ -51,10 +51,10 @@ export const Icons = {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-       <path d="M42 16L46 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-       <path d="M46 16L42 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-       <path d="M50 20L54 16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-       <path d="M54 20L50 16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+       <path d="M42 16L46 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+       <path d="M46 16L42 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+       <path d="M50 20L54 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+       <path d="M54 20L50 16" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
     </svg>
   ),
 };
