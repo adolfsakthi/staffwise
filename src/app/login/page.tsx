@@ -12,7 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,7 +25,7 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('demo@staffwise.com');
+  const [email, setEmail] = useState('demo@wisestaff.com');
   const [password, setPassword] = useState('Demo@123');
   const [propertyCode, setPropertyCode] = useState('D001');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,19 +54,38 @@ export default function LoginPage() {
             const userDocRef = doc(firestore, 'users', user.uid);
             const userDoc = await getDoc(userDocRef);
 
-            if (userDoc.exists() && userDoc.data().property_code?.toLowerCase() === propertyCode.toLowerCase()) {
+            if (userDoc.exists()) {
+                // User document exists, check property code
+                if (userDoc.data().property_code?.toLowerCase() === propertyCode.toLowerCase()) {
+                    toast({
+                        title: 'Login Successful',
+                        description: "Welcome back!",
+                    });
+                    router.push('/');
+                } else {
+                    await signOut(auth);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Login Failed',
+                        description: 'Invalid Property Code for this user.',
+                    });
+                }
+            } else {
+                // User document does not exist, create it for the first login
+                await setDoc(userDocRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.email?.split('@')[0] || 'Admin User',
+                    role: 'Admin', // Default role for first-time user
+                    property_code: propertyCode,
+                    createdAt: new Date(),
+                });
+                
                 toast({
-                    title: 'Login Successful',
-                    description: "Welcome back!",
+                    title: 'Account Initialized & Login Successful',
+                    description: "Your profile has been created.",
                 });
                 router.push('/');
-            } else {
-                await signOut(auth);
-                toast({
-                    variant: 'destructive',
-                    title: 'Login Failed',
-                    description: 'Invalid Property Code for this user or profile not found.',
-                });
             }
         }
     } catch (error: any) {
