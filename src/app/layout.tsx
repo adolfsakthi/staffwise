@@ -7,7 +7,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import ConditionalLayout from '@/components/layout/conditional-layout';
 import { Inter as FontSans } from 'next/font/google';
-import { FirebaseClientProvider, useUser } from '@/firebase';
+import { FirebaseClientProvider, useUserProfile } from '@/firebase';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -18,20 +18,23 @@ const fontSans = FontSans({
 });
 
 function AuthWrapper({ children }: { children: React.ReactNode }) {
-  const { user, isUserLoading } = useUser();
+  const { userProfile, isLoading, user } = useUserProfile();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isUserLoading && !user && pathname !== '/login') {
+    // If auth is done loading and there's no user, redirect to login (if not already there)
+    if (!isLoading && !user && pathname !== '/login') {
       router.push('/login');
     }
-    if (!isUserLoading && user && pathname === '/login') {
+    // If auth is done loading and there IS a user, redirect from login to home
+    if (!isLoading && user && pathname === '/login') {
         router.push('/');
     }
-  }, [user, isUserLoading, router, pathname]);
+  }, [user, isLoading, router, pathname]);
 
-  if (isUserLoading && pathname !== '/login') {
+  // While checking auth state or loading the profile, show a loader
+  if (isLoading && pathname !== '/login') {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -39,12 +42,17 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // Render children immediately if on login page or if user is loaded and not on login page
-  if (pathname === '/login' || user) {
+  // On the login page, render immediately
+  if (pathname === '/login') {
      return <>{children}</>;
   }
 
-  // Fallback while redirecting
+  // If we have a user and their profile, render the app
+  if (user && userProfile) {
+    return <>{children}</>;
+  }
+
+  // Fallback while redirecting or if profile is missing after login
   return (
       <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
