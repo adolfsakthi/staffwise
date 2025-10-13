@@ -18,7 +18,6 @@ import {
   CalendarCheck,
   ShieldCheck,
   Settings,
-  User,
   LogOut,
   Users,
   FileText,
@@ -101,7 +100,9 @@ export default function MainSidebar() {
   };
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (auth) {
+        await signOut(auth);
+    }
     router.push('/login');
   };
 
@@ -142,61 +143,59 @@ export default function MainSidebar() {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 p-2 group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center"
-            >
-              <Avatar className="h-8 w-8">
-                {user?.photoURL ? (
-                  <AvatarImage
-                    src={user.photoURL}
-                    alt={user.displayName || 'User Avatar'}
-                    width={32}
-                    height={32}
-                  />
-                ) : userAvatar && (
-                  <AvatarImage
-                    src={userAvatar.imageUrl}
-                    alt={userAvatar.description}
-                    width={32}
-                    height={32}
-                    data-ai-hint={userAvatar.imageHint}
-                  />
-                )}
-                <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
-              </Avatar>
-              <div className="text-left group-data-[collapsible=icon]:hidden">
-                <p className="text-sm font-medium">{user?.displayName || 'User'}</p>
-                <p className="text-xs text-muted-foreground">
-                  {user?.email || 'No email'}
-                </p>
-              </div>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log out</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarFooter>
+      {user && (
+        <SidebarFooter>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 p-2 group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center"
+              >
+                <Avatar className="h-8 w-8">
+                  {user?.photoURL ? (
+                    <AvatarImage
+                      src={user.photoURL}
+                      alt={user.displayName || 'User Avatar'}
+                      width={32}
+                      height={32}
+                    />
+                  ) : userAvatar && (
+                    <AvatarImage
+                      src={userAvatar.imageUrl}
+                      alt={userAvatar.description}
+                      width={32}
+                      height={32}
+                      data-ai-hint={userAvatar.imageHint}
+                    />
+                  )}
+                  <AvatarFallback>{getAvatarFallback(user?.displayName)}</AvatarFallback>
+                </Avatar>
+                <div className="text-left group-data-[collapsible=icon]:hidden">
+                  <p className="text-sm font-medium">{user?.displayName || 'Admin User'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user?.email || 'demo@staffwise.com'}
+                  </p>
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.displayName || 'Admin User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

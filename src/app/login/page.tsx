@@ -1,18 +1,9 @@
 
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuth, useFirestore } from '@/firebase';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -25,84 +16,7 @@ const HezeeLogo = (props: React.SVGProps<SVGSVGElement>) => (
 )
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('demo@staffwise.com');
-  const [password, setPassword] = useState('Demo@123');
-  const [propertyCode, setPropertyCode] = useState('D001');
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !propertyCode) {
-        toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: 'Please fill in all fields.',
-        });
-        return;
-    }
-    setIsLoading(true);
-
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        if (user && firestore) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists()) {
-                if (userDoc.data().property_code?.toLowerCase() === propertyCode.toLowerCase()) {
-                    toast({
-                        title: 'Login Successful',
-                        description: "Welcome back!",
-                    });
-                    router.push('/');
-                } else {
-                    await signOut(auth);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Login Failed',
-                        description: 'Invalid Property Code for this user.',
-                    });
-                }
-            } else {
-                await setDoc(userDocRef, {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.email?.split('@')[0] || 'Admin User',
-                    role: 'Admin',
-                    property_code: propertyCode,
-                    createdAt: new Date(),
-                });
-                
-                toast({
-                    title: 'Account Initialized & Login Successful',
-                    description: "Your profile has been created.",
-                });
-                router.push('/');
-            }
-        }
-    } catch (error: any) {
-        let description = 'An unknown error occurred.';
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            description = 'Invalid email or password.';
-        } else {
-            description = error.message;
-        }
-        toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description,
-        });
-    } finally {
-        setIsLoading(false);
-    }
-  };
-
+  
   return (
     <div className="w-full min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:block relative">
@@ -128,60 +42,17 @@ export default function LoginPage() {
                 <HezeeLogo className="h-10 text-primary" />
                  <h1 className="text-3xl font-semibold tracking-tight">Admin Portal</h1>
                 <p className="text-muted-foreground">
-                    Enter your credentials to access the dashboard.
+                    Authentication is temporarily disabled. You can proceed to the dashboard.
                 </p>
             </div>
-
-            <form onSubmit={handleSignIn} className="grid gap-6">
-                <div className="grid gap-2">
-                    <Label htmlFor="email-signin">Email</Label>
-                    <Input
-                        id="email-signin"
-                        type="email"
-                        placeholder="admin@staffwise.com"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        disabled={isLoading}
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="password-signin">Password</Label>
-                    <Input
-                        id="password-signin"
-                        type="password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        disabled={isLoading}
-                    />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="property-code-signin">Property Code</Label>
-                    <Input
-                        id="property-code-signin"
-                        type="text"
-                        placeholder="Enter your property code"
-                        required
-                        value={propertyCode}
-                        onChange={(e) => setPropertyCode(e.target.value)}
-                        disabled={isLoading}
-                    />
-                </div>
-
-                <div className="flex items-center justify-end">
-                    <Link href="#" className="text-sm font-medium text-primary hover:underline">
-                        Forgot Password?
-                    </Link>
-                </div>
-
-                <Button type="submit" className="w-full h-12 text-base" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    SIGN IN
+            <Link href="/" legacyBehavior>
+                <Button className="w-full h-12 text-base">
+                    Go to Dashboard
                 </Button>
-            </form>
+            </Link>
         </div>
       </div>
     </div>
   );
 }
+
