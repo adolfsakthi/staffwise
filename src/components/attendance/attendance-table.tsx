@@ -65,7 +65,7 @@ export default function AttendanceTable() {
       setIsLoadingDepartments(false);
     };
     fetchDepartments();
-  }, []);
+  }, [records]);
 
   if(error) {
     console.error(error);
