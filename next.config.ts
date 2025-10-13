@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https',
+        protocol: 'https' as const,
         hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
@@ -34,14 +34,6 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Don't bundle the Firebase Admin SDK on the client
-      config.externals.push('firebase-admin');
-    }
-    return config;
-  },
-  serverComponentsExternalPackages: ['recharts'],
 };
 
 export default nextConfig;
