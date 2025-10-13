@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
@@ -8,10 +8,16 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where } from 'firebase/firestore';
 import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { seedDatabase } from '@/lib/seed';
+import { useToast } from '@/hooks/use-toast';
+import { Database } from 'lucide-react';
 
 export default function DashboardPage() {
   const { propertyCode } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const attendanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyCode) return null;
@@ -59,9 +65,34 @@ export default function DashboardPage() {
     // This function can be used for any additional side effects after upload.
     console.log("Data upload finished, dashboard refreshed.");
   }
+  
+  const handleSeed = async () => {
+    setIsSeeding(true);
+    const result = await seedDatabase();
+    if (result.success) {
+      toast({
+        title: 'Database Initialized',
+        description: result.message,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Seeding Failed',
+        description: result.message,
+      });
+    }
+    setIsSeeding(false);
+  }
 
   return (
     <div className="flex flex-col gap-8">
+      <div className="flex justify-between items-start">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <Button onClick={handleSeed} disabled={isSeeding} variant="outline">
+          <Database className="mr-2 h-4 w-4" />
+          Initialize Database Collections
+        </Button>
+      </div>
       <StatsCards stats={stats} isLoading={isLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
