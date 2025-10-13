@@ -1,69 +1,60 @@
 /**
- * @fileoverview Firestore Security Rules for Staffwise application.
- *
- * Core Philosophy:
- * This ruleset employs a hybrid security model, balancing open read access for some collections with strict ownership and role-based access control for others.
- *
- * Data Structure:
- * - /users/{userId}: User profile data, accessible only to the user and potentially admins.
- * - /attendance_records/{attendanceRecordId}: Attendance records, with potentially open read access and restricted write access.
- * - /grace_settings/{graceSettingId}: Grace period settings, with potentially open read access and restricted write access.
- * - /audit_logs/{auditLogId}: Audit logs, with potentially open read access and restricted write access.
- * - /email_logs/{emailLogId}: Email logs, with restricted access.
- * - /auto_audit_settings/auto_audit_config: Auto-audit configuration, with restricted access.
- *
- * Key Security Decisions:
- * - Listing of users is disallowed to prevent unauthorized data scraping.
- * - The ruleset prioritizes ease of use by avoiding complex data validation in favor of simpler authorization checks.
- * - Collections like `attendance_records`, `grace_settings`, and `audit_logs` are configured to allow public reads for prototyping purposes.  This should be reviewed and restricted in a production environment.
+ * @description This ruleset enforces a strict user-ownership model for user profiles and general read-only access to other data.
+ * @dataStructure
+ *   - /users/{userId}: Stores user profile data, accessible only to the user themselves.
+ *   - /attendance_records/{attendanceRecordId}: Stores attendance records. Intended to be generally readable. Writes not currently secured.
+ *   - /grace_settings/{graceSettingId}: Stores grace period settings. Intended to be generally readable. Writes not currently secured.
+ *   - /audit_logs/{auditLogId}: Stores logs of audit executions. Intended to be generally readable. Writes not currently secured.
+ *   - /email_logs/{emailLogId}: Stores logs of emails sent. Intended to be generally readable. Writes not currently secured.
+ *   - /auto_audit_settings/auto_audit_config: Stores configuration for auto-auditing. Intended to be generally readable. Writes not currently secured.
+ * @keySecurityDecisions
+ *   - User profiles are private and only accessible to the owning user.
+ *   - Other collections (attendance_records, grace_settings, audit_logs, email_logs, auto_audit_settings) are configured for public read access in this prototype.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the provided userId.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of an existing document.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description User profile data. Only the user can read/write their own profile.
+     * @description Grants access to user profiles only to the owning user.
      * @path /users/{userId}
-     * @allow (create) User NI2s3RRNvCQAU8sgA0vVpKDQNG22 can create their own profile document.
-     * @deny (create) User ABC cannot create a profile for user DEF.
-     * @principle Enforces user-ownership for profile data.
+     * @allow (create) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can create their own profile if request.auth.uid == userId.
+     * @allow (get) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can read their own profile.
+     * @allow (update) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can update their own profile.
+     * @allow (delete) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' can delete their own profile.
+     * @deny (create) - User 'NI2s3RRNvCQAU8sgA0vVpKDQNG22' cannot create a profile for another user ('user_xyz').
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false; // Explicitly prevent listing users
+      // Utility function to check if the user is signed in
+      function isSignedIn() {
+        return request.auth != null;
+      }
 
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
+      // Utility function to check if the requested user ID matches the authenticated user ID
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+
+      //Utility function to check if the requested user ID matches the authenticated user ID and the document exists
+      function isExistingOwner(userId) {
+        return isOwner(userId) && exists(/databases/$(database)/documents/users/$(userId));
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && request.resource.data.uid == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.uid == request.auth.uid;
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Attendance records. Currently allows public read access.  Write access is denied.
+     * @description Grants public read access to attendance records. Write access is not secured in this prototype.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get) Any user can read any attendance record.
-     * @deny (create) No user can create an attendance record through direct client write.
-     * @principle Allows public read access for prototyping.  Restrict writes.
+     * @allow (get) - Any user can read an attendance record.
+     * @allow (list) - Any user can list attendance records.
+     * @principle Allows public read access for prototyping.
      */
     match /attendance_records/{attendanceRecordId} {
       allow get, list: if true;
@@ -71,11 +62,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Grace period settings. Currently allows public read access.  Write access is denied.
+     * @description Grants public read access to grace settings. Write access is not secured in this prototype.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get) Any user can read any grace setting.
-     * @deny (create) No user can create a grace setting through direct client write.
-     * @principle Allows public read access for prototyping.  Restrict writes.
+     * @allow (get) - Any user can read a grace setting.
+     * @allow (list) - Any user can list grace settings.
+     * @principle Allows public read access for prototyping.
      */
     match /grace_settings/{graceSettingId} {
       allow get, list: if true;
@@ -83,11 +74,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Audit logs. Currently allows public read access. Write access is denied.
+     * @description Grants public read access to audit logs. Write access is not secured in this prototype.
      * @path /audit_logs/{auditLogId}
-     * @allow (get) Any user can read any audit log.
-     * @deny (create) No user can create an audit log through direct client write.
-     * @principle Allows public read access for prototyping. Restrict writes.
+     * @allow (get) - Any user can read an audit log.
+     * @allow (list) - Any user can list audit logs.
+     * @principle Allows public read access for prototyping.
      */
     match /audit_logs/{auditLogId} {
       allow get, list: if true;
@@ -95,30 +86,39 @@ service cloud.firestore {
     }
 
     /**
-     * @description Email logs. Restricts all access.
+     * @description Grants public read access to email logs. Write access is not secured in this prototype.
      * @path /email_logs/{emailLogId}
-     * @deny (get) No user can read email logs.
-     * @deny (create) No user can create an email log.
-     * @principle Restricts access to email logs.
+     * @allow (get) - Any user can read an email log.
+     * @allow (list) - Any user can list email logs.
+     * @principle Allows public read access for prototyping.
      */
     match /email_logs/{emailLogId} {
-      allow get, list, create, update, delete: if false;
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Auto-audit configuration. Restricts all access.
+     * @description Grants public read access to auto audit settings. Write access is not secured in this prototype.
      * @path /auto_audit_settings/auto_audit_config
-     * @deny (get) No user can read the auto-audit configuration.
-     * @deny (create) No user can create the auto-audit configuration.
-     * @principle Restricts access to auto-audit settings.
+     * @allow (get) - Any user can read the auto audit config.
+     * @allow (list) - Any user can list the auto audit config (though there is only one).
+     * @principle Allows public read access for prototyping.
      */
-    match /auto_audit_settings/auto_audit_config {
-      allow get, list, create, update, delete: if false;
+    match /auto_audit_settings/{autoAuditSettingId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
-    
-    match /roles {
-        allow get, list: if false;
-      allow create, update, delete: if false;
+
+    /**
+     * @description Grants public read access to devices. Write access is not secured in this prototype.
+     * @path /devices
+     * @allow (get) - Any user can read the devices.
+     * @allow (list) - Any user can list the devices.
+     * @principle Allows public read access for prototyping.
+     */
+    match /devices/{deviceId} {
+        allow get, list: if true;
+        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
