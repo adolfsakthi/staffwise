@@ -1,124 +1,41 @@
 /**
- * @fileoverview Firestore Security Rules for StaffWise application.
- *
- * Core Philosophy:
- * This ruleset enforces an admin-only access model. All data is assumed to be administrative in nature.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict authentication-required model for accessing attendance records.
  *
  * Data Structure:
- * The data is organized into top-level collections: attendance_records, grace_settings, audit_logs, email_logs, auto_audit_settings and departments.
+ * All attendance records are stored in the top-level `/attendance_records` collection.
  *
  * Key Security Decisions:
- * - No user-specific data or ownership model is implemented.
- * - Listing all data in all collections is allowed for administrators.
+ * - All access to attendance records requires authentication.
+ * - Listing attendance records is only permitted for authenticated users.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages access to attendance records, allowing only admins to read and write data.
-     * @path /attendance_records/{attendanceRecordId}
-     * @allow (create) If the user is an admin, they can create a new attendance record.
-     * @deny (create) If the user is not an admin, they cannot create a new attendance record.
-     * @allow (get) Any signed-in user can get an attendance record.
-     * @deny (get) If the user is not signed in, they cannot get an attendance record.
-     * @principle Enforces admin-only access for writes to attendance records.
+     * @description Controls access to individual attendance records.
+     * @path /attendance_records/{attendance_record_id}
+     * @allow (get) Authenticated users can read any attendance record.
+     * @allow (create) Authenticated users can create attendance records.
+     * @allow (update) Authenticated users can update attendance records.
+     * @allow (delete) Authenticated users can delete attendance records.
+     * @deny (get) Unauthenticated users cannot read attendance records.
+     * @deny (create) Unauthenticated users cannot create attendance records.
+     * @deny (update) Unauthenticated users cannot update attendance records.
+     * @deny (delete) Unauthenticated users cannot delete attendance records.
+     * @principle Requires authentication for all access to attendance records.
      */
-    match /attendance_records/{attendanceRecordId} {
+    match /attendance_records/{attendance_record_id} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
+  }
 
-    /**
-     * @description Manages access to grace settings, allowing only admins to read and write data.
-     * @path /grace_settings/{graceSettingId}
-     * @allow (create) If the user is an admin, they can create a new grace setting.
-     * @deny (create) If the user is not an admin, they cannot create a new grace setting.
-     * @allow (get) Any signed-in user can get a grace setting.
-     * @deny (get) If the user is not signed in, they cannot get a grace setting.
-     * @principle Enforces admin-only access for writes to grace settings.
-     */
-    match /grace_settings/{graceSettingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Manages access to audit logs, allowing only admins to read and write data.
-     * @path /audit_logs/{auditLogId}
-     * @allow (create) If the user is an admin, they can create a new audit log.
-     * @deny (create) If the user is not an admin, they cannot create a new audit log.
-     * @allow (get) Any signed-in user can get a audit log.
-     * @deny (get) If the user is not signed in, they cannot get a audit log.
-     * @principle Enforces admin-only access for writes to audit logs.
-     */
-    match /audit_logs/{auditLogId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Manages access to email logs, allowing only admins to read and write data.
-     * @path /email_logs/{emailLogId}
-     * @allow (create) If the user is an admin, they can create a new email log.
-     * @deny (create) If the user is not an admin, they cannot create a new email log.
-     * @allow (get) Any signed-in user can get a email log.
-     * @deny (get) If the user is not signed in, they cannot get a email log.
-     * @principle Enforces admin-only access for writes to email logs.
-     */
-    match /email_logs/{emailLogId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Manages access to auto audit settings, allowing only admins to read and write data.
-     * @path /auto_audit_settings/{autoAuditSettingId}
-     * @allow (create) If the user is an admin, they can create a new auto audit setting.
-     * @deny (create) If the user is not an admin, they cannot create a new auto audit setting.
-     * @allow (get) Any signed-in user can get a auto audit setting.
-     * @deny (get) If the user is not signed in, they cannot get a auto audit setting.
-     * @principle Enforces admin-only access for writes to auto audit settings.
-     */
-    match /auto_audit_settings/{autoAuditSettingId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Manages access to departments, allowing only admins to read and write data.
-     * @path /departments/{departmentId}
-     * @allow (create) If the user is an admin, they can create a new department.
-     * @deny (create) If the user is not an admin, they cannot create a new department.
-     * @allow (get) Any signed-in user can get a department.
-     * @deny (get) If the user is not signed in, they cannot get a department.
-     * @principle Enforces admin-only access for writes to departments.
-     */
-    match /departments/{departmentId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
