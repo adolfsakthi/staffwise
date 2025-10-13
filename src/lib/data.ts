@@ -1,7 +1,7 @@
 
 import { collection, getDocs, query, where, doc, writeBatch, getDoc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { add, format, startOfWeek } from 'date-fns';
-import { firestore } from '@/firebase';
+import { getFirestoreAdmin } from '@/firebase/admin';
 
 export type AttendanceRecord = {
   id: string;
@@ -24,10 +24,7 @@ export type AttendanceRecord = {
 export const ALL_PERMISSIONS = ['read', 'write', 'hidden'];
 
 export async function getAttendanceRecords(filters?: { audited?: boolean }): Promise<AttendanceRecord[]> {
-    if (!firestore) {
-        console.error("Firestore not initialized");
-        return [];
-    }
+    const firestore = getFirestoreAdmin();
     const recordsCol = collection(firestore, 'attendance_records');
     let q = query(recordsCol);
 
@@ -46,8 +43,7 @@ export async function getAttendanceRecords(filters?: { audited?: boolean }): Pro
 
 
 export async function getAttendanceStats() {
-    if (!firestore) return { totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
-    
+    const firestore = getFirestoreAdmin();
     try {
         const recordsCol = collection(firestore, 'attendance_records');
         const snapshot = await getDocs(recordsCol);
@@ -76,7 +72,7 @@ export async function getAttendanceStats() {
 }
 
 export async function getDepartments(): Promise<string[]> {
-    if (!firestore) return [];
+    const firestore = getFirestoreAdmin();
     try {
         const departmentsCol = collection(firestore, 'grace_settings');
         const q = query(departmentsCol, where('department', '!=', null));
@@ -92,7 +88,7 @@ export async function getDepartments(): Promise<string[]> {
 
 
 export async function getWeeklyAttendance() {
-    if (!firestore) return [];
+    const firestore = getFirestoreAdmin();
 
     const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     const recordsCol = collection(firestore, 'attendance_records');
@@ -117,7 +113,7 @@ export async function getWeeklyAttendance() {
 }
 
 export async function auditRecords(recordIds: string[], auditNotes: string): Promise<void> {
-    if (!firestore) throw new Error("Firestore not initialized");
+    const firestore = getFirestoreAdmin();
     const batch = writeBatch(firestore);
     recordIds.forEach(id => {
         const docRef = doc(firestore, 'attendance_records', id);
@@ -127,21 +123,21 @@ export async function auditRecords(recordIds: string[], auditNotes: string): Pro
 }
 
 export async function getUsers() {
-    if (!firestore) return [];
+    const firestore = getFirestoreAdmin();
     const usersCol = collection(firestore, 'users');
     const snapshot = await getDocs(usersCol);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 }
 
 export async function getRoles() {
-    if (!firestore) return [];
+    const firestore = getFirestoreAdmin();
     const rolesCol = collection(firestore, 'roles');
     const snapshot = await getDocs(rolesCol);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
 }
 
 export async function getDevices() {
-    if (!firestore) return [];
+    const firestore = getFirestoreAdmin();
     const devicesCol = collection(firestore, 'devices');
     const snapshot = await getDocs(devicesCol);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
