@@ -8,14 +8,14 @@ export default function LoginPage() {
       <div className="flex min-h-screen items-stretch bg-background text-foreground">
         <div className="relative hidden w-1/2 flex-col justify-end p-12 lg:flex">
           <Image
-            src="https://picsum.photos/seed/building-night/1200/1800"
-            alt="A beautifully lit historical building at night"
+            src="https://picsum.photos/seed/bus-interior/1200/1800"
+            alt="Interior of a public transport bus"
             fill
             className="object-cover"
-            data-ai-hint="building night"
+            data-ai-hint="bus interior"
             priority
           />
-          <div className="relative z-10 bg-black/50 p-6 rounded-xl backdrop-blur-sm">
+          <div className="relative z-10 rounded-xl bg-black/50 p-6 backdrop-blur-sm">
             <h1 className="text-4xl font-bold text-white">
               StaffWise
             </h1>
