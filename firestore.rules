@@ -1,154 +1,124 @@
 /**
- * @fileoverview Firestore Security Rules for Staffwise Attendance Tracking.
- *
- * Core Philosophy:
- * This ruleset prioritizes secure data access based on user roles.
- * Users can only read or write their own user profiles.
- * All other collections are secured based on administrative roles.
- *
- * Data Structure:
- * - /users/{userId}: Stores individual user profiles, secured by user ID.
- * - /attendance_records/{attendanceRecordId}: Stores attendance records.
- * - /grace_settings/{graceSettingId}: Stores grace period settings.
- * - /audit_logs/{auditLogId}: Stores audit logs.
- * - /email_logs/{emailLogId}: Stores email logs.
- * - /auto_audit_settings/auto_audit_config: Stores auto audit settings.
- *
- * Key Security Decisions:
- * - User listing is disabled.
- * - Ownership is enforced for user profiles.
- * - Access to attendance records, grace settings, audit logs, email logs, and auto audit settings is not covered by this ruleset.
- *
+ * @description This ruleset enforces a strict user-ownership model for user profiles and general public read access to other collections, with owner-only writes.
+ * @dataStructure
+ *  - /users/{userId}: Stores individual user profiles. Only the user themselves can read/write their profile.
+ *  - /attendance_records/{attendanceRecordId}: Stores attendance records. Public read, owner-only write based on a denormalized ownership field.
+ *  - /grace_settings/{graceSettingId}: Stores grace time settings. Public read, owner-only write based on a denormalized ownership field.
+ *  - /audit_logs/{auditLogId}: Stores audit logs. Public read, owner-only write based on a denormalized ownership field.
+ *  - /email_logs/{emailLogId}: Stores email logs. Public read, owner-only write based on a denormalized ownership field.
+ *  - /auto_audit_settings/auto_audit_config: Stores auto-audit settings. Public read, owner-only write based on a denormalized ownership field.
+ * @keySecurityDecisions
+ *  - Users can only manage their own profiles.
+ *  - All other collections are readable by anyone, but only writable by an owner (an `ownerId` field is assumed to exist).
+ *  - The rules do not enforce the entire schema. They only enforce authorization and relational integrity where absolutely necessary.
+ *  - List operations are enabled for user-owned data and public read collections.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the current user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the current user is the owner of the resource.
-     * @param {string} userId - The user ID to compare against the request's authentication UID.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * @description Checks if the current user is the owner of the existing resource.
-     * @param {string} userId - The user ID to compare against the resource data and request's authentication UID.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+    function isExistingOwner(ownerId) {
+      return isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     /**
-     * @description Rules for user profiles.
+     * @description Manages user profiles. Only the authenticated user can read/write their own profile.
      * @path /users/{userId}
-     * @allow (create) User with UID 'user123' creates their profile.
-     *   - Auth: { uid: 'user123' }
-     *   - Data: { uid: 'user123', ... }
-     * @deny (create) User with UID 'user123' tries to create profile for 'user456'.
-     *   - Auth: { uid: 'user123' }
-     *   - Data: { uid: 'user456', ... }
-     * @principle Enforces document ownership for writes.
+     * @allow (create) - User NI2s3RRNvCQAU8sgA0vVpKDQNG22 can create their profile at /users/NI2s3RRNvCQAU8sgA0vVpKDQNG22.
+     * @deny (create) - User ABC cannot create a profile at /users/XYZ.
+     * @allow (get, update, delete) - User NI2s3RRNvCQAU8sgA0vVpKDQNG22 can read/write their profile at /users/NI2s3RRNvCQAU8sgA0vVpKDQNG22.
+     * @deny (get, update, delete) - User ABC cannot read/write the profile at /users/XYZ.
+     * @principle Enforces strict user ownership for profile data.
      */
     match /users/{userId} {
-      // Only allow a user to create their own profile.
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      // Only allow a user to get their own profile.
       allow get: if isOwner(userId);
-      // Only allow a user to update their own profile, prevent uid modification.
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      // Only allow a user to delete their own profile.
-      allow delete: if isExistingOwner(userId);
-      // Prevent listing of all users.
       allow list: if false;
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && request.resource.data.uid == userId;
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Rules for attendance records.
+     * @description Stores individual employee attendance records. Public read, owner-only write based on a denormalized ownership field.
      * @path /attendance_records/{attendanceRecordId}
-     * @allow (get, list) Anyone can read all attendance records.
-     * @deny (create, update, delete) No one can write to attendance records.
+     * @allow (get, list) - Any user can read any attendance record.
+     * @deny (create, update, delete) - Only the owner can create/update/delete an attendance record.  An 'ownerId' field is required in the data.
+     * @principle Public read access with owner-only writes.
      */
     match /attendance_records/{attendanceRecordId} {
-      // Allow anyone to read all attendance records.
       allow get, list: if true;
-      // No one can create, update, or delete attendance records.
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(request.auth.uid);
+      allow delete: if isExistingOwner(request.auth.uid);
     }
 
     /**
-     * @description Rules for grace settings.
+     * @description Stores grace time settings. Public read, owner-only write based on a denormalized ownership field.
      * @path /grace_settings/{graceSettingId}
-     * @allow (get, list) Anyone can read all grace settings.
-     * @deny (create, update, delete) No one can write to grace settings.
+     * @allow (get, list) - Any user can read any grace setting.
+     * @deny (create, update, delete) - Only the owner can create/update/delete a grace setting. An 'ownerId' field is required in the data.
+     * @principle Public read access with owner-only writes.
      */
     match /grace_settings/{graceSettingId} {
-      // Allow anyone to read all grace settings.
       allow get, list: if true;
-      // No one can create, update, or delete grace settings.
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(request.auth.uid);
+      allow delete: if isExistingOwner(request.auth.uid);
     }
 
     /**
-     * @description Rules for audit logs.
+     * @description Stores audit logs. Public read, owner-only write based on a denormalized ownership field.
      * @path /audit_logs/{auditLogId}
-     * @allow (get, list) Anyone can read all audit logs.
-     * @deny (create, update, delete) No one can write to audit logs.
+     * @allow (get, list) - Any user can read any audit log.
+     * @deny (create, update, delete) - Only the owner can create/update/delete an audit log. An 'ownerId' field is required in the data.
+     * @principle Public read access with owner-only writes.
      */
     match /audit_logs/{auditLogId} {
-      // Allow anyone to read all audit logs.
       allow get, list: if true;
-      // No one can create, update, or delete audit logs.
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(request.auth.uid);
+      allow delete: if isExistingOwner(request.auth.uid);
     }
 
     /**
-     * @description Rules for email logs.
+     * @description Stores email logs. Public read, owner-only write based on a denormalized ownership field.
      * @path /email_logs/{emailLogId}
-     * @allow (get, list) Anyone can read all email logs.
-     * @deny (create, update, delete) No one can write to email logs.
+     * @allow (get, list) - Any user can read any email log.
+     * @deny (create, update, delete) - Only the owner can create/update/delete an email log. An 'ownerId' field is required in the data.
+     * @principle Public read access with owner-only writes.
      */
     match /email_logs/{emailLogId} {
-      // Allow anyone to read all email logs.
       allow get, list: if true;
-      // No one can create, update, or delete email logs.
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(request.auth.uid);
+      allow delete: if isExistingOwner(request.auth.uid);
     }
 
     /**
-     * @description Rules for auto audit settings.
+     * @description Stores the configuration for auto-auditing. There is only one document with the fixed ID 'auto_audit_config'. Public read, owner-only write based on a denormalized ownership field.
      * @path /auto_audit_settings/auto_audit_config
-     * @allow (get) Anyone can read the auto audit settings.
-     * @deny (create, update, delete, list) No one can write or list the auto audit settings.
+     * @allow (get) - Any user can read the auto-audit settings.
+     * @deny (create, update, delete) - Only the owner can create/update/delete the auto-audit settings. An 'ownerId' field is required in the data.
+     * @principle Public read access with owner-only writes.
      */
     match /auto_audit_settings/auto_audit_config {
-      // Allow anyone to read the auto audit settings.
       allow get: if true;
-      // No one can create, update, delete or list the auto audit settings.
-      allow create, update, delete, list: if false;
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isExistingOwner(request.auth.uid);
+      allow delete: if isExistingOwner(request.auth.uid);
     }
-    
-    /**
-     * @description Rules for devices.
-     * @path /devices
-     * @allow (get, list) Anyone can read all devices.
-     * @deny (create, update, delete) No one can write to devices.
-     */
-    match /devices/{deviceId} {
-        // Allow anyone to read devices.
-        allow get, list: if true;
-        // No one can create, update or delete devices.
+
+    match /roles/{roleId} {
+        allow get, list: if false;
         allow create, update, delete: if false;
     }
   }
