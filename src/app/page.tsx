@@ -1,4 +1,5 @@
-import AttendanceUpload from '@/components/dashboard/attendance-upload';
+
+import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
 import { getAttendanceStats, getWeeklyAttendance } from '@/lib/data';
@@ -15,7 +16,7 @@ export default async function DashboardPage() {
           <OverviewChart data={weeklyData} />
         </div>
         <div>
-          <AttendanceUpload />
+          <DataUpload />
         </div>
       </div>
     </div>

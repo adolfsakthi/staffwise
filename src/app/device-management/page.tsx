@@ -25,10 +25,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const MOCK_DEVICES = [
-    { id: 'dev_1', name: 'Main Entrance Biometric', model: 'ESSL x990', ip: '192.168.1.100', status: 'online' },
-    { id: 'dev_2', name: 'Server Room Access', model: 'ESSL F22', ip: '192.168.1.101', status: 'online' },
-    { id: 'dev_3', name: 'Warehouse Exit', model: 'ESSL x990', ip: '192.168.1.102', status: 'offline' },
-    { id: 'dev_4', name: 'HR Department', model: 'ESSL F18', ip: '192.168.1.103', status: 'online' },
+    { id: 'dev_1', name: 'Main Entrance Biometric', model: 'ESSL x990', ip: '192.168.1.100', status: 'online', branch: 'Head Office' },
+    { id: 'dev_2', name: 'Server Room Access', model: 'ESSL F22', ip: '192.168.1.101', status: 'online', branch: 'Head Office' },
+    { id: 'dev_3', name: 'Warehouse Exit', model: 'ESSL x990', ip: '192.168.1.102', status: 'offline', branch: 'Warehouse A' },
+    { id: 'dev_4', name: 'HR Department', model: 'ESSL F18', ip: '192.168.1.103', status: 'online', branch: 'Head Office' },
+    { id: 'dev_5', name: 'Branch Office 1', model: 'ESSL x990', ip: '10.10.5.20', status: 'online', branch: 'Branch Office 1' },
 ];
 
 export default function DeviceManagementPage() {
@@ -38,7 +39,7 @@ export default function DeviceManagementPage() {
         <div>
           <CardTitle>Device Management</CardTitle>
           <CardDescription>
-            Manage and monitor your connected biometric devices.
+            Manage and monitor your connected biometric devices across all branches.
           </CardDescription>
         </div>
         <Button>
@@ -51,6 +52,7 @@ export default function DeviceManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Device Name</TableHead>
+                <TableHead>Branch</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>IP Address</TableHead>
                 <TableHead>Status</TableHead>
@@ -61,10 +63,11 @@ export default function DeviceManagementPage() {
               {MOCK_DEVICES.map((device) => (
                 <TableRow key={device.id}>
                   <TableCell className="font-medium">{device.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{device.branch}</TableCell>
                   <TableCell className="text-muted-foreground">{device.model}</TableCell>
                   <TableCell className="text-muted-foreground">{device.ip}</TableCell>
                   <TableCell>
-                    <Badge variant={device.status === 'online' ? 'secondary' : 'destructive'} className={device.status === 'online' ? 'text-green-600 border-green-200' : ''}>
+                    <Badge variant={device.status === 'online' ? 'secondary' : 'destructive'} className={device.status === 'online' ? 'text-emerald-500 bg-emerald-50 border border-emerald-200' : 'bg-red-50 text-red-500 border border-red-200'}>
                       {device.status === 'online' ? <Wifi className="mr-2" /> : <WifiOff className="mr-2" />}
                       {device.status.charAt(0).toUpperCase() + device.status.slice(1)}
                     </Badge>

@@ -23,6 +23,7 @@ import {
   Users,
   FileText,
   Fingerprint,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -50,6 +51,11 @@ const navItems = [
     icon: CalendarCheck,
     label: 'Attendance',
   },
+    {
+    href: '/live-logs',
+    icon: Bell,
+    label: 'Live Logs',
+  },
   {
     href: '/audit',
     icon: ShieldCheck,
@@ -63,12 +69,12 @@ const navItems = [
   {
     href: '/device-management',
     icon: Fingerprint,
-    label: 'Device Management',
+    label: 'Devices',
   },
   {
     href: '/user-management',
     icon: Users,
-    label: 'User Management',
+    label: 'Users',
   },
   {
     href: '/settings',
