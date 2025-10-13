@@ -9,7 +9,6 @@ import {
 import {
     Activity,
     AlertTriangle,
-    ArrowDown,
     ArrowUp,
     Clock,
     UserCheck,
