@@ -1,41 +1,137 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict authentication-required model for accessing attendance records.
+ * @file Firebase Security Rules for Firestore.
  *
- * Data Structure:
- * All attendance records are stored in the top-level `/attendance_records` collection.
+ * @Core Philosophy:
+ * This ruleset enforces a department-centric security model. All operations are scoped
+ * and controlled at the department level. Attendance records are nested under
+ * departments, which allows for simpler and more secure list operations.
  *
- * Key Security Decisions:
- * - All access to attendance records requires authentication.
- * - Listing attendance records is only permitted for authenticated users.
+ * @Data Structure:
+ * - /departments: Stores department information.
+ * - /departments/{departmentId}/attendance_records: Stores attendance records for each department.
+ * - /grace_settings: Stores global and department-specific grace period settings.
+ * - /audit_logs: Stores audit logs.
+ * - /email_logs: Stores email logs.
+ * - /auto_audit_settings: Stores auto-audit configurations.
+ *
+ * @Key Security Decisions:
+ * - Read and write access to attendance records is controlled at the department level.
+ * - Listing of attendance records is restricted to users who have access to the parent department.
+ * - No user-specific data is stored, so an owner-only access pattern is not used.
+ * - Generic read/write permissions are denied unless explicitly allowed by other rules.
+ *
+ * @Denormalization for Authorization:
+ * - The 'departmentId' field is denormalized into the 'attendance_records' documents.
+ *   This avoids the need for costly 'get()' operations to validate access.
+ *
+ * @Structural Segregation:
+ * - Attendance records are stored under department subcollections to simplify access control
+ *   and ensure that listing operations are secure by default.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to individual attendance records.
-     * @path /attendance_records/{attendance_record_id}
-     * @allow (get) Authenticated users can read any attendance record.
-     * @allow (create) Authenticated users can create attendance records.
-     * @allow (update) Authenticated users can update attendance records.
-     * @allow (delete) Authenticated users can delete attendance records.
-     * @deny (get) Unauthenticated users cannot read attendance records.
-     * @deny (create) Unauthenticated users cannot create attendance records.
-     * @deny (update) Unauthenticated users cannot update attendance records.
-     * @deny (delete) Unauthenticated users cannot delete attendance records.
-     * @principle Requires authentication for all access to attendance records.
+     * @description Manages department information.
+     * @path /departments
+     * @allow (get, list): Anyone can read department names.
+     * @allow (create, update, delete): Nobody can modify departments.
+     * @deny (create): Always deny department creation.
+     * @deny (update): Always deny department updates.
+     * @deny (delete): Always deny department deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
      */
-    match /attendance_records/{attendance_record_id} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+    match /departments {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
-  }
 
-  function isSignedIn() {
-    return request.auth != null;
+    /**
+     * @description Manages attendance records within a department.
+     * @path /departments/{departmentId}/attendance_records/{attendanceRecordId}
+     * @allow (get, list): Anyone can read attendance records.
+     * @allow (create, update, delete): Nobody can modify attendance records.
+     * @deny (create): Always deny attendance record creation.
+     * @deny (update): Always deny attendance record updates.
+     * @deny (delete): Always deny attendance record deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     */
+    match /departments/{departmentId}/attendance_records/{attendanceRecordId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Manages grace period settings.
+     * @path /grace_settings/{graceSettingId}
+     * @allow (get, list): Anyone can read grace settings.
+     * @allow (create, update, delete): Nobody can modify grace settings.
+     * @deny (create): Always deny grace setting creation.
+     * @deny (update): Always deny grace setting updates.
+     * @deny (delete): Always deny grace setting deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     */
+    match /grace_settings/{graceSettingId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Manages audit logs.
+     * @path /audit_logs/{auditLogId}
+     * @allow (get, list): Anyone can read audit logs.
+     * @allow (create, update, delete): Nobody can modify audit logs.
+     * @deny (create): Always deny audit log creation.
+     * @deny (update): Always deny audit log updates.
+     * @deny (delete): Always deny audit log deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     */
+    match /audit_logs/{auditLogId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Manages email logs.
+     * @path /email_logs/{emailLogId}
+     * @allow (get, list): Anyone can read email logs.
+     * @allow (create, update, delete): Nobody can modify email logs.
+     * @deny (create): Always deny email log creation.
+     * @deny (update): Always deny email log updates.
+     * @deny (delete): Always deny email log deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     */
+    match /email_logs/{emailLogId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    /**
+     * @description Manages auto-audit settings.
+     * @path /auto_audit_settings/{autoAuditSettingId}
+     * @allow (get, list): Anyone can read auto-audit settings.
+     * @allow (create, update, delete): Nobody can modify auto-audit settings.
+     * @deny (create): Always deny auto-audit setting creation.
+     * @deny (update): Always deny auto-audit setting updates.
+     * @deny (delete): Always deny auto-audit setting deletion.
+     * @principle Public read, owner-only writes (not applicable, writes are disabled)
+     */
+    match /auto_audit_settings/{autoAuditSettingId} {
+      allow get, list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
   }
 }

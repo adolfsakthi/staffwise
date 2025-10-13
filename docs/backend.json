@@ -1,15 +1,16 @@
 {
   "entities": {
     "AttendanceRecord": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "AttendanceRecord",
       "type": "object",
       "description": "Stores all employee attendance entries.",
       "properties": {
-        "property_code": {
+        "id": {
           "type": "string",
-          "description": "Unique identifier for the property or branch."
+          "description": "Unique identifier for the attendance record."
         },
-        "employee_name": {
+        "employeeName": {
           "type": "string",
           "description": "Name of the employee."
         },
@@ -18,23 +19,23 @@
           "description": "Email address of the employee.",
           "format": "email"
         },
-        "department": {
+        "departmentId": {
           "type": "string",
-          "description": "Department the employee belongs to."
+          "description": "Reference to Department. (Relationship: Department 1:N AttendanceRecord)"
         },
-        "shift_start": {
+        "shiftStart": {
           "type": "string",
           "description": "Scheduled shift start time (HH:MM)."
         },
-        "shift_end": {
+        "shiftEnd": {
           "type": "string",
           "description": "Scheduled shift end time (HH:MM)."
         },
-        "entry_time": {
+        "entryTime": {
           "type": "string",
           "description": "Actual entry time (HH:MM)."
         },
-        "exit_time": {
+        "exitTime": {
           "type": "string",
           "description": "Actual exit time (HH:MM)."
         },
@@ -42,123 +43,327 @@
           "type": "string",
           "description": "Date of the attendance record (YYYY-MM-DD)."
         },
-        "is_late": {
+        "isLate": {
           "type": "boolean",
           "description": "Indicates whether the employee was late."
         },
-        "late_by_minutes": {
+        "lateByMinutes": {
           "type": "number",
           "description": "Number of minutes the employee was late."
         },
-        "overtime_minutes": {
+        "overtimeMinutes": {
           "type": "number",
           "description": "Number of overtime minutes worked."
         },
-        "is_audited": {
+        "isAudited": {
           "type": "boolean",
           "description": "Indicates whether the record has been audited."
         },
-        "audit_notes": {
-            "type": "string",
-            "description": "Notes from the audit."
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the record was created.",
+          "format": "date-time"
         }
       },
       "required": [
-        "property_code",
-        "employee_name",
+        "id",
+        "employeeName",
         "email",
-        "department",
-        "shift_start",
-        "shift_end",
-        "entry_time",
-        "exit_time",
+        "departmentId",
+        "shiftStart",
+        "shiftEnd",
+        "entryTime",
+        "exitTime",
         "date",
-        "is_late",
-        "late_by_minutes",
-        "overtime_minutes",
-        "is_audited"
+        "isLate",
+        "lateByMinutes",
+        "overtimeMinutes",
+        "isAudited",
+        "createdAt"
       ]
     },
-    "Device": {
-      "title": "Device",
+    "GraceSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GraceSetting",
       "type": "object",
-      "description": "Represents a biometric device.",
+      "description": "Stores grace time configurations, either globally or per department.",
       "properties": {
-        "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
-        "name": { "type": "string" },
-        "model": { "type": "string" },
-        "ip": { "type": "string" },
-        "status": { "type": "string", "enum": ["online", "offline"] },
-        "branch": { "type": "string" }
-      },
-      "required": ["property_code", "name", "model", "status", "branch"]
-    },
-    "LiveLog": {
-        "title": "LiveLog",
-        "type": "object",
-        "description": "Represents a real-time attendance event.",
-        "properties": {
-            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
-            "type": { "type": "string", "enum": ["late", "overtime", "early", "on_time"] },
-            "employee": { "type": "string" },
-            "department": { "type": "string" },
-            "time": { "type": "string" },
-            "deviation": { "type": "number" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the grace setting."
         },
-        "required": ["property_code", "type", "employee", "department", "time"]
+        "departmentId": {
+          "type": "string",
+          "description": "Reference to Department. Null if global setting. (Relationship: Department 1:1 GraceSetting)"
+        },
+        "graceMinutes": {
+          "type": "number",
+          "description": "Grace time in minutes."
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the setting was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "graceMinutes",
+        "updatedAt"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Records audit execution history.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the audit log."
+        },
+        "auditDate": {
+          "type": "string",
+          "description": "Date the audit was performed (YYYY-MM-DD)."
+        },
+        "totalRecords": {
+          "type": "number",
+          "description": "Total number of records processed during the audit."
+        },
+        "lateCount": {
+          "type": "number",
+          "description": "Number of late entries detected during the audit."
+        },
+        "executedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the audit was executed.",
+          "format": "date-time"
+        },
+        "triggeredBy": {
+          "type": "string",
+          "description": "Indicates how the audit was triggered ('manual' or 'auto')."
+        }
+      },
+      "required": [
+        "id",
+        "auditDate",
+        "totalRecords",
+        "lateCount",
+        "executedAt",
+        "triggeredBy"
+      ]
+    },
+    "EmailLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmailLog",
+      "type": "object",
+      "description": "Logs all email notifications sent by the system.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the email log."
+        },
+        "to": {
+          "type": "string",
+          "description": "Recipient email address."
+        },
+        "subject": {
+          "type": "string",
+          "description": "Email subject."
+        },
+        "body": {
+          "type": "string",
+          "description": "HTML content of the email."
+        },
+        "emailType": {
+          "type": "string",
+          "description": "Type of email ('late_notice', 'admin_report', 'department_report')."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the email was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "to",
+        "subject",
+        "body",
+        "emailType",
+        "sentAt"
+      ]
+    },
+    "AutoAuditSetting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AutoAuditSetting",
+      "type": "object",
+      "description": "Stores auto-audit configuration.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier (always 'auto_audit_config')."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Indicates whether auto-audit is enabled."
+        },
+        "auditTime": {
+          "type": "string",
+          "description": "Time the auto-audit runs (HH:MM)."
+        }
+      },
+      "required": [
+        "id",
+        "enabled",
+        "auditTime"
+      ]
+    },
+    "Department": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Department",
+      "type": "object",
+      "description": "Stores information about departments.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the department."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the department."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
     },
     "User": {
-        "title": "User",
-        "type": "object",
-        "description": "Represents an application user.",
-        "properties": {
-            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
-            "displayName": { "type": "string" },
-            "email": { "type": "string", "format": "email" },
-            "role": { "type": "string" },
-            "uid": { "type": "string" }
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Stores user information for the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
         },
-        "required": ["property_code", "displayName", "email", "role", "uid"]
-    },
-    "Role": {
-        "title": "Role",
-        "type": "object",
-        "description": "Defines a user role and its permissions.",
-        "properties": {
-            "property_code": { "type": "string", "description": "Unique identifier for the property or branch." },
-            "name": { "type": "string" },
-            "permissions": { "type": "array", "items": { "type": "string" } }
-        },
-        "required": ["property_code", "name", "permissions"]
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
     }
   },
   "auth": {
     "providers": [
-      "password"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-    "/attendance_records/{attendance_record_id}": {
-      "schema": {
-        "$ref": "#/entities/AttendanceRecord"
+    "structure": [
+      {
+        "path": "/departments",
+        "definition": {
+          "entityName": "Department",
+          "schema": {
+            "$ref": "#/backend/entities/Department"
+          },
+          "description": "Stores department information."
+        }
       },
-      "description": "Stores all employee attendance entries."
-    },
-    "/devices/{device_id}": {
-        "schema": { "$ref": "#/entities/Device" },
-        "description": "Stores information about connected biometric devices."
-    },
-    "/live_logs/{log_id}": {
-        "schema": { "$ref": "#/entities/LiveLog" },
-        "description": "Stores real-time attendance event logs."
-    },
-    "/users/{user_id}": {
-        "schema": { "$ref": "#/entities/User" },
-        "description": "Stores application user profiles."
-    },
-    "/roles/{role_id}": {
-        "schema": { "$ref": "#/entities/Role" },
-        "description": "Stores user roles and permissions."
-    }
+      {
+        "path": "/departments/{departmentId}/attendance_records/{attendanceRecordId}",
+        "definition": {
+          "entityName": "AttendanceRecord",
+          "schema": {
+            "$ref": "#/backend/entities/AttendanceRecord"
+          },
+          "description": "Stores all employee attendance entries. Includes denormalized 'departmentId' for authorization independence.",
+          "params": [
+            {
+              "name": "departmentId",
+              "description": "The ID of the department."
+            },
+            {
+              "name": "attendanceRecordId",
+              "description": "The ID of the attendance record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/grace_settings/{graceSettingId}",
+        "definition": {
+          "entityName": "GraceSetting",
+          "schema": {
+            "$ref": "#/backend/entities/GraceSetting"
+          },
+          "description": "Stores grace time configurations, either globally or per department.",
+          "params": [
+            {
+              "name": "graceSettingId",
+              "description": "The ID of the grace setting."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/audit_logs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Records audit execution history.",
+          "params": [
+            {
+              "name": "auditLogId",
+              "description": "The ID of the audit log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/email_logs/{emailLogId}",
+        "definition": {
+          "entityName": "EmailLog",
+          "schema": {
+            "$ref": "#/backend/entities/EmailLog"
+          },
+          "description": "Logs all email notifications sent by the system.",
+          "params": [
+            {
+              "name": "emailLogId",
+              "description": "The ID of the email log."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/auto_audit_settings/{autoAuditSettingId}",
+        "definition": {
+          "entityName": "AutoAuditSetting",
+          "schema": {
+            "$ref": "#/backend/entities/AutoAuditSetting"
+          },
+          "description": "Stores auto-audit configuration.",
+          "params": [
+            {
+              "name": "autoAuditSettingId",
+              "description": "The ID of the auto audit setting."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to ensure authorization independence, clarity of intent, and support for secure list operations (QAPs). It avoids hierarchical authorization dependencies (`get()`) by denormalizing relevant data. Structural segregation is used to maintain homogeneous security postures within collections. The design includes dedicated collections for specific entities, enforcing consistent authorization patterns.  \n\n*   `/departments`: Stores department information.  \n*   `/departments/{departmentId}/attendance_records`: Stores attendance records for each department. Includes denormalized 'departmentId' to ensure authorization independence. This also supports QAPs, as listing records within a department is secure because all documents share the same security context.  \n*   `/grace_settings`: Stores grace period settings, either globally or for specific departments.  \n*   `/audit_logs`: Logs audit execution history.  \n*   `/email_logs`: Logs all email notifications sent by the system.\n*   `/auto_audit_settings`: Stores the configuration for the auto-audit feature.\n\nAuthorization Independence:\n\n*   The denormalization of `departmentId` into `attendance_records` enables rules to validate access without needing to perform a `get()` operation on the parent `department` document. This allows attendance records to be created atomically without compromising security.\n\nQAPs Support:\n\n*   Structural Segregation:  By storing attendance records under each department (`/departments/{departmentId}/attendance_records`), listing operations are naturally scoped and secure.  Rules can easily allow listing records where the user has access to the department, without the risk of exposing records from other departments.\n*   Each collection maintains a homogeneous security posture because all documents within the collection have the same access control requirements. This dramatically simplifies rule creation and maintenance."
   }
 }
