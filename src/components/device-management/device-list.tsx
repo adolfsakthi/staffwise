@@ -128,51 +128,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setDeviceToDelete(null);
   };
 
-  const handleSyncDevice = async (device: Device) => {
-    setSyncingDeviceId(device.id);
-    setSyncResult(null);
-
-    try {
-        const response = await fetch('/api/sync-device', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip: device.ipAddress, port: device.port }),
-        });
-        
-        const result = await response.json();
-
-        if (!response.ok) {
-            toast({
-                variant: 'destructive',
-                title: 'Sync Failed',
-                description: result.message || 'An unexpected error occurred during sync.',
-            });
-            setSyncingDeviceId(null);
-            return;
-        }
-
-        if (result.success) {
-            setSyncResult({ logs: result.data, message: `Found ${result.data.length} logs.` });
-            setShowSyncDialog(true);
-        } else {
-             toast({
-                variant: 'destructive',
-                title: 'Sync Failed',
-                description: result.message,
-            });
-        }
-    } catch (error: any) {
-        console.error("Sync error in component:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Sync Error',
-            description: error.message || 'An unexpected network error occurred.',
-        });
-    } finally {
-        setSyncingDeviceId(null);
-    }
-  };
-
   const handleProcessAndSaveLogs = async () => {
     if (!syncResult || !syncResult.logs) return;
     const device = devices.find(d => d.id === syncingDeviceId);
@@ -257,13 +212,13 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                           <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
-                            <UploadCloud className="mr-2" />
-                            Sync Logs
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
                             <Activity className="mr-2" />
                             Ping Device
+                          </DropdownMenuItem>
+                           <DropdownMenuItem disabled>
+                            <UploadCloud className="mr-2" />
+                            Sync Logs
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem disabled>
