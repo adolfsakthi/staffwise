@@ -25,6 +25,7 @@ import {
   LogOut,
   Mail,
   UserPlus,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -44,7 +45,7 @@ const navItems = [
     icon: CalendarCheck,
     label: 'Attendance',
   },
-    {
+  {
     href: '/live-logs',
     icon: Bell,
     label: 'Live Logs',
@@ -58,6 +59,11 @@ const navItems = [
     href: '/employees',
     icon: UserPlus,
     label: 'Employees',
+  },
+  {
+    href: '/duty',
+    icon: ClipboardList,
+    label: 'Duty Roster',
   },
   {
     href: '/reports',
@@ -74,7 +80,7 @@ const navItems = [
     icon: Users,
     label: 'Users',
   },
-    {
+  {
     href: '/email-logs',
     icon: Mail,
     label: 'Email Logs',
