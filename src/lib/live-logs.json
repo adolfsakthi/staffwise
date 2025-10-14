@@ -1,2 +1,28 @@
-
-[]
+[
+  {
+    "id": "log-1760474136687-EMP001",
+    "employeeId": "1",
+    "type": "late",
+    "message": "John Doe arrived late by 15 minutes.",
+    "timestamp": "2024-05-24T09:15:23.000Z",
+    "isRead": false,
+    "property_code": "D001",
+    "employee": "John Doe",
+    "department": "Engineering",
+    "time": "09:15",
+    "deviation": 15
+  },
+  {
+    "id": "log-1760474136688-EMP002",
+    "employeeId": "2",
+    "type": "on_time",
+    "message": "Jane Smith punched on time.",
+    "timestamp": "2024-05-24T08:58:02.000Z",
+    "isRead": false,
+    "property_code": "D001",
+    "employee": "Jane Smith",
+    "department": "Housekeeping",
+    "time": "08:58",
+    "deviation": -1
+  }
+]

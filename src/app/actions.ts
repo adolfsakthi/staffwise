@@ -206,39 +206,3 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
 
     return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: newLiveLogs.length };
 }
-
-// This action simulates a device pushing data by calling the ADMS endpoint internally.
-export async function syncLogs(device: Device): Promise<{ success: boolean; message: string; }> {
-    console.log(`[Manual Sync] Triggered for device: ${device.deviceName} (SN: ${device.serialNumber})`);
-    
-    // Simulate the raw log data that the device would push
-    const MOCK_RAW_LOG_BODY = 'EMP001\t2024-05-24 09:15:23\nEMP002\t2024-05-24 08:58:02';
-
-    // This is a mock internal call. In a real scenario with a public URL,
-    // you would use a fetch call to `http://<your-app-url>/api/adms/iclock/cdata?SN=${device.serialNumber}&table=ATTLOG`
-    // For this example, we'll directly call `processLogs` to simulate the data push being received.
-
-    try {
-        const logs = MOCK_RAW_LOG_BODY.trim().split('\n').map(line => {
-            const [userId, timestamp] = line.split('\t');
-            if (!userId || !timestamp) return null;
-            return {
-                userId,
-                attTime: new Date(timestamp),
-            };
-        }).filter(Boolean);
-
-        if (logs.length > 0 && device.property_code) {
-            const result = await processLogs(logs as any[], device.property_code);
-            if (result.success) {
-                 return { success: true, message: `Synced ${result.count} logs from device ${device.deviceName}.` };
-            } else {
-                 return { success: false, message: `Processing failed: ${result.message}` };
-            }
-        }
-        return { success: true, message: 'No new logs to sync.' };
-    } catch(e: any) {
-        console.error('[Manual Sync] Error:', e);
-        return { success: false, message: e.message || 'An unknown error occurred during manual sync.' };
-    }
-}

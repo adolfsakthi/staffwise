@@ -41,7 +41,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, syncLogs, updateDeviceStatus } from '@/app/actions';
+import { removeDevice, pingDevice, updateDeviceStatus } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -92,18 +92,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     await updateDeviceStatus(device.id, newStatus);
     setActionState(device.id, { isPinging: false });
     router.refresh();
-  }
-
-  const handleSyncLogs = async (device: Device) => {
-      setActionState(device.id, { isSyncing: true });
-      const result = await syncLogs(device);
-      toast({
-          title: result.success ? 'Sync complete' : 'Sync failed',
-          description: result.message,
-          variant: result.success ? 'default' : 'destructive'
-      });
-      setActionState(device.id, { isSyncing: false });
-      router.refresh();
   }
 
   const confirmRemoveDevice = async () => {
@@ -197,7 +185,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSyncLogs(device)}>
+                          <DropdownMenuItem disabled>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
