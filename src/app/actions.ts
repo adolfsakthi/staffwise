@@ -227,14 +227,14 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
                 if (err) {
                     console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
                     // CRITICAL: Reject with a simple string message
-                    return reject(err.message || 'Connection failed');
+                    return reject('Connection failed');
                 }
 
                 zkInstance.getAttendances((err: any, data: any) => {
                     if (err) {
                         console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
                         // CRITICAL: Reject with a simple string message
-                        return reject(err.message || 'Failed to get attendances');
+                        return reject('Failed to get attendances');
                     }
                     resolve(data);
                 });
@@ -276,5 +276,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         }
     }
 }
+
+    
 
     
