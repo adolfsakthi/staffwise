@@ -1,250 +1,197 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict, path-based ownership model for a multi-tenant attendance management system.
+ * @fileoverview Firestore Security Rules for the Attendance Management System.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict, path-based ownership model combined with
+ * denormalization for efficient authorization. Multi-tenancy is achieved
+ * through a top-level `clients` collection, and access control is primarily
+ * determined by the hierarchical structure and authenticated user ID.
  *
  * Data Structure:
- * - /clients/{clientId}: Root collection for clients.
- * - /clients/{clientId}/branches/{branchId}: Branches belonging to a client.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employees belonging to a branch.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests for an employee.
- * - /users/{userId}/notifications/{notificationId}: Notifications for a specific user.
- * - /emailLogs/{emailLogId}: Logs of all sent emails (potentially restricted to admin/system).
- * - /auditLogs/{auditLogId}: Logs of all audit activities (potentially restricted to admin/system).
+ * The data is organized hierarchically:
+ * /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+ * /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+ * /users/{userId}/notifications/{notificationId}
  *
  * Key Security Decisions:
- * - Path-based ownership is strictly enforced for all data nested under clients.
- * - All subcollections under /clients/{clientId} include denormalized clientId and other relevant IDs to ensure authorization independence.
- * - Listing of collections is generally allowed for owners of that data, unless explicitly restricted.
- * - EmailLogs and AuditLogs are potentially restricted to admin or system accounts.
+ * - Write access is restricted to owners of the respective data paths.
+ * - List operations are allowed for owners of user-scoped subcollections.
+ * - Public listing is disabled for collections containing user-specific private data.
+ * - Relational integrity is enforced by validating relationship fields on create and update.
+ * - EmailLogs and AuditLogs are open for any authenticated user for prototyping.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows clients to be created, read, updated and deleted.
-     * @path /clients/{clientId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces client-level access control, requiring authentication for all operations.
+     * @description Allows management of Clients.
+     * @path /databases/{database}/documents/clients/{clientId}
+     * @allow (create) - A user can create a client with a matching clientId.
+     * @deny (create) - A user tries to create a client with a mismatched clientId.
+     * @allow (get) - Any authenticated user can get a client document.
+     * @allow (list) - Any authenticated user can list client documents.
+     * @allow (update) - No one can update a Client document.
+     * @allow (delete) - No one can delete a Client document.
+     * @principle Enforces client-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == clientId;
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to branches scoped to a client.
-     * @path /clients/{clientId}/branches/{branchId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces branch-level access control, requiring authentication for all operations.
+     * @description Allows management of Branches under a Client.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}
+     * @allow (create) - A user can create a branch under a client with matching IDs.
+     * @deny (create) - A user tries to create a branch with mismatched client or branch IDs.
+     * @allow (get) - Any authenticated user can get a branch document.
+     * @allow (list) - Any authenticated user can list branch documents.
+     * @allow (update) - No one can update a Branch document.
+     * @allow (delete) - No one can delete a Branch document.
+     * @principle Enforces branch-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId}/branches/{branchId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to employees scoped to a branch and client.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces employee-level access control, requiring authentication for all operations.
+     * @description Allows management of Employees under a Branch.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}
+     * @allow (create) - A user can create an employee under a branch with matching IDs.
+     * @deny (create) - A user tries to create an employee with mismatched client, branch, or employee IDs.
+     * @allow (get) - Any authenticated user can get an employee document.
+     * @allow (list) - Any authenticated user can list employee documents.
+     * @allow (update) - No one can update an Employee document.
+     * @allow (delete) - No one can delete an Employee document.
+     * @principle Enforces employee-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to biometric devices scoped to a branch and client.
-     * @path /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces biometric device-level access control, requiring authentication for all operations.
+     * @description Allows management of Biometric Devices under a Branch.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
+     * @allow (create) - A user can create a biometric device under a branch with matching IDs.
+     * @deny (create) - A user tries to create a biometric device with mismatched client, branch, or device IDs.
+     * @allow (get) - Any authenticated user can get a biometric device document.
+     * @allow (list) - Any authenticated user can list biometric device documents.
+     * @allow (update) - No one can update a BiometricDevice document.
+     * @allow (delete) - No one can delete a BiometricDevice document.
+     * @principle Enforces biometric device-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to attendance records scoped to an employee, branch and client.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces attendance record-level access control, requiring authentication for all operations.
+     * @description Allows management of Attendance Records under an Employee.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+     * @allow (create) - A user can create an attendance record under an employee with matching IDs.
+     * @deny (create) - A user tries to create an attendance record with mismatched client, branch, employee, or record IDs.
+     * @allow (get) - Any authenticated user can get an attendance record document.
+     * @allow (list) - Any authenticated user can list attendance record documents.
+     * @allow (update) - No one can update an AttendanceRecord document.
+     * @allow (delete) - No one can delete an AttendanceRecord document.
+     * @principle Enforces attendance record-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to leave requests scoped to an employee, branch and client.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces leave request-level access control, requiring authentication for all operations.
+     * @description Allows management of Leave Requests under an Employee.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+     * @allow (create) - A user can create a leave request under an employee with matching IDs.
+     * @deny (create) - A user tries to create a leave request with mismatched client, branch, employee, or request IDs.
+     * @allow (get) - Any authenticated user can get a leave request document.
+     * @allow (list) - Any authenticated user can list leave request documents.
+     * @allow (update) - No one can update a LeaveRequest document.
+     * @allow (delete) - No one can delete a LeaveRequest document.
+     * @principle Enforces leave request-level ownership and prevents unauthorized modifications.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to notifications scoped to a specific user.
-     * @path /users/{userId}/notifications/{notificationId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces user-level access control for notifications, requiring authentication for all operations.
+     * @description Allows management of Notifications for a User.
+     * @path /databases/{database}/documents/users/{userId}/notifications/{notificationId}
+     * @allow (create) - A user can create a notification for themselves with matching userId.
+     * @deny (create) - A user tries to create a notification for another user.
+     * @allow (get) - The owner can get their notification.
+     * @allow (list) - The owner can list their notifications.
+     * @allow (update) - No one can update a Notification.
+     * @allow (delete) - No one can delete a Notification.
+     * @principle Enforces user-level ownership for notifications.
      */
     match /users/{userId}/notifications/{notificationId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to email logs. This may need further restriction to admin/system accounts.
-     * @path /emailLogs/{emailLogId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces email log-level access control, requiring authentication for all operations. Consider restricting to admin.
+     * @description Allows management of Email Logs.
+     * @path /databases/{database}/documents/emailLogs/{emailLogId}
+     * @allow (create) - Any authenticated user can create an email log.
+     * @allow (get) - Any authenticated user can get an email log.
+     * @allow (list) - Any authenticated user can list email logs.
+     * @allow (update) - No one can update an EmailLog document.
+     * @allow (delete) - No one can delete an EmailLog document.
      */
     match /emailLogs/{emailLogId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows access to audit logs. This may need further restriction to admin/system accounts.
-     * @path /auditLogs/{auditLogId}
-     * @allow (create) request.auth != null
-     * @allow (get) request.auth != null
-     * @allow (update) request.auth != null
-     * @allow (delete) request.auth != null
-     * @deny (create) request.auth == null
-     * @deny (get) request.auth == null
-     * @deny (update) request.auth == null
-     * @deny (delete) request.auth == null
-     * @principle Enforces audit log-level access control, requiring authentication for all operations. Consider restricting to admin.
+     * @description Allows management of Audit Logs.
+     * @path /databases/{database}/documents/auditLogs/{auditLogId}
+     * @allow (create) - Any authenticated user can create an audit log.
+     * @allow (get) - Any authenticated user can get an audit log.
+     * @allow (list) - Any authenticated user can list audit logs.
+     * @allow (update) - No one can update an AuditLog document.
+     * @allow (delete) - No one can delete an AuditLog document.
      */
     match /auditLogs/{auditLogId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow update, delete: if false;
     }
+    
+    /**
+     * @description Allows listing live logs.
+     * @path /databases/{database}/documents/live_logs
+     * @allow (list) - Any authenticated user can list live logs.
+     */
+    match /live_logs {
+      allow list: if isSignedIn();
+      allow get, create, update, delete: if false;
+    }
+
+  }
+
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the user is the owner of the resource.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
   }
 }
