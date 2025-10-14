@@ -204,7 +204,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
 }
 
 
-export async function syncDevice(deviceId: string): Promise<{ success: boolean; message: string; data?: any[] }> {
+export async function syncDevice(deviceId: string): Promise<{ success: boolean; message: string; data?: string }> {
     const devices = await readDevices();
     const device = devices.find(d => d.id === deviceId);
 
@@ -226,13 +226,15 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             zkInstance.connect((err: any) => {
                 if (err) {
                     console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
-                    return reject(new Error(err.message || 'Connection failed'));
+                    // CRITICAL: Reject with a simple string message
+                    return reject(err.message || 'Connection failed');
                 }
 
                 zkInstance.getAttendances((err: any, data: any) => {
                     if (err) {
                         console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
-                        return reject(new Error(err.message || 'Failed to get attendances'));
+                        // CRITICAL: Reject with a simple string message
+                        return reject(err.message || 'Failed to get attendances');
                     }
                     resolve(data);
                 });
@@ -250,19 +252,21 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             return {
                 success: true,
                 message: `Found ${rawLogs.length} logs on device ${device.deviceName}. Data saved.`,
-                data: rawLogs,
+                // CRITICAL: Serialize complex data to a string before returning
+                data: JSON.stringify(rawLogs),
             };
         }
 
         return {
             success: true,
             message: `No new logs found on device ${device.deviceName}.`,
-            data: [],
+            data: '[]',
         };
 
     } catch (e: any) {
+        // CRITICAL: Ensure the message is always a plain string.
+        const errorMessage = typeof e === 'string' ? e : (e instanceof Error ? e.message : 'An unknown error occurred during sync.');
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred during sync.';
         return { success: false, message: errorMessage };
 
     } finally {

@@ -95,7 +95,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         title: 'Sync Successful',
         description: result.message,
       });
-      setSyncedLogs(result.data);
+      // CRITICAL: Parse the JSON string from the server action
+      setSyncedLogs(JSON.parse(result.data));
     } else {
         toast({
             variant: 'destructive',
