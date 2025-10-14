@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import ZKLib from 'node-zklib';
 import net from 'net';
 
+export const maxDuration = 60; // Allow this function to run for up to 60 seconds
+
 // Utility to create a safe, serializable error object
 const safeError = (error: unknown): { message: string, stack?: string } => {
     if (error instanceof Error) {
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
         await testConnection(ip, port);
 
         // 2. If connection is successful, proceed with the library
-        zkInstance = new ZKLib(ip, port, 5000, 4370);
+        zkInstance = new ZKLib(ip, port, 5000, 4370); // 5 second timeout
 
         // Create connection
         await zkInstance.createSocket();
@@ -63,7 +65,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, logs: logs.data });
 
     } catch (e: unknown) {
-        console.error("Error syncing with device:", e);
+        console.error("Error in POST /api/sync-device:", e);
         return NextResponse.json({ success: false, ...safeError(e) }, { status: 500 });
     } finally {
         // 3. Ensure the connection is always closed
