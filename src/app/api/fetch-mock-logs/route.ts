@@ -2,10 +2,9 @@
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
-import net from 'net';
 
 export async function GET(request: NextRequest) {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const ipAddress = searchParams.get('ip');
     const port = searchParams.get('port');
 
@@ -13,11 +12,11 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ message: 'IP address and port are required.' }, { status: 400 });
     }
 
-    const portNumber = parseInt(port, 10);
     const url = `http://${ipAddress}:${port}/mock/adms/logs`;
 
     try {
-        const response = await fetch(url, { next: { revalidate: 0 }});
+        // Use { cache: 'no-store' } for Next.js App Router to prevent caching
+        const response = await fetch(url, { cache: 'no-store' });
 
         if (!response.ok) {
             const errorText = await response.text();
