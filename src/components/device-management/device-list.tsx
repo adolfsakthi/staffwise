@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +24,10 @@ import {
   WifiOff,
   Loader2,
   Activity,
+  RefreshCw,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, syncDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -37,6 +38,7 @@ interface DeviceListProps {
 export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
+  const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -62,7 +64,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     try {
         await updateDeviceStatus(device.id, newStatus);
         setDevices(prev => prev.map(d => d.id === device.id ? {...d, status: newStatus} : d));
-        // No full router.refresh() needed, just update local state
     } catch(error) {
         console.error(error);
         toast({ variant: 'destructive', title: 'Error updating status', description: 'Could not save device status.' });
@@ -70,6 +71,28 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     setPingingDeviceId(null);
   };
+  
+  const handleSyncDevice = async (device: Device) => {
+    setSyncingDeviceId(device.id);
+    const result = await syncDevice(device.id);
+    
+    if (result.success) {
+      toast({
+        title: 'Sync Successful',
+        description: result.message,
+      });
+      console.log('Synced Data:', result.data);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Sync Failed',
+            description: result.message,
+        });
+    }
+    setSyncingDeviceId(null);
+  }
+
+  const isActionRunning = !!pingingDeviceId || !!syncingDeviceId;
 
   return (
       <div className="overflow-x-auto rounded-md border">
@@ -84,8 +107,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {initialDevices && initialDevices.length > 0 ? (
-              initialDevices.map((device) => (
+            {devices && devices.length > 0 ? (
+              devices.map((device) => (
                 <TableRow key={device.id}>
                   <TableCell className="font-medium">{device.deviceName}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -118,19 +141,26 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={!!pingingDeviceId}>
+                        <Button variant="ghost" size="icon" disabled={isActionRunning}>
                           <MoreVertical />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handlePingDevice(device)}>
+                        <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
                           <Activity className="mr-2" />
                           Ping Device
                         </DropdownMenuItem>
-                        <DropdownMenuItem>View Logs</DropdownMenuItem>
-                        <DropdownMenuItem>Sync Device</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
+                             {syncingDeviceId === device.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <RefreshCw className="mr-2" />
+                            )}
+                          Sync Device
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled={isActionRunning}>View Logs</DropdownMenuItem>
+                        <DropdownMenuItem disabled={isActionRunning}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={isActionRunning}>
                           Remove Device
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -141,7 +171,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
-                  No devices found for this property.
+                  No devices found for this property. Add one above to get started.
                 </TableCell>
               </TableRow>
             )}

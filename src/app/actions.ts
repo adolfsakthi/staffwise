@@ -5,6 +5,7 @@ import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Device } from '@/lib/types';
+import ZKLib from 'zklib-js';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 
@@ -13,7 +14,6 @@ async function readDevices(): Promise<Device[]> {
     const data = await fs.readFile(devicesFilePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    // If the file doesn't exist, return an empty array
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return [];
     }
@@ -56,20 +56,13 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
     }
 }
 
-
-/**
- * Attempts to connect to a device at a given IP address and port to check its status.
- * @param ipAddress The IP address of the device.
- * @param port The port number of the device.
- * @returns A promise that resolves to an object indicating success or failure.
- */
 export async function pingDevice(
   ipAddress: string,
   port: number
 ): Promise<{ success: boolean; message: string }> {
   return new Promise((resolve) => {
     const socket = new net.Socket();
-    const timeout = 2000; // 2 seconds
+    const timeout = 2000;
 
     socket.setTimeout(timeout);
 
@@ -88,4 +81,44 @@ export async function pingDevice(
       resolve({ success: false, message: 'Connection timed out.' });
     });
   });
+}
+
+export async function syncDevice(deviceId: string): Promise<{ success: boolean; message: string; data?: any[] }> {
+    const devices = await readDevices();
+    const device = devices.find(d => d.id === deviceId);
+
+    if (!device) {
+        return { success: false, message: 'Device not found.' };
+    }
+
+    let zkInstance: ZKLib | null = null;
+    try {
+        zkInstance = new ZKLib(device.ipAddress, device.port, 10000, 4000);
+        
+        // Create connection
+        await zkInstance.createSocket();
+        
+        // Authenticate with connection key
+        await zkInstance.connect();
+
+        // Get attendance logs
+        const logs = await zkInstance.getAttendances();
+
+        // Disconnect
+        await zkInstance.disconnect();
+
+        return {
+            success: true,
+            message: `Found ${logs.data.length} logs on device ${device.deviceName}.`,
+            data: logs.data,
+        };
+
+    } catch (e: any) {
+        console.error(`Error syncing with device ${device.deviceName}:`, e);
+        return { success: false, message: e.message || 'An unknown error occurred during sync.' };
+    } finally {
+        if (zkInstance) {
+            await zkInstance.disconnect();
+        }
+    }
 }
