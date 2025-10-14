@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -74,7 +75,7 @@ const ADMIN_REPORT_TEMPLATE = `
         <tbody>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Present</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">8</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Absent</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">1</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">2</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">4</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">45 mins</td></tr>
         </tbody>
       </table>
@@ -91,6 +92,8 @@ const ADMIN_REPORT_TEMPLATE = `
         <tbody>
            <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">John Doe</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:15</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">15 mins</td></tr>
            <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Peter Jones</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:05</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">5 mins</td></tr>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Sam Wilson</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:25</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">25 mins</td></tr>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Chris Rogers</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:12</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">12 mins</td></tr>
         </tbody>
       </table>
 
@@ -131,7 +134,7 @@ const ADMIN_REPORT_TEMPLATE = `
         <tbody>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Present</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">12</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Absent</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">1</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">3</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0 mins</td></tr>
         </tbody>
       </table>
@@ -146,6 +149,8 @@ const ADMIN_REPORT_TEMPLATE = `
         </thead>
         <tbody>
            <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Jane Smith</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:02</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">2 mins</td></tr>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Maria Hill</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:08</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">8 mins</td></tr>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Donna Troy</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:03</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">3 mins</td></tr>
         </tbody>
       </table>
       
@@ -264,3 +269,5 @@ export default function EmailLogsPage() {
     </Card>
   );
 }
+
+    
