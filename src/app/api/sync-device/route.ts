@@ -1,11 +1,11 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import ZKLib from 'node-zklib';
 
 const safeError = (err: any) => {
     // Ensure we are returning a simple object, not a complex Error instance
     const message = err?.message ?? String(err);
-    const stack = process.env.NODE_ENV === 'development' ? err?.stack ?? '' : undefined;
-    return { message, stack };
+    return { message };
 };
 
 
@@ -41,9 +41,8 @@ export async function POST(request: NextRequest) {
     } catch (e: any) {
         console.error(`[SYNC-API] Error syncing with device ${ip}:${port}`, e);
         const error = safeError(e);
-        // Use the safeError utility to ensure the error is serializable
         return NextResponse.json(
-            { success: false, message: error.message, error: error },
+            { success: false, message: error.message },
             { status: 500 }
         );
     } finally {

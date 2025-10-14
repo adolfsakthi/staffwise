@@ -166,7 +166,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         toast({
             variant: 'destructive',
             title: 'Sync Error',
-            description: error.message || 'An unexpected error occurred.',
+            description: error.message || 'An unexpected network error occurred.',
         });
     } finally {
         setSyncingDeviceId(null);
@@ -336,5 +336,3 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
-
-    
