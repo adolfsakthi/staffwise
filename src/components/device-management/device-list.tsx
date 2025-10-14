@@ -47,7 +47,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
+import { removeDevice, pingDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -109,9 +109,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     setActionState(device.id, { isSyncing: true });
     
-    // This is a fire-and-forget action in the ADMS protocol
-    requestLogSync(device.serialNumber);
-
     toast({
       title: "Sync Request Sent",
       description: "A sync request has been sent to the device. New logs will appear on the Live Logs page shortly."
@@ -246,7 +243,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSyncLogs(device)}>
+                          <DropdownMenuItem onClick={() => handleSyncLogs(device)} disabled>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
@@ -325,3 +322,4 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
+    
