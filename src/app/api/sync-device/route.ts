@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   } catch (e: any) {
     console.error('Sync failed:', e);
-    // Use the safeError pattern you provided. Check for the nested error structure.
+    // Use the safeError pattern. Check for the nested error structure from zklib-js.
     const errorMessage = e?.err?.message || e?.message || 'An unknown error occurred during sync.';
     return NextResponse.json({ success: false, message: errorMessage }, { status: 500 });
   } finally {
