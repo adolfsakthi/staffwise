@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getDepartments } from '@/lib/data';
+import { getDepartmentsAction } from '@/app/actions';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
@@ -71,11 +71,11 @@ export default function SettingsForm({ clientId, propertyCode }: SettingsFormPro
   useEffect(() => {
     async function fetchDepartments() {
         if (!propertyCode) return;
-      const depts = await getDepartments(firestore, propertyCode);
+      const depts = await getDepartmentsAction(propertyCode);
       setDepartments(depts);
     }
     fetchDepartments();
-  }, [firestore, propertyCode]);
+  }, [propertyCode]);
 
   const handleSaveGraceTime = async () => {
     if (!settingsRef) return;

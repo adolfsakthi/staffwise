@@ -6,9 +6,9 @@ import {
   addPunchLogs,
   auditRecords,
   logEmail,
+  getDepartments,
 } from '@/lib/data';
 import { z } from 'zod';
-import { getDb } from '@/firebase/server';
 
 const AttendanceRecordSchema = z.object({
   employee_name: z.string(),
@@ -59,6 +59,7 @@ export async function uploadData(formData: FormData) {
   const defaultPropertyCode = formData.get('propertyCode') as string;
   const clientId = formData.get('clientId') as string;
   const branchId = formData.get('branchId') as string;
+  const { getDb } = await import('@/firebase/server');
   const db = getDb();
 
   if (!file || file.size === 0) {
@@ -114,6 +115,7 @@ export async function uploadData(formData: FormData) {
 }
 
 export async function runAudit(clientId: string, branchId: string, recordIds: string[], auditNotes: string) {
+  const { getDb } = await import('@/firebase/server');
   const db = getDb();
   try {
     console.log('Running audit:', { recordIds, auditNotes });
@@ -161,4 +163,10 @@ export async function runAudit(clientId: string, branchId: string, recordIds: st
       message: error.message || 'Failed to audit records. Please try again.',
     };
   }
+}
+
+export async function getDepartmentsAction(propertyCode: string) {
+    const { getDb } = await import('@/firebase/server');
+    const db = getDb();
+    return getDepartments(db, propertyCode);
 }
