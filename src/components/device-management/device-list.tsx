@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -141,7 +142,13 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         const result = await response.json();
 
         if (!response.ok) {
-            throw new Error(result.message || 'Sync failed with an unknown error.');
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: result.message || 'An unexpected error occurred during sync.',
+            });
+            setSyncingDeviceId(null);
+            return;
         }
 
         if (result.success) {
@@ -329,3 +336,5 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
+
+    
