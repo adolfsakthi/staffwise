@@ -1,4 +1,5 @@
 
+
 // Maps to the 'Employee' entity
 export type Employee = {
   id: string;
@@ -19,8 +20,8 @@ export type AttendanceRecord = {
   id: string;
   employeeId: string;
   deviceId: string;
-  punchInTime: any; // Firestore Timestamp
-  punchOutTime?: any; // Firestore Timestamp
+  punchInTime: any; // ISO String
+  punchOutTime?: any; // ISO String
   attendanceDate: string; // YYYY-MM-DD
   logType: string;
 
@@ -61,7 +62,7 @@ export type LiveLog = {
     employeeId?: string; // employeeId is optional in Notification schema
     type: 'late' | 'overtime' | 'early' | 'on_time' | 'audit_summary'; // From Notification 'type'
     message: string; // from Notification 'message'
-    timestamp: any; // Firestore timestamp
+    timestamp: any; // ISO String
     isRead: boolean;
 
     // Denormalized data for display
@@ -75,8 +76,8 @@ export type LiveLog = {
 
 // Represents a user profile, potentially stored in a 'users' collection
 export type UserProfile = {
-  id: string;       // Firestore document ID
-  uid: string;      // Firebase Auth UID
+  id: string;       // document ID
+  uid: string;      // Auth UID
   displayName: string | null;
   email: string;
   role: string;     // e.g., 'Admin', 'Manager'
@@ -100,14 +101,14 @@ export type EmailLog = {
   recipient: string;
   subject: string;
   body: string;
-  timestamp: any; // Firestore timestamp
+  timestamp: any; // ISO String
   emailType: 'late_notice' | 'admin_report' | 'department_report';
 };
 
 // Maps to the 'AuditLog' entity
 export type AuditLog = {
   id: string;
-  timestamp: any; // Firestore timestamp
+  timestamp: any; // ISO String
   auditorId: string;
   auditType: 'daily' | 'weekly' | 'monthly' | 'manual';
   summary: string;
@@ -118,7 +119,7 @@ export type Client = {
     id: string;
     name: string;
     contactEmail: string;
-    createdAt: any; // Firestore timestamp
+    createdAt: any; // ISO String
 }
 
 // Maps to the 'Branch' entity

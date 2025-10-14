@@ -1,4 +1,5 @@
-'use client';
+
+'use server';
 
 import {
     Card,
@@ -13,7 +14,6 @@ import {
     ArrowUp,
     Clock,
     UserCheck,
-    Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,16 +25,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { useMemo, useState } from 'react';
-
-
-const MOCK_LOGS: LiveLog[] = [
-    { id: '1', type: 'late', message: 'John Doe arrived late', timestamp: new Date(), isRead: false, employee: 'John Doe', department: 'Engineering', time: '09:15', deviation: 15, property_code: 'D001' },
-    { id: '2', type: 'early', message: 'Jane Smith arrived early', timestamp: new Date(), isRead: false, employee: 'Jane Smith', department: 'Housekeeping', time: '08:45', deviation: -15, property_code: 'D001' },
-    { id: '3', type: 'overtime', message: 'Peter Jones started overtime', timestamp: new Date(), isRead: false, employee: 'Peter Jones', department: 'Security', time: '18:30', deviation: 30, property_code: 'D001' },
-    { id: '4', type: 'on_time', message: 'Mary Johnson arrived on time', timestamp: new Date(), isRead: false, employee: 'Mary Johnson', department: 'Front Desk', time: '09:00', deviation: 0, property_code: 'D002' },
-];
-
+import { getLiveLogs } from '@/app/actions';
+import { format } from 'date-fns';
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -45,15 +37,10 @@ const logConfig = {
 } as const;
 
 
-export default function LiveLogsPage() {
-    const [isLoadingLogs] = useState(false);
-
+export default async function LiveLogsPage() {
     const propertyCode = 'D001';
-
-    const filteredLogs = useMemo(() => {
-      if (!MOCK_LOGS || !propertyCode) return [];
-      return MOCK_LOGS.filter(l => l.property_code === propertyCode);
-    }, [propertyCode]);
+    const allLogs: LiveLog[] = await getLiveLogs();
+    const filteredLogs = allLogs.filter(l => l.property_code === propertyCode);
 
 
   return (
@@ -80,16 +67,11 @@ export default function LiveLogsPage() {
                 <TableHead>Department</TableHead>
                 <TableHead>Punch Time</TableHead>
                 <TableHead>Deviation</TableHead>
+                <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoadingLogs ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                </TableRow>
-              ) : filteredLogs && filteredLogs.length > 0 ? (
+              {filteredLogs && filteredLogs.length > 0 ? (
                 filteredLogs.map((log) => {
                     const configKey = log.type in logConfig ? log.type : 'on_time';
                     const config = logConfig[configKey];
@@ -112,13 +94,16 @@ export default function LiveLogsPage() {
                                     <span className='text-muted-foreground'>--</span>
                                 )}
                             </TableCell>
+                             <TableCell className="text-muted-foreground">
+                                {format(new Date(log.timestamp), 'PPP')}
+                            </TableCell>
                         </TableRow>
                     )
                 })
               ) : (
                 <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                        No live logs available for this property.
+                    <TableCell colSpan={7} className="h-24 text-center">
+                        No live logs available for this property. Sync a device to see data.
                     </TableCell>
                 </TableRow>
               )}
@@ -129,3 +114,4 @@ export default function LiveLogsPage() {
     </Card>
   );
 }
+

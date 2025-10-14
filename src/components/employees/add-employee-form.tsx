@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -21,18 +22,35 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Employee } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 
 // Departments could be fetched from a dedicated collection
 const DEPARTMENTS = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales'];
 
+async function addEmployeeAction(newEmployeeData: Omit<Employee, 'id'>): Promise<Employee> {
+    const response = await fetch('/api/employees', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newEmployeeData)
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to add employee');
+    }
+    return response.json();
+}
+
 type AddEmployeeFormProps = {
-  onAddEmployee: (employee: Omit<Employee, 'id' | 'clientId' | 'branchId'>) => void;
   propertyCode: string;
 };
 
-export default function AddEmployeeForm({ onAddEmployee, propertyCode }: AddEmployeeFormProps) {
+export default function AddEmployeeForm({ propertyCode }: AddEmployeeFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -53,35 +71,45 @@ export default function AddEmployeeForm({ onAddEmployee, propertyCode }: AddEmpl
     }
     setIsAdding(true);
     
-    // Mock adding employee
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      await addEmployeeAction({
+          property_code: propertyCode,
+          firstName,
+          lastName,
+          email,
+          department,
+          employeeCode,
+          shiftStartTime,
+          shiftEndTime,
+          clientId: 'default_client', 
+          branchId: 'default_branch',
+      });
 
-    onAddEmployee({
-        property_code: propertyCode,
-        firstName,
-        lastName,
-        email,
-        department,
-        employeeCode,
-        shiftStartTime,
-        shiftEndTime,
-    });
+      toast({
+          title: 'Employee Added',
+          description: `${firstName} ${lastName} has been added.`,
+      });
 
-    toast({
-        title: 'Employee Added',
-        description: `${firstName} ${lastName} has been added.`,
-    });
+      // Reset form
+      setFirstName('');
+      setLastName('');
+      setEmail('');
+      setDepartment('');
+      setEmployeeCode('');
+      setShiftStartTime('09:00');
+      setShiftEndTime('18:00');
 
-    // Reset form
-    setFirstName('');
-    setLastName('');
-    setEmail('');
-    setDepartment('');
-    setEmployeeCode('');
-    setShiftStartTime('09:00');
-    setShiftEndTime('18:00');
+      router.refresh();
 
-    setIsAdding(false);
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: error.message || 'Could not add employee.'
+        });
+    } finally {
+        setIsAdding(false);
+    }
   };
 
   return (
