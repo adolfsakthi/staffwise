@@ -14,9 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Device } from '@/lib/types';
 import { addDevice } from '@/app/actions';
-import { useRouter } from 'next/navigation';
 
 type AddDeviceFormProps = {
   propertyCode: string;
@@ -24,16 +22,15 @@ type AddDeviceFormProps = {
 
 export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
-  const [deviceName, setDeviceName] = useState('');
-  const [branchName, setBranchName] = useState('Main Lobby');
-  const [ipAddress, setIpAddress] = useState('');
-  const [port, setPort] = useState(4370);
-  const [connectionKey, setConnectionKey] = useState('');
+  
+  async function handleAddDeviceAction(formData: FormData) {
+    const deviceName = formData.get('deviceName') as string;
+    const branchName = formData.get('branchName') as string;
+    const ipAddress = formData.get('ipAddress') as string;
+    const port = Number(formData.get('port'));
+    const connectionKey = formData.get('connectionKey') as string;
 
-
-  const handleAddDevice = async () => {
     if (!deviceName || !branchName || !ipAddress) {
       toast({
         variant: 'destructive',
@@ -42,6 +39,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
       });
       return;
     }
+    
     setIsAdding(true);
 
     try {
@@ -52,8 +50,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             port,
             connectionKey,
             property_code: propertyCode,
-            status: 'offline', // Default status
-            // These would come from the user's session in a real app
+            status: 'offline',
             clientId: 'default_client', 
             branchId: 'default_branch',
         });
@@ -63,15 +60,9 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             description: `${deviceName} has been registered.`,
         });
 
-        // Reset form
-        setDeviceName('');
-        setBranchName('Main Lobby');
-        setIpAddress('');
-        setPort(4370);
-        setConnectionKey('');
-
-        // Re-route to refresh the page and show the new device
-        router.refresh();
+        // Reset form by clearing the form element
+        const form = document.getElementById('add-device-form-element') as HTMLFormElement;
+        form?.reset();
 
     } catch(error) {
         console.error(error);
@@ -83,7 +74,8 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
     } finally {
         setIsAdding(false);
     }
-  };
+  }
+
 
   return (
     <Card>
@@ -93,64 +85,67 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
           Register a new device for property {propertyCode}.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="device-name">Device Name</Label>
-            <Input
-              id="device-name"
-              value={deviceName}
-              onChange={(e) => setDeviceName(e.target.value)}
-              placeholder="e.g., Main Entrance"
-            />
+      <CardContent>
+        <form id="add-device-form-element" action={handleAddDeviceAction} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="deviceName">Device Name</Label>
+              <Input
+                id="deviceName"
+                name="deviceName"
+                placeholder="e.g., Main Entrance"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="branchName">Branch/Location</Label>
+              <Input
+                id="branchName"
+                name="branchName"
+                placeholder="e.g., Main Lobby"
+                defaultValue="Main Lobby"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ipAddress">IP Address</Label>
+              <Input
+                id="ipAddress"
+                name="ipAddress"
+                placeholder="e.g., 192.168.1.100"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="port">Port</Label>
+              <Input
+                id="port"
+                name="port"
+                type="number"
+                defaultValue={4370}
+                placeholder="e.g., 4370"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="connectionKey">Connection Key</Label>
+              <Input
+                id="connectionKey"
+                name="connectionKey"
+                type="password"
+                placeholder="Device password (e.g. 0)"
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="branch">Branch/Location</Label>
-            <Input
-              id="branch"
-              value={branchName}
-              onChange={(e) => setBranchName(e.target.value)}
-              placeholder="e.g., Main Lobby"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ip-address">IP Address</Label>
-            <Input
-              id="ip-address"
-              value={ipAddress}
-              onChange={(e) => setIpAddress(e.target.value)}
-              placeholder="e.g., 192.168.1.100"
-            />
-          </div>
-           <div className="space-y-2">
-            <Label htmlFor="port">Port</Label>
-            <Input
-              id="port"
-              type="number"
-              value={port}
-              onChange={(e) => setPort(Number(e.target.value))}
-              placeholder="e.g., 4370"
-            />
-          </div>
-           <div className="space-y-2">
-            <Label htmlFor="connection-key">Connection Key</Label>
-            <Input
-              id="connection-key"
-              type="password"
-              value={connectionKey}
-              onChange={(e) => setConnectionKey(e.target.value)}
-              placeholder="Device password (e.g. 0)"
-            />
-          </div>
-        </div>
-        <Button onClick={handleAddDevice} disabled={isAdding}>
-          {isAdding ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <PlusCircle className="mr-2 h-4 w-4" />
-          )}
-          Add Device
-        </Button>
+          <Button type="submit" disabled={isAdding}>
+            {isAdding ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <PlusCircle className="mr-2 h-4 w-4" />
+            )}
+            Add Device
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );
