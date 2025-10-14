@@ -1,170 +1,119 @@
 /**
- * @fileoverview Firestore Security Rules for the Staffwise Attendance System.
+ * @file Firebase Security Rules for Attendance Management System
  *
- * Core Philosophy:
- * This ruleset enforces a strict, path-based ownership model for data access. Multi-tenancy is achieved through the top-level `clients` collection.
+ * @description This ruleset provides basic read and write access to all collections for all authenticated users.
+ * It is intended for rapid prototyping and should be refined for production use.
  *
- * Data Structure:
- * - /clients/{clientId}: Root collection for client data.
- * - /clients/{clientId}/branches/{branchId}: Branch data associated with a client.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employee data for a specific branch.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
- * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests for an employee.
- * - /users/{userId}/notifications/{notificationId}: Notifications for a specific user.
- * - /emailLogs/{emailLogId}: Logs of all sent emails (admin-only).
- * - /auditLogs/{auditLogId}: Logs of all audit activities (admin-only).
- *
- * Key Security Decisions:
- * - Strict path-based ownership: Access is primarily determined by the Firestore path, using the `clientId`, `branchId`, and `employeeId` parameters.
- * - Denormalization: Client and branch IDs are denormalized into subcollections to avoid costly `get()` calls in security rules.
- * - No user listing: Listing the `/users` collection is not permitted.
- * - Email and audit logs: Restricted to admin-level access (not implemented in this version).
- * - Read-only collections: The design does not have explicit read-only collections, but such behavior could be simulated by setting `allow get, list: if true;` combined with restrictive write rules.
- *
- * Denormalization for Authorization:
- * - Each document in subcollections contains the `clientId` and `branchId` of its parent documents, enabling simple authorization checks without additional reads. For example, an `AttendanceRecord` document stores `clientId`, `branchId`, and `employeeId`, allowing rules to validate access based solely on the document's data and the authenticated user's ID.
- *
- * Structural Segregation:
- * - Data is segregated into distinct collections based on its type and access requirements. This ensures that security rules can be applied consistently across all documents within a collection.
+ * Core Philosophy: Open access for authenticated users.
+ * Data Structure: Hierarchical data structure with clients, branches, employees, and associated data.
+ * Key Security Decisions: Basic read and write access to all collections.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Allows access to client documents. Currently allows anyone to read, but only allows create.
-     * @path /databases/{database}/documents/clients/{clientId}
-     * @allow (create) Signed-in user can create client.
-     * @deny (update, delete) No one can update or delete client data.
-     * @principle Enforces client creation by signed-in users only, prevents unauthorized modifications.
-     */
-    match /clients/{clientId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to branch documents within a client. Assumes path-based ownership for authorization.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}
-     * @allow (create) Signed-in user can create branch.
-     * @deny (update, delete) No one can update or delete branch data.
-     * @principle Enforces branch creation within a client's scope, prevents unauthorized modifications.
-     */
-    match /clients/{clientId}/branches/{branchId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to employee documents within a branch. Assumes path-based ownership for authorization.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}
-     * @allow (create) Signed-in user can create employee.
-     * @deny (update, delete) No one can update or delete employee data.
-     * @principle Enforces employee creation within a branch's scope, prevents unauthorized modifications.
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to biometric device documents within a branch. Assumes path-based ownership for authorization.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
-     * @allow (create) Signed-in user can create biometric device.
-     * @deny (update, delete) No one can update or delete biometric device data.
-     * @principle Enforces biometric device creation within a branch's scope, prevents unauthorized modifications.
-     */
-    match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to attendance record documents within an employee's scope. Assumes path-based ownership for authorization.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow (list) Signed-in user can list attendance records.
-     * @allow (create) Signed-in user can create attendance record.
-     * @deny (update, delete) No one can update or delete attendance record data.
-     * @principle Enforces attendance record creation within an employee's scope, prevents unauthorized modifications.
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to leave request documents within an employee's scope. Assumes path-based ownership for authorization.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
-     * @allow (create) Signed-in user can create leave request.
-     * @deny (update, delete) No one can update or delete leave request data.
-     * @principle Enforces leave request creation within an employee's scope, prevents unauthorized modifications.
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to notification documents for a specific user. Enforces ownership based on the `userId` path parameter.
-     * @path /databases/{database}/documents/users/{userId}/notifications/{notificationId}
-     * @allow (get, list) Signed-in user can access their own notifications.
-     * @allow (create) Signed-in user can create notification for themself.
-     * @deny (update, delete) Signed-in user can not update or delete notifications for themself.
-     * @principle Enforces user-specific access to notifications, preventing unauthorized access.
-     */
-    match /users/{userId}/notifications/{notificationId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to email log documents.
-     * @path /databases/{database}/documents/emailLogs/{emailLogId}
-     * @allow (get, list) Deny everyone to read or list emailLogs.
-     * @deny (create, update, delete) Deny everyone to write emailLogs.
-     * @principle Prevents unauthorized access to email logs.
-     */
-    match /emailLogs/{emailLogId} {
-      allow get, list: if false;
-      allow create, update, delete: if false;
-    }
-
-    /**
-     * @description Allows access to audit log documents.
-     * @path /databases/{database}/documents/auditLogs/{auditLogId}
-     * @allow (get, list) Deny everyone to read or list auditLogs.
-     * @deny (create, update, delete) Deny everyone to write auditLogs.
-     * @principle Prevents unauthorized access to audit logs.
-     */
-    match /auditLogs/{auditLogId} {
-      allow get, list: if false;
-      allow create, update, delete: if false;
-    }
-
-    // --- Helper functions ---
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
+    // Helper function to check if the user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the user is the owner of the resource, based on the `userId` path parameter.
-     * @param {string} userId The user ID from the path.
-     * @return {boolean} True if the user is the owner, false otherwise.
+     * @description Grants access to all Clients collection for all authenticated users.
+     * @path /clients/{clientId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all clients for authenticated users for prototyping.
      */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    match /clients/{clientId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all Branches for all authenticated users.
+     * @path /clients/{clientId}/branches/{branchId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all branches for authenticated users for prototyping.
+     */
+    match /clients/{clientId}/branches/{branchId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all Employees for all authenticated users.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all employees for authenticated users for prototyping.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all BiometricDevices for all authenticated users.
+     * @path /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all biometric devices for authenticated users for prototyping.
+     */
+    match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all AttendanceRecords for all authenticated users.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all attendance records for authenticated users for prototyping.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all LeaveRequests for all authenticated users.
+     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all leave requests for authenticated users for prototyping.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+     /**
+     * @description Grants access to all Notifications for all authenticated users.
+     * @path users/{userId}/notifications/{notificationId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all notifications for authenticated users for prototyping.
+     */
+    match /users/{userId}/notifications/{notificationId} {
+          allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all EmailLogs for all authenticated users.
+     * @path emailLogs/{emailLogId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all email logs for authenticated users for prototyping.
+     */
+    match /emailLogs/{emailLogId} {
+      allow get, list, create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Grants access to all AuditLogs for all authenticated users.
+     * @path auditLogs/{auditLogId}
+     * @allow (get, list, create, update, delete): Any authenticated user can perform any operation.
+     * @deny None
+     * @principle Grants create, update, delete access to all audit logs for authenticated users for prototyping.
+     */
+    match /auditLogs/{auditLogId} {
+      allow get, list, create, update, delete: if isSignedIn();
     }
   }
 }
