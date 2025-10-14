@@ -222,31 +222,25 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             timeout: 5000,
         });
 
-        // Wrap the callback-based methods in a Promise
-        const logs: any[] = await new Promise(async (resolve, reject) => {
-            try {
-                await zkInstance.connect();
-
-                zkInstance.getAttendances((err: Error | null, data: any[] | null) => {
-                    if (err) {
-                        return reject(err);
-                    }
-                    resolve(data || []);
-                });
-            } catch(connectErr) {
-                reject(connectErr);
-            }
+        // Create socket connection
+        await zkInstance.createSocket();
+        
+        // Get attendance logs using a promise-wrapped callback
+        const logs: any[] = await new Promise((resolve, reject) => {
+            zkInstance.getAttendances((err: Error | null, data: any[] | null) => {
+                if (err) {
+                    return reject(err);
+                }
+                resolve(data || []);
+            });
         });
 
+
         if (logs && logs.length > 0) {
-            // The data from zklib is already in a good format.
-            // Example item: { userId: '1', attTime: '2024-01-01 09:00:00', attType: 0 }
-            
             const existingLogs = await readLogs();
             const updatedLogs = [...existingLogs, ...logs];
-            await writeLogs(updatedLogs); // Persist raw logs
+            await writeLogs(updatedLogs); 
 
-            // Process these new logs into the live log format
             await processLogs(logs, device);
 
             return {
@@ -263,10 +257,8 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        // Log the full complex error to the server console for debugging
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
         
-        // Create a simple, serializable message for the client
         const errorMessage = e.message || 'An unknown error occurred during sync. Check server logs.';
         return { success: false, message: errorMessage };
 
