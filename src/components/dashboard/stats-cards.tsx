@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  BookUser,
+  Users,
   Clock,
   AlarmClockOff,
   Building,
@@ -10,7 +10,7 @@ import { Skeleton } from '../ui/skeleton';
 
 type StatsCardsProps = {
   stats: {
-    totalRecords: number;
+    totalEmployees: number;
     lateCount: number;
     totalOvertimeMinutes: number;
     departmentCount: number;
@@ -21,7 +21,7 @@ type StatsCardsProps = {
 
 export default function StatsCards({ stats, isLoading, propertyCode }: StatsCardsProps) {
   const {
-    totalRecords,
+    totalEmployees,
     lateCount,
     totalOvertimeMinutes,
     departmentCount,
@@ -30,25 +30,25 @@ export default function StatsCards({ stats, isLoading, propertyCode }: StatsCard
 
   const cardData = [
     {
-      title: `Records for ${propertyCode}`,
-      value: totalRecords.toLocaleString(),
-      icon: BookUser,
+      title: `Total Employees`,
+      value: totalEmployees.toLocaleString(),
+      icon: Users,
       color: 'text-blue-500',
     },
     {
-      title: 'Late Entries',
+      title: 'Late Entries Today',
       value: lateCount.toLocaleString(),
       icon: AlarmClockOff,
       color: 'text-red-500',
     },
     {
-      title: 'Total Overtime',
+      title: 'Total Overtime Today',
       value: `${totalOvertimeHours} hrs`,
       icon: Clock,
       color: 'text-green-500',
     },
     {
-      title: 'Departments',
+      title: 'Active Departments',
       value: departmentCount.toLocaleString(),
       icon: Building,
       color: 'text-purple-500',

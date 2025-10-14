@@ -8,7 +8,7 @@ import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
 import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
+import { MOCK_ATTENDANCE_RECORDS, MOCK_USERS } from '@/lib/mock-data';
 
 
 export default function DashboardPage() {
@@ -21,26 +21,27 @@ export default function DashboardPage() {
   const propertyCode = user?.property_code || 'D001';
 
   const records = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
+  const users = MOCK_USERS.filter(u => u.property_code === propertyCode);
   const isLoading = false;
   const error = null;
 
 
   const stats = useMemo(() => {
-    if (!records || records.length === 0) {
-      return { totalRecords: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
+    if (!records || isUserLoading) {
+      return { totalEmployees: 0, lateCount: 0, totalOvertimeMinutes: 0, departmentCount: 0 };
     }
-    const totalRecords = records.length;
+    const totalEmployees = users.length;
     const lateCount = records.filter(r => r.is_late).length;
     const totalOvertimeMinutes = records.reduce((sum, r) => sum + (r.overtime_minutes || 0), 0);
     const departmentCount = [...new Set(records.map(r => r.department))].length;
     
     return {
-        totalRecords,
+        totalEmployees,
         lateCount,
         totalOvertimeMinutes,
         departmentCount,
     };
-  }, [records]);
+  }, [records, users, isUserLoading]);
 
   const weeklyData = useMemo(() => {
     if (!records || records.length === 0) return [];
@@ -62,16 +63,11 @@ export default function DashboardPage() {
   const handleDataUpload = () => {
     console.log("Data upload finished.");
   }
-  
-  const handleSeed = async () => {
-    alert('Database seeding is currently disabled.');
-  }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-between items-start">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button onClick={handleSeed} variant="outline">Initialize Database (Disabled)</Button>
       </div>
       <StatsCards stats={stats} isLoading={isLoading || isUserLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
