@@ -10,5 +10,17 @@
     "clientId": "default_client",
     "branchId": "default_branch",
     "id": "1"
+  },
+  {
+    "deviceName": "Test Device Static",
+    "branchName": "India",
+    "ipAddress": "103.159.10.130",
+    "port": 81,
+    "connectionKey": "0",
+    "property_code": "D001",
+    "status": "online",
+    "clientId": "default_client",
+    "branchId": "default_branch",
+    "id": "2"
   }
 ]

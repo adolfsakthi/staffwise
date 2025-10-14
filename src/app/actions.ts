@@ -218,8 +218,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         zkInstance = new ZKLib(device.ipAddress, device.port, 10000, 4000);
         
         await zkInstance.createSocket();
-        await zkInstance.connect();
-
+        
         const logs = await zkInstance.getAttendances();
 
         if (logs.data && logs.data.length > 0) {
