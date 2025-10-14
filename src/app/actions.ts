@@ -215,21 +215,32 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
     let zkInstance: any = null;
 
     try {
-        zkInstance = new ZKLib({
-            ip: device.ipAddress,
-            port: device.port,
-            inport: 5200,
-            timeout: 5000,
+        const logs = await new Promise<any[]>((resolve, reject) => {
+            zkInstance = new ZKLib({
+                ip: device.ipAddress,
+                port: device.port,
+                inport: 5200,
+                timeout: 5000,
+            });
+
+            zkInstance.connect((err: any) => {
+                if (err) {
+                    console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
+                    return reject(err);
+                }
+
+                zkInstance.getAttendances((err: any, data: any) => {
+                    if (err) {
+                        console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
+                        return reject(err);
+                    }
+                    resolve(data);
+                });
+            });
         });
 
-        // Establish connection
-        await zkInstance.connect();
-        
-        // Get attendance logs
-        const logs = await zkInstance.getAttendances();
-
-        if (logs && logs.data.length > 0) {
-            const rawLogs = logs.data;
+        if (logs && logs.length > 0) {
+            const rawLogs = logs;
             const existingLogs = await readLogs();
             const updatedLogs = [...existingLogs, ...rawLogs];
             await writeLogs(updatedLogs); 
@@ -251,12 +262,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        const errorMessage = e.message || 'An unknown error occurred during sync. Check server logs.';
+        const errorMessage = e?.message || 'An unknown error occurred during sync. Check server logs.';
         return { success: false, message: errorMessage };
 
     } finally {
-        if (zkInstance) {
-            await zkInstance.disconnect();
+        if (zkInstance && zkInstance.socket) {
+            zkInstance.disconnect();
         }
     }
 }
