@@ -24,6 +24,7 @@ import {
   Bell,
   LogOut,
   Mail,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -52,6 +53,11 @@ const navItems = [
     href: '/audit',
     icon: ShieldCheck,
     label: 'Audit',
+  },
+  {
+    href: '/employees',
+    icon: UserPlus,
+    label: 'Employees',
   },
   {
     href: '/reports',

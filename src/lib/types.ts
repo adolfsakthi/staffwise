@@ -76,3 +76,17 @@ export type EmailLog = {
   emailType: 'late_notice' | 'admin_report' | 'department_report';
   sentAt: any; // Firestore timestamp
 }
+
+export type Employee = {
+  id: string;
+  property_code: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  department: string;
+  employeeCode: string;
+  shiftStartTime: string;
+  shiftEndTime: string;
+  clientId: string;
+  branchId: string;
+};

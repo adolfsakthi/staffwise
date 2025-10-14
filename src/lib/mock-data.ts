@@ -1,5 +1,5 @@
 
-import type { AttendanceRecord, Device, LiveLog, UserProfile, Role, EmailLog } from './types';
+import type { AttendanceRecord, Device, LiveLog, UserProfile, Role, EmailLog, Employee } from './types';
 import { format } from 'date-fns';
 
 const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -108,6 +108,14 @@ export const MOCK_ROLES: Role[] = [
 ];
 
 export const MOCK_DEPARTMENTS: string[] = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales'];
+
+export const MOCK_EMPLOYEES: Employee[] = [
+    { id: 'emp1', property_code: 'D001', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', department: 'Housekeeping', employeeCode: 'EMP101', shiftStartTime: '09:00', shiftEndTime: '18:00', clientId: 'default_client', branchId: 'default_branch' },
+    { id: 'emp2', property_code: 'D001', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', department: 'Front Desk', employeeCode: 'EMP102', shiftStartTime: '08:00', shiftEndTime: '17:00', clientId: 'default_client', branchId: 'default_branch' },
+    { id: 'emp3', property_code: 'D001', firstName: 'Peter', lastName: 'Jones', email: 'peter.jones@example.com', department: 'Engineering', employeeCode: 'EMP103', shiftStartTime: '10:00', shiftEndTime: '19:00', clientId: 'default_client', branchId: 'default_branch' },
+    { id: 'emp4', property_code: 'PROP-002', firstName: 'Susan', lastName: 'May', email: 'susan.may@example.com', department: 'Sales', employeeCode: 'EMP201', shiftStartTime: '09:00', shiftEndTime: '17:30', clientId: 'default_client', branchId: 'default_branch' },
+];
+
 
 export const MOCK_EMAIL_LOGS: EmailLog[] = [
     { id: 'email1', to: 'admin@staffwise.com', subject: 'Audit Summary Report', body: 'Audit for D001 completed.', emailType: 'admin_report', sentAt: new Date() }
