@@ -120,8 +120,8 @@ export default function MainSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <Icons.logo className="size-7 text-primary" />
-          <span className="text-lg font-semibold text-foreground">HEZEE ACCESS</span>
+          <Icons.logo className="size-7" />
+          <span className="text-lg font-semibold text-foreground group-data-[collapsible=icon]:hidden">HEZEE ACCESS</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">

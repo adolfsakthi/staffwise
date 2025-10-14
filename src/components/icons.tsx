@@ -4,36 +4,18 @@ export const Icons = {
   logo: (props: SVGProps<SVGSVGElement>) => (
     <svg
       {...props}
+      viewBox="0 0 50 50"
+      fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 50"
-      className="h-6 w-auto"
     >
-      <defs>
-        <linearGradient id="logo-gradient" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="60%" stopColor="hsl(var(--primary))" />
-          <stop offset="60%" stopColor="hsl(var(--accent))" />
-        </linearGradient>
-      </defs>
-      <text
-        x="0"
-        y="15"
-        fontFamily="Arial, sans-serif"
-        fontSize="18"
-        fontWeight="bold"
+      <path
+        d="M25 0L50 14V36L25 50L0 36V14L25 0Z"
         fill="hsl(var(--primary))"
-      >
-        HEZEE
-      </text>
-      <text
-        x="0"
-        y="40"
-        fontFamily="Arial, sans-serif"
-        fontSize="18"
-        fontWeight="bold"
-      >
-        <tspan fill="hsl(var(--accent))">ACC</tspan>
-        <tspan fill="hsl(var(--primary))">ESS</tspan>
-      </text>
+      />
+      <path
+        d="M13 25L25 18L37 25L25 32L13 25Z"
+        fill="hsl(var(--accent))"
+      />
     </svg>
   ),
 };

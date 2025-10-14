@@ -25,7 +25,7 @@ export default function Header() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">StaffWise</BreadcrumbLink>
+              <BreadcrumbLink href="/">HEZEE ACCESS</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
