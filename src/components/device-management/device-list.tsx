@@ -48,7 +48,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, syncDevice, removeDevice } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, removeDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -100,32 +100,35 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   
   const handleSyncDevice = async (device: Device) => {
     setSyncingDeviceId(device.id);
-    const result = await syncDevice(device.id);
-    
-    if (result.success && result.data) {
-      toast({
-        title: 'Sync Successful',
-        description: result.message,
-      });
-      // CRITICAL: Parse the JSON string from the server action
-      try {
-        setSyncedLogs(JSON.parse(result.data));
-      } catch (e) {
-        console.error("Failed to parse logs data:", e);
-        toast({
-            variant: 'destructive',
-            title: 'Sync Error',
-            description: 'Received invalid log data from the device.',
+    try {
+        const response = await fetch('/api/sync-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device }),
         });
-      }
-    } else {
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            toast({
+                title: 'Sync Successful',
+                description: result.message,
+            });
+            if (result.data && Array.isArray(result.data)) {
+                setSyncedLogs(result.data);
+            }
+        } else {
+            throw new Error(result.message || 'Sync failed with an unknown error.');
+        }
+    } catch (error: any) {
         toast({
             variant: 'destructive',
             title: 'Sync Failed',
-            description: result.message,
+            description: error.message,
         });
+    } finally {
+        setSyncingDeviceId(null);
     }
-    setSyncingDeviceId(null);
   }
   
   const confirmRemoveDevice = async () => {
