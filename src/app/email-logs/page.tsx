@@ -55,13 +55,15 @@ const LATE_ENTRY_TEMPLATE = `
 
 const ADMIN_REPORT_TEMPLATE = `
 <div style="font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;">
-  <div style="max-w: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  <div style="max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
     <div style="background: linear-gradient(to right, #6d28d9, #a78bfa); color: #ffffff; padding: 20px; text-align: center;">
       <h1 style="font-size: 24px; font-weight: bold; margin: 0;">Daily Audit Report</h1>
       <p style="margin: 4px 0 0; opacity: 0.9;">October 14th, 2025</p>
     </div>
     <div style="padding: 30px 20px; color: #333;">
-      <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Engineering Department</h2>
+      
+      <!-- Engineering Department -->
+      <h2 style="font-size: 18px; font-weight: bold; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Engineering Department</h2>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
         <thead>
           <tr>
@@ -76,7 +78,48 @@ const ADMIN_REPORT_TEMPLATE = `
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">45 mins</td></tr>
         </tbody>
       </table>
+
+      <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">Late Comers</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+         <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Employee</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Entry Time</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Late By</th>
+          </tr>
+        </thead>
+        <tbody>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">John Doe</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:15</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">15 mins</td></tr>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Peter Jones</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:05</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">5 mins</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">Overtime</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+         <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Employee</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Exit Time</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">OT</th>
+          </tr>
+        </thead>
+        <tbody>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Emily White</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">18:45</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">45 mins</td></tr>
+        </tbody>
+      </table>
       
+      <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px;">Absentees</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+         <thead>
+          <tr><th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Employee</th></tr>
+        </thead>
+        <tbody>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Mike Ross</td></tr>
+        </tbody>
+      </table>
+
+
+      <!-- Housekeeping Department -->
       <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Housekeeping Department</h2>
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
@@ -90,6 +133,19 @@ const ADMIN_REPORT_TEMPLATE = `
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Absent</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">1</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0 mins</td></tr>
+        </tbody>
+      </table>
+       <h3 style="font-size: 16px; font-weight: bold; margin-bottom: 10px; margin-top: 25px;">Late Comers</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 14px;">
+         <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Employee</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Entry Time</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Late By</th>
+          </tr>
+        </thead>
+        <tbody>
+           <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Jane Smith</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">09:02</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">2 mins</td></tr>
         </tbody>
       </table>
       
