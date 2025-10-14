@@ -14,18 +14,14 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Device } from '@/lib/types';
-import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
 
 type AddDeviceFormProps = {
-  clientId: string;
-  branchId: string;
+  onAddDevice: (device: Omit<Device, 'id' | 'clientId' | 'branchId'>) => void;
   propertyCode: string;
 };
 
-export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddDeviceFormProps) {
+export default function AddDeviceForm({ onAddDevice, propertyCode }: AddDeviceFormProps) {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const [isAdding, setIsAdding] = useState(false);
   const [deviceName, setDeviceName] = useState('');
   const [branchName, setBranchName] = useState('Main Lobby');
@@ -35,7 +31,7 @@ export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddD
 
 
   const handleAddDevice = async () => {
-    if (!deviceName || !branchName || !ipAddress || !firestore) {
+    if (!deviceName || !branchName || !ipAddress) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
@@ -45,41 +41,31 @@ export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddD
     }
     setIsAdding(true);
 
-    try {
-        const devicesCol = collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`);
-        await addDoc(devicesCol, {
-            deviceName,
-            branchName, // This should probably be derived from branchId
-            ipAddress,
-            port,
-            connectionKey,
-            clientId,
-            branchId,
-            property_code: propertyCode,
-            status: 'offline', // Default status, should be updated by a monitoring service
-        });
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    onAddDevice({
+        deviceName,
+        branchName,
+        ipAddress,
+        port,
+        connectionKey,
+        property_code: propertyCode,
+        status: 'offline', // Default status
+    });
         
-        toast({
-          title: 'Device Added',
-          description: `${deviceName} has been registered.`,
-        });
+    toast({
+        title: 'Device Added',
+        description: `${deviceName} has been registered.`,
+    });
 
-        // Reset form
-        setDeviceName('');
-        setBranchName('Main Lobby');
-        setIpAddress('');
-        setPort(4370);
-        setConnectionKey('');
+    // Reset form
+    setDeviceName('');
+    setBranchName('Main Lobby');
+    setIpAddress('');
+    setPort(4370);
+    setConnectionKey('');
 
-    } catch (e: any) {
-         toast({
-            variant: 'destructive',
-            title: 'Error Adding Device',
-            description: e.message || 'An unexpected error occurred.',
-        });
-    } finally {
-        setIsAdding(false);
-    }
+    setIsAdding(false);
   };
 
   return (

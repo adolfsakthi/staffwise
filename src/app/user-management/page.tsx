@@ -15,34 +15,32 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import type { Role, UserProfile } from '@/lib/types';
-import { useMemo } from 'react';
-import { collection, query, where } from 'firebase/firestore';
+import { useMemo, useState } from 'react';
+
+const MOCK_ROLES: Role[] = [
+    { id: '1', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'], property_code: 'D001', clientId: 'default_client' },
+    { id: '2', name: 'Manager', permissions: ['read', 'write'], property_code: 'D001', clientId: 'default_client' },
+    { id: '3', name: 'Auditor', permissions: ['read', 'run_audit'], property_code: 'D001', clientId: 'default_client' },
+    { id: '4', name: 'Manager', permissions: ['read', 'write'], property_code: 'D002', clientId: 'default_client' },
+];
+
+const MOCK_USERS: UserProfile[] = [
+    { id: '1', uid: 'user1', displayName: 'Admin User', email: 'admin@staffwise.com', role: 'Admin', property_code: 'D001', clientId: 'default_client' },
+    { id: '2', uid: 'user2', displayName: 'Manager User', email: 'manager@staffwise.com', role: 'Manager', property_code: 'D001', clientId: 'default_client' },
+    { id: '3', uid: 'user3', displayName: 'Hotel B Manager', email: 'manager@hotelb.com', role: 'Manager', property_code: 'D002', clientId: 'default_client' },
+];
 
 
 export default function UserManagementPage() {
     const { user: currentUser, isUserLoading } = useUser();
-    const firestore = useFirestore();
-    const clientId = 'default_client';
-
+    
     // @ts-ignore
     const propertyCode = currentUser?.property_code || null;
 
-    const rolesQuery = useMemoFirebase(() => {
-        if (!firestore || !clientId) return null;
-        return query(collection(firestore, `clients/${clientId}/roles`));
-    }, [firestore, clientId]);
-
-    const usersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        // This fetches all users. In a real app, this should be paginated and filtered.
-        return collection(firestore, 'users');
-    }, [firestore]);
-
-
-    const { data: rolesData, isLoading: isLoadingRoles, error: rolesError } = useCollection<Role>(rolesQuery);
-    const { data: usersData, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile>(usersQuery);
+    const [rolesData, setRolesData] = useState(MOCK_ROLES);
+    const [usersData, setUsersData] = useState(MOCK_USERS);
 
     const roles = useMemo(() => {
       if (!rolesData || !propertyCode) return [];
@@ -53,8 +51,23 @@ export default function UserManagementPage() {
       if (!usersData || !propertyCode) return [];
       return usersData.filter(u => u.property_code === propertyCode);
     }, [usersData, propertyCode]);
+    
+    const handleUpdateUserRole = (userId: string, newRole: string) => {
+        setUsersData(prev => prev.map(u => u.id === userId ? {...u, role: newRole} : u));
+    }
+    
+    const handleUpdateRoles = (updatedRoles: Role[]) => {
+        // This is a bit tricky as roles could be added/deleted/edited.
+        // For simplicity, we'll just replace the roles for the current property.
+        const otherPropertyRoles = rolesData.filter(r => r.property_code !== propertyCode);
+        setRolesData([...otherPropertyRoles, ...updatedRoles]);
+    }
+    
+    const handleAddUser = (newUser: UserProfile) => {
+        setUsersData(prev => [...prev, newUser]);
+    }
 
-    if (isUserLoading || isLoadingRoles || isLoadingUsers) {
+    if (isUserLoading) {
         return (
             <div className="flex min-h-[400px] w-full items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -77,10 +90,20 @@ export default function UserManagementPage() {
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList roles={roles || []} users={users || []} clientId={clientId} propertyCode={propertyCode || ''} />
+                <UserList 
+                    roles={roles || []} 
+                    users={users || []} 
+                    propertyCode={propertyCode || ''}
+                    onUpdateUserRole={handleUpdateUserRole}
+                    onAddUser={handleAddUser}
+                />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
-                <RoleManagement initialRoles={roles || []} clientId={clientId} propertyCode={propertyCode || ''} />
+                <RoleManagement 
+                    initialRoles={roles || []} 
+                    propertyCode={propertyCode || ''}
+                    onRolesChange={handleUpdateRoles}
+                />
             </TabsContent>
           </Tabs>
         </CardContent>

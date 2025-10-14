@@ -25,9 +25,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { useMemo } from 'react';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { useUser } from '@/firebase';
+import { useMemo, useState } from 'react';
+
+
+const MOCK_LOGS: LiveLog[] = [
+    { id: '1', type: 'late', message: 'John Doe arrived late', timestamp: new Date(), isRead: false, employee: 'John Doe', department: 'Engineering', time: '09:15', deviation: 15, property_code: 'D001' },
+    { id: '2', type: 'early', message: 'Jane Smith arrived early', timestamp: new Date(), isRead: false, employee: 'Jane Smith', department: 'Housekeeping', time: '08:45', deviation: -15, property_code: 'D001' },
+    { id: '3', type: 'overtime', message: 'Peter Jones started overtime', timestamp: new Date(), isRead: false, employee: 'Peter Jones', department: 'Security', time: '18:30', deviation: 30, property_code: 'D001' },
+    { id: '4', type: 'on_time', message: 'Mary Johnson arrived on time', timestamp: new Date(), isRead: false, employee: 'Mary Johnson', department: 'Front Desk', time: '09:00', deviation: 0, property_code: 'D002' },
+];
 
 
 const logConfig = {
@@ -41,26 +48,15 @@ const logConfig = {
 
 export default function LiveLogsPage() {
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
+    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
     // @ts-ignore
     const propertyCode = user?.property_code || null;
 
-    const logsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        // This assumes notifications are stored per-user.
-        // A more complex system might query a global log collection filtered by property code.
-        return query(collection(firestore, `users/${user.uid}/notifications`), orderBy('timestamp', 'desc'), limit(50));
-    }, [user, firestore]);
-
-    const { data: logs, isLoading: isLoadingLogs, error } = useCollection<LiveLog>(logsQuery);
-    
     const filteredLogs = useMemo(() => {
-      if (!logs || !propertyCode) return [];
-      // This client-side filter is suboptimal. A proper backend query would be better.
-      // It assumes 'property_code' is denormalized onto the notification document.
-      return logs.filter(l => l.property_code === propertyCode);
-    }, [logs, propertyCode]);
+      if (!MOCK_LOGS || !propertyCode) return [];
+      return MOCK_LOGS.filter(l => l.property_code === propertyCode);
+    }, [propertyCode]);
 
 
   return (
@@ -96,12 +92,6 @@ export default function LiveLogsPage() {
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                 </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-destructive">
-                    Error: {error.message}
-                  </TableCell>
-                </TableRow>
               ) : filteredLogs && filteredLogs.length > 0 ? (
                 filteredLogs.map((log) => {
                     const configKey = log.type in logConfig ? log.type : 'on_time';
@@ -119,8 +109,8 @@ export default function LiveLogsPage() {
                             <TableCell className="text-muted-foreground">{log.department || 'N/A'}</TableCell>
                             <TableCell className="text-muted-foreground">{log.time || 'N/A'}</TableCell>
                             <TableCell>
-                                {log.deviation && log.deviation > 0 ? (
-                                    <Badge variant={config.badge as any}>{log.deviation} min</Badge>
+                                {log.deviation && log.deviation !== 0 ? (
+                                    <Badge variant={config.badge as any}>{Math.abs(log.deviation)} min</Badge>
                                 ) : (
                                     <span className='text-muted-foreground'>--</span>
                                 )}

@@ -27,15 +27,10 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
 
-
-// In a real app, departments would be its own collection
 const DEPARTMENTS = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales', 'Global (All Departments)'];
 
 type SettingsFormProps = {
-  clientId: string;
   propertyCode: string;
 };
 
@@ -47,67 +42,74 @@ type Settings = {
     };
 }
 
+const MOCK_SETTINGS: Settings = {
+    graceTime: { global: 15, Engineering: 5 },
+    autoAudit: { enabled: true, time: '02:00' },
+};
+
 const DEFAULT_GRACE_TIME = 15;
 const DEFAULT_AUTO_AUDIT_TIME = '00:00';
 
-export default function SettingsForm({ clientId, propertyCode }: SettingsFormProps) {
+export default function SettingsForm({ propertyCode }: SettingsFormProps) {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const [graceDepartment, setGraceDepartment] = useState('Global (All Departments)');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   
-  const settingsRef = useMemoFirebase(() => {
-    if (!firestore || !clientId) return null;
-    return doc(firestore, `clients/${clientId}/settings`, 'config');
-  }, [firestore, clientId]);
-
-  const { data: settings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsRef);
+  const [settings, setSettings] = useState<Settings>(MOCK_SETTINGS);
 
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_TIME);
   const [autoAuditEnabled, setAutoAuditEnabled] = useState(true);
   const [autoAuditTime, setAutoAuditTime] = useState(DEFAULT_AUTO_AUDIT_TIME);
+  
+  useEffect(() => {
+    // Simulate fetching settings
+    setIsLoadingSettings(true);
+    setTimeout(() => {
+        setSettings(MOCK_SETTINGS);
+        setIsLoadingSettings(false);
+    }, 500);
+  }, []);
 
   useEffect(() => {
     if (settings) {
-        setGraceMinutes(settings.graceTime?.[graceDepartment] ?? settings.graceTime?.['global'] ?? DEFAULT_GRACE_TIME);
+        const key = graceDepartment === 'Global (All Departments)' ? 'global' : graceDepartment;
+        setGraceMinutes(settings.graceTime?.[key] ?? settings.graceTime?.['global'] ?? DEFAULT_GRACE_TIME);
         setAutoAuditEnabled(settings.autoAudit?.enabled ?? true);
         setAutoAuditTime(settings.autoAudit?.time ?? DEFAULT_AUTO_AUDIT_TIME);
     }
   }, [settings, graceDepartment]);
 
   const handleSaveGraceTime = async () => {
-    if (!settingsRef) return;
-    try {
-        await setDoc(settingsRef, {
-            graceTime: {
-                ...settings?.graceTime,
-                [graceDepartment === 'Global (All Departments)' ? 'global' : graceDepartment]: graceMinutes,
-            }
-        }, { merge: true });
-        toast({
-            title: 'Settings Saved',
-            description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
-        });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error saving settings', description: e.message });
-    }
+    const key = graceDepartment === 'Global (All Departments)' ? 'global' : graceDepartment;
+    const updatedSettings = {
+        ...settings,
+        graceTime: {
+            ...settings.graceTime,
+            [key]: graceMinutes,
+        }
+    };
+    setSettings(updatedSettings);
+
+    toast({
+        title: 'Settings Saved (Mock)',
+        description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
+    });
   };
 
   const handleSaveAutoAudit = async () => {
-    if (!settingsRef) return;
-     try {
-        await setDoc(settingsRef, {
-            autoAudit: {
-                enabled: autoAuditEnabled,
-                time: autoAuditTime,
-            }
-        }, { merge: true });
-        toast({
-            title: 'Settings Saved',
-            description: `Auto-audit settings have been updated.`,
-        });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error saving settings', description: e.message });
-    }
+    const updatedSettings = {
+        ...settings,
+        autoAudit: {
+            enabled: autoAuditEnabled,
+            time: autoAuditTime,
+        }
+    };
+    setSettings(updatedSettings);
+    
+    toast({
+        title: 'Settings Saved (Mock)',
+        description: `Auto-audit settings have been updated.`,
+    });
   };
 
   if(isLoadingSettings) {

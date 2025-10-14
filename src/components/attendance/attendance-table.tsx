@@ -22,49 +22,37 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
 
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false },
+    { id: '2', employeeId: '2', deviceId: '1', punchInTime: '2024-05-23T08:58:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'Jane Smith', email: 'jane@example.com', department: 'Housekeeping', property_code: 'D001', entry_time: '08:58', exit_time: '17:30', is_late: false, overtime_minutes: 0, is_audited: true },
+    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: '2024-05-22', logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
+];
 
 interface AttendanceTableProps {
-    clientId: string;
-    branchId: string;
     propertyCode: string;
 }
 
-export default function AttendanceTable({ clientId, branchId, propertyCode }: AttendanceTableProps) {
+export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const firestore = useFirestore();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || !branchId) return null;
+  const filteredRecords = useMemo(() => {
+    return MOCK_RECORDS.filter(r => {
+        const dateMatch = r.attendanceDate === dateFilter;
+        const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;
+        const propertyMatch = r.property_code === propertyCode;
+        return dateMatch && departmentMatch && propertyMatch;
+    });
+  }, [dateFilter, departmentFilter, propertyCode]);
 
-    let q = query(
-      collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`),
-      where('attendanceDate', '==', dateFilter)
-    );
-    
-    if (departmentFilter !== 'all') {
-      // Note: This requires a composite index in Firestore.
-      // The app will throw an error with a link to create it if it doesn't exist.
-      q = query(q, where('department', '==', departmentFilter));
-    }
-    
-    return q;
-  }, [firestore, clientId, branchId, dateFilter, departmentFilter]);
-  
-  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
-
-  // Departments would ideally be fetched from a 'departments' collection.
-  // For now, we derive it from the records or a static list.
   const departments = useMemo(() => {
-    if (!records) return [];
-    const depts = new Set(records.map(r => r.department || ''));
+    const depts = new Set(MOCK_RECORDS.filter(r => r.property_code === propertyCode).map(r => r.department || ''));
     return Array.from(depts).filter(Boolean);
-  }, [records]);
+  }, [propertyCode]);
 
 
   return (
@@ -116,14 +104,8 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-destructive">
-                    Error: {error.message}
-                  </TableCell>
-                </TableRow>
-              ) : records && records.length > 0 ? (
-                records.map((record) => (
+              ) : filteredRecords && filteredRecords.length > 0 ? (
+                filteredRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="font-medium">{record.employee_name}</div>

@@ -37,10 +37,9 @@ type OverviewChartProps = {
     late: number;
   }[];
   isLoading: boolean;
-  error?: Error | null;
 };
 
-export default function OverviewChart({ data, isLoading, error }: OverviewChartProps) {
+export default function OverviewChart({ data, isLoading }: OverviewChartProps) {
   if (isLoading) {
     return (
         <Card>
@@ -50,28 +49,6 @@ export default function OverviewChart({ data, isLoading, error }: OverviewChartP
             </CardHeader>
             <CardContent>
                 <Skeleton className="h-[300px] w-full" />
-            </CardContent>
-        </Card>
-    )
-  }
-
-  if (error) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Attendance Overview</CardTitle>
-                <CardDescription>On-time vs. late entries for the last 7 days.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex h-[300px] flex-col items-center justify-center gap-4 text-center text-destructive">
-                    <AlertTriangle className="h-10 w-10" />
-                    <div className="space-y-1">
-                        <h3 className="font-semibold">Error Loading Chart</h3>
-                        <p className="text-sm">
-                            Could not load attendance data. Please check permissions.
-                        </p>
-                    </div>
-                </div>
             </CardContent>
         </Card>
     )

@@ -26,33 +26,41 @@ import {
 } from '@/components/ui/table';
 import {
   MoreVertical,
-  PlusCircle,
   Wifi,
   WifiOff,
   Loader2,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import AddDeviceForm from '@/components/device-management/add-device-form';
-import { collection, query, where } from 'firebase/firestore';
+
+const MOCK_DEVICES: Device[] = [
+    { id: '1', deviceName: 'Main Entrance', branchName: 'Lobby', ipAddress: '192.168.1.101', status: 'online', property_code: 'D001', clientId: 'default_client', branchId: 'default_branch', port: 4370, connectionKey: 'key1' },
+    { id: '2', deviceName: 'Staff Entrance', branchName: 'Basement', ipAddress: '192.168.1.102', status: 'offline', property_code: 'D001', clientId: 'default_client', branchId: 'default_branch', port: 4370, connectionKey: 'key2' },
+    { id: '3', deviceName: 'Rooftop Bar', branchName: 'Rooftop', ipAddress: '192.168.2.50', status: 'online', property_code: 'D002', clientId: 'default_client', branchId: 'default_branch', port: 4370, connectionKey: 'key3' },
+];
 
 
 export default function DeviceManagementPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
-  const clientId = 'default_client';
-  const branchId = 'default_branch';
+  const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
 
   // @ts-ignore
   const propertyCode = user?.property_code || null;
   
-  const devicesQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || !branchId) return null;
-    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`));
-  }, [firestore, clientId, branchId]);
+  const handleAddDevice = (newDevice: Omit<Device, 'id' | 'clientId' | 'branchId'>) => {
+    const newId = (Math.max(...devices.map(d => parseInt(d.id))) + 1).toString();
+    setDevices(prev => [...prev, {
+        ...newDevice,
+        id: newId,
+        clientId: 'default_client',
+        branchId: 'default_branch',
+    }])
+  }
 
-  const { data: devices, isLoading: isLoadingDevices, error } = useCollection<Device>(devicesQuery);
+  const filteredDevices = useMemo(() => {
+    return devices.filter(d => d.property_code === propertyCode);
+  }, [devices, propertyCode]);
 
   if (isUserLoading || !propertyCode) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -60,7 +68,7 @@ export default function DeviceManagementPage() {
 
   return (
     <div className='space-y-6'>
-      <AddDeviceForm clientId={clientId} branchId={branchId} propertyCode={propertyCode} />
+      <AddDeviceForm onAddDevice={handleAddDevice} propertyCode={propertyCode} />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -83,20 +91,14 @@ export default function DeviceManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoadingDevices ? (
+                {isUserLoading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : error ? (
-                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-destructive">
-                      Error: {error.message}
-                    </TableCell>
-                  </TableRow>
-                ) : devices && devices.length > 0 ? (
-                  devices.map((device) => (
+                ) : filteredDevices && filteredDevices.length > 0 ? (
+                  filteredDevices.map((device) => (
                     <TableRow key={device.id}>
                       <TableCell className="font-medium">{device.deviceName}</TableCell>
                       <TableCell className="text-muted-foreground">

@@ -24,45 +24,42 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
-import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
+
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false },
+    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: '2024-05-22', logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
+    { id: '5', employeeId: '5', deviceId: '2', punchInTime: '2024-05-23T09:08:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'Emily White', email: 'emily@example.com', department: 'Sales', property_code: 'D002', entry_time: '09:08', exit_time: '18:00', is_late: true, late_by_minutes: 8, overtime_minutes: 0, is_audited: false },
+];
 
 
 interface AuditDashboardProps {
-    clientId: string;
-    branchId: string;
     propertyCode: string;
 }
 
-export default function AuditDashboard({ clientId, branchId, propertyCode }: AuditDashboardProps) {
+export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
-  const firestore = useFirestore();
+  const [isFetching, setIsFetching] = useState(false);
+  
+  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
 
-  const unauditedRecordsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || !branchId) return null;
-    return query(
-        collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`),
-        where('is_audited', '==', false)
-        // We filter by propertyCode on the client side. A composite index on `is_audited` and `property_code` would be better.
-    );
-  }, [firestore, clientId, branchId]);
-
-  const { data: unauditedRecordsData, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedRecordsQuery);
-
-  const unauditedRecords = useMemo(() => {
-    if (!unauditedRecordsData) return [];
-    return unauditedRecordsData.filter(r => r.property_code === propertyCode);
-  }, [unauditedRecordsData, propertyCode]);
+  useEffect(() => {
+    setIsFetching(true);
+    // Simulating a fetch
+    setTimeout(() => {
+        const records = MOCK_RECORDS.filter(r => r.property_code === propertyCode && !r.is_audited);
+        setUnauditedRecords(records);
+        setIsFetching(false);
+    }, 500);
+  }, [propertyCode]);
 
 
   useEffect(() => {
     setSelectedRecords([]);
-  }, [unauditedRecordsData]);
+  }, [unauditedRecords]);
 
 
   const handleSelectRecord = (id: string) => {
@@ -89,38 +86,24 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
       });
       return;
     }
-    if (!firestore) return;
-
+    
     setIsAuditing(true);
 
-    try {
-      const batch = writeBatch(firestore);
-      selectedRecords.forEach(recordId => {
-        const recordRef = doc(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`, recordId);
-        batch.update(recordRef, {
-          is_audited: true,
-          audit_notes: auditNotes,
-        });
-      });
-      await batch.commit();
+    // Mock audit
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Update local state
+    const updatedRecords = unauditedRecords.filter(r => !selectedRecords.includes(r.id));
+    setUnauditedRecords(updatedRecords);
 
-      toast({
-          title: 'Audit Complete',
-          description: `Successfully marked ${selectedRecords.length} records as audited.`,
-          action: <FileCheck2 className="text-green-500" />,
-      });
-      setSelectedRecords([]);
-      setAuditNotes('');
-
-    } catch (e: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Audit Failed',
-        description: e.message || "An unexpected error occurred.",
-      });
-    } finally {
-        setIsAuditing(false);
-    }
+    toast({
+        title: 'Audit Complete',
+        description: `Successfully marked ${selectedRecords.length} records as audited.`,
+        action: <FileCheck2 className="text-green-500" />,
+    });
+    setSelectedRecords([]);
+    setAuditNotes('');
+    setIsAuditing(false);
   };
 
   return (
@@ -157,12 +140,6 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ) : error ? (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center text-destructive">
-                            Error: {error.message}
-                        </TableCell>
-                    </TableRow>
                 ) : unauditedRecords && unauditedRecords.length > 0 ? (
                   unauditedRecords.map((record) => (
                     <TableRow

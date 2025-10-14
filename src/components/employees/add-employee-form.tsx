@@ -20,22 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { Employee } from '@/lib/types';
 
 
 // Departments could be fetched from a dedicated collection
 const DEPARTMENTS = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales'];
 
 type AddEmployeeFormProps = {
-  clientId: string;
-  branchId: string;
+  onAddEmployee: (employee: Omit<Employee, 'id' | 'clientId' | 'branchId'>) => void;
   propertyCode: string;
 };
 
-export default function AddEmployeeForm({ clientId, branchId, propertyCode }: AddEmployeeFormProps) {
+export default function AddEmployeeForm({ onAddEmployee, propertyCode }: AddEmployeeFormProps) {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const [isAdding, setIsAdding] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -46,7 +43,7 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
   const [shiftEndTime, setShiftEndTime] = useState('18:00');
 
   const handleAddEmployee = async () => {
-    if (!firstName || !lastName || !email || !department || !employeeCode || !firestore) {
+    if (!firstName || !lastName || !email || !department || !employeeCode) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
@@ -55,45 +52,36 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
       return;
     }
     setIsAdding(true);
+    
+    // Mock adding employee
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-    try {
-        const employeesCollection = collection(firestore, `clients/${clientId}/branches/${branchId}/employees`);
-        await addDoc(employeesCollection, {
-            clientId,
-            branchId,
-            property_code: propertyCode,
-            firstName,
-            lastName,
-            email,
-            department,
-            employeeCode,
-            shiftStartTime,
-            shiftEndTime,
-            createdAt: new Date(),
-        });
+    onAddEmployee({
+        property_code: propertyCode,
+        firstName,
+        lastName,
+        email,
+        department,
+        employeeCode,
+        shiftStartTime,
+        shiftEndTime,
+    });
 
-        toast({
-          title: 'Employee Added',
-          description: `${firstName} ${lastName} has been added.`,
-        });
+    toast({
+        title: 'Employee Added',
+        description: `${firstName} ${lastName} has been added.`,
+    });
 
-        // Reset form
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setDepartment('');
-        setEmployeeCode('');
-        setShiftStartTime('09:00');
-        setShiftEndTime('18:00');
-    } catch(e: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error Adding Employee',
-            description: e.message || 'An unexpected error occurred.',
-        });
-    } finally {
-        setIsAdding(false);
-    }
+    // Reset form
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setDepartment('');
+    setEmployeeCode('');
+    setShiftStartTime('09:00');
+    setShiftEndTime('18:00');
+
+    setIsAdding(false);
   };
 
   return (

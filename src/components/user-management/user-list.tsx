@@ -30,22 +30,17 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, Role } from '@/lib/types';
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
 
 type UserListProps = {
     roles: Role[];
     users: UserProfile[];
-    clientId: string;
     propertyCode: string;
+    onUpdateUserRole: (userId: string, newRole: string) => void;
+    onAddUser: (user: UserProfile) => void;
 }
 
-export default function UserList({ roles, users, clientId, propertyCode }: UserListProps) {
-  const auth = useAuth();
-  const firestore = useFirestore();
-
+export default function UserList({ roles, users, propertyCode, onUpdateUserRole, onAddUser }: UserListProps) {
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
@@ -61,72 +56,40 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
     }
   }, [roles, newUserRole]);
 
-  const handleRoleChange = async (userId: string, newRole: string) => {
-    if (!firestore) return;
-    try {
-        const userDocRef = doc(firestore, 'users', userId);
-        await updateDoc(userDocRef, { role: newRole });
-        toast({ title: "User role updated" });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Failed to update role', description: e.message });
-    }
-  };
 
   const handleAddUser = async () => {
-    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode || !newUserPassword || !firestore) {
+    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode || !newUserPassword) {
       toast({ variant: 'destructive', title: 'Please fill all fields.' });
       return;
     }
     
     setIsCreatingUser(true);
+    // Mock user creation
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
-    try {
-        // Step 1: Create user in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
-        const user = userCredential.user;
+    const newUser: UserProfile = {
+        id: `user-${Date.now()}`,
+        uid: `uid-${Date.now()}`,
+        displayName: newUserName,
+        email: newUserEmail,
+        role: newUserRole,
+        property_code: propertyCode,
+        clientId: 'default_client',
+    };
 
-        // Step 2: Create user profile in Firestore
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, {
-            uid: user.uid,
-            displayName: newUserName,
-            email: newUserEmail,
-            role: newUserRole,
-            property_code: propertyCode,
-            clientId: clientId
-        });
+    onAddUser(newUser);
 
-        toast({
-            title: 'User Created Successfully',
-            description: 'The user has been added and can now log in.',
-        });
+    toast({
+        title: 'User Created Successfully (Mock)',
+        description: 'The user has been added to the local list.',
+    });
 
-        setNewUserEmail('');
-        setNewUserPassword('');
-        setNewUserName('');
-        setNewUserRole(roles[0]?.name || '');
+    setNewUserEmail('');
+    setNewUserPassword('');
+    setNewUserName('');
+    setNewUserRole(roles[0]?.name || '');
 
-    } catch(error: any) {
-        let description = "An unexpected error occurred."
-        if (error.code) {
-            switch(error.code) {
-                case 'auth/email-already-in-use':
-                    description = "This email is already registered.";
-                    break;
-                case 'auth/invalid-email':
-                    description = "The email address is not valid.";
-                    break;
-                case 'auth/weak-password':
-                    description = "The password is too weak.";
-                    break;
-                default:
-                    description = error.message;
-            }
-        }
-        toast({ variant: 'destructive', title: 'User creation failed', description});
-    } finally {
-        setIsCreatingUser(false);
-    }
+    setIsCreatingUser(false);
   };
 
   return (
@@ -226,7 +189,7 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
                 <TableCell>
                     <Select
                     value={user.role}
-                    onValueChange={(newRole) => handleRoleChange(user.id, newRole)}
+                    onValueChange={(newRole) => onUpdateUserRole(user.id, newRole)}
                     >
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select a role" />
