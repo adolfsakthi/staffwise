@@ -119,9 +119,8 @@ export default function MainSidebar() {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 p-2 bg-white rounded-md">
           <Icons.logo className="size-7" />
-          <span className="text-lg font-semibold text-foreground group-data-[collapsible=icon]:hidden">HEZEE ACCESS</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">
