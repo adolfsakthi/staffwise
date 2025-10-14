@@ -84,8 +84,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {devices && devices.length > 0 ? (
-              devices.map((device) => (
+            {initialDevices && initialDevices.length > 0 ? (
+              initialDevices.map((device) => (
                 <TableRow key={device.id}>
                   <TableCell className="font-medium">{device.deviceName}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -150,4 +150,3 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
       </div>
   );
 }
-
