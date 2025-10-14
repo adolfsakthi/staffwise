@@ -29,6 +29,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   MoreVertical,
   Wifi,
   WifiOff,
@@ -59,6 +66,11 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [actionStates, setActionStates] = useState<{[key: string]: ActionState}>({});
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
+
+  const [showLogsDialog, setShowLogsDialog] = useState(false);
+  const [logs, setLogs] = useState<any[] | null>(null);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [deviceForLogs, setDeviceForLogs] = useState<Device | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -95,28 +107,44 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
 
     setActionState(device.id, { isSyncing: true });
-    try {
-        const result = await requestLogSync(device.serialNumber);
-        if (result.success) {
-            toast({
-                title: 'Sync Complete',
-                description: result.message,
-            });
-            router.refresh(); // Refresh live logs page if open
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Sync Failed',
-                description: result.message,
-            });
-        }
-    } catch(e: any) {
-        console.error("Error queueing sync request:", e);
-        toast({ variant: 'destructive', title: 'Error', description: e.message || "An unexpected error occurred." });
-    } finally {
+    toast({
+      title: "Sync Initiated",
+      description: "A sync request has been sent to the device. New logs will appear on the Live Logs page shortly."
+    });
+    
+    // This is a fire-and-forget action in the ADMS protocol
+    requestLogSync(device.serialNumber);
+
+    setTimeout(() => {
         setActionState(device.id, { isSyncing: false });
-    }
+        router.refresh();
+    }, 1500)
   }
+
+  const handleViewLogs = async (device: Device) => {
+    setDeviceForLogs(device);
+    setShowLogsDialog(true);
+    setIsLoadingLogs(true);
+    setLogs(null);
+    try {
+      const response = await fetch('/api/logs');
+      if (!response.ok) {
+        throw new Error('Failed to fetch logs from server.');
+      }
+      const data = await response.json();
+      setLogs(data);
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Failed to View Logs',
+        description: error.message || 'Could not retrieve raw logs.',
+      });
+      setLogs([]); // show empty state instead of loading
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
 
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
@@ -213,7 +241,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem onClick={() => handleViewLogs(device)}>
                             <FileText className="mr-2 h-4 w-4" />
                             View Logs
                           </DropdownMenuItem>
@@ -260,6 +288,31 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+        <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Raw Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
+                    <DialogDescription>
+                        This is the raw, unprocessed data stored on the server.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">
+                    {isLoadingLogs ? (
+                        <div className="flex justify-center items-center h-48">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                    ) : logs && logs.length > 0 ? (
+                        <pre className="text-sm whitespace-pre-wrap break-words">
+                            {JSON.stringify(logs, null, 2)}
+                        </pre>
+                    ) : (
+                        <div className="flex justify-center items-center h-48 text-muted-foreground">
+                            <p>No raw logs found.</p>
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }
