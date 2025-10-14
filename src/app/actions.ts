@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
-import { ZKLib } from 'zklib-js';
+import ZKLib from 'zklib-js';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
