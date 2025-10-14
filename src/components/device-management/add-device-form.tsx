@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -30,14 +29,13 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
     const deviceName = formData.get('deviceName') as string;
     const branchName = formData.get('branchName') as string;
     const ipAddress = formData.get('ipAddress') as string;
-    const port = Number(formData.get('port'));
-    const connectionKey = formData.get('connectionKey') as string;
+    const serialNumber = formData.get('serialNumber') as string;
 
-    if (!deviceName || !branchName || !ipAddress) {
+    if (!deviceName || !branchName || !serialNumber) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
-        description: 'Please fill out all required fields to add a device.',
+        description: 'Please fill out Device Name, Branch, and Serial Number.',
       });
       return;
     }
@@ -49,17 +47,18 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             deviceName,
             branchName,
             ipAddress,
-            port,
-            connectionKey,
+            serialNumber,
+            port: 0, // Port is not needed for ADMS
+            connectionKey: '', // Not needed for ADMS
             property_code: propertyCode,
-            status: 'offline',
+            status: 'offline', // Will become online when it pushes data
             clientId: 'default_client', 
             branchId: 'default_branch',
         });
         
         toast({
             title: 'Device Added',
-            description: `${deviceName} has been registered.`,
+            description: `${deviceName} has been registered. Configure the device to push to this server.`,
         });
 
         // Reset form by clearing the form element
@@ -83,9 +82,9 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Add New Biometric Device</CardTitle>
+        <CardTitle>Add New ADMS Device</CardTitle>
         <CardDescription>
-          Register a new device for property {propertyCode}.
+          Register a new device that uses the ADMS / Push protocol for property {propertyCode}.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -110,34 +109,21 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                 required
               />
             </div>
+             <div className="space-y-2">
+              <Label htmlFor="serialNumber">Device Serial Number (SN)</Label>
+              <Input
+                id="serialNumber"
+                name="serialNumber"
+                placeholder="e.g., CE123456789"
+                required
+              />
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="ipAddress">IP Address</Label>
+              <Label htmlFor="ipAddress">IP Address (Optional)</Label>
               <Input
                 id="ipAddress"
                 name="ipAddress"
                 placeholder="e.g., 192.168.1.100"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="port">Port</Label>
-              <Input
-                id="port"
-                name="port"
-                type="number"
-                defaultValue={4370}
-                placeholder="e.g., 4370"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="connectionKey">Connection Key</Label>
-              <Input
-                id="connectionKey"
-                name="connectionKey"
-                type="password"
-                placeholder="Device password (e.g. 0)"
-                defaultValue="0"
               />
             </div>
           </div>

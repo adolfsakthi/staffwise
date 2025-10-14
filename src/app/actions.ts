@@ -4,7 +4,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
-import net from 'net';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -63,36 +62,6 @@ export async function removeDevice(deviceId: string): Promise<{ success: boolean
         console.error("Error in removeDevice:", error);
         return { success: false, message: error.message || "An unexpected error occurred." };
     }
-}
-
-export async function pingDevice(ip: string, port: number): Promise<{ success: boolean; message: string }> {
-    return new Promise((resolve) => {
-        const socket = new net.Socket();
-        const timeout = 2000; // 2 seconds
-
-        socket.setTimeout(timeout);
-
-        socket.on('connect', () => {
-            socket.destroy();
-            resolve({ success: true, message: `Successfully connected to ${ip}:${port}` });
-        });
-
-        socket.on('error', (err) => {
-            socket.destroy();
-            let message = `Connection to ${ip}:${port} failed.`;
-            if ('code' in err) {
-                message = `Connection to ${ip}:${port} failed with error: ${err.code}`;
-            }
-            resolve({ success: false, message });
-        });
-
-        socket.on('timeout', () => {
-            socket.destroy();
-            resolve({ success: false, message: `Connection to ${ip}:${port} timed out.` });
-        });
-
-        socket.connect(port, ip);
-    });
 }
 
 

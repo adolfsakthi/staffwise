@@ -2,6 +2,7 @@
 
 
 
+
 // Maps to the 'Employee' entity
 export type Employee = {
   id: string;
@@ -60,7 +61,7 @@ export type Device = {
   branchName?: string;
   property_code?: string; // This is a custom claim or derived property
   status: 'online' | 'offline'; // This would be determined by a separate process
-  serialNumber?: string;
+  serialNumber: string;
   lastPing?: string;
 };
 

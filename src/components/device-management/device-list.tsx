@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -30,28 +29,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   MoreVertical,
   Wifi,
   WifiOff,
   Loader2,
   Trash2,
   Edit,
-  FileText,
-  RefreshCw,
-  FileCheck2,
-  Activity,
+  Info,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, processLogs, pingDevice, updateDeviceStatus } from '@/app/actions';
+import { removeDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -60,8 +47,6 @@ interface DeviceListProps {
 }
 
 type ActionState = {
-    isPinging?: boolean;
-    isSyncing?: boolean;
     isDeleting?: boolean;
 }
 
@@ -70,10 +55,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [actionStates, setActionStates] = useState<{[key: string]: ActionState}>({});
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
-  const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
-  const [showLogsDialog, setShowLogsDialog] = useState(false);
-  const [isSavingLogs, setIsSavingLogs] = useState(false);
-
 
   const { toast } = useToast();
   const router = useRouter();
@@ -81,103 +62,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const setActionState = (deviceId: string, state: ActionState) => {
     setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
   };
-
-  const handlePingDevice = async (device: Device) => {
-    setActionState(device.id, { isPinging: true });
-    const result = await pingDevice(device.ipAddress, device.port);
-    toast({
-        title: result.success ? 'Ping Successful' : 'Ping Failed',
-        description: result.message,
-        variant: result.success ? 'default' : 'destructive',
-    });
-    const newStatus = result.success ? 'online' : 'offline';
-    setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
-    await updateDeviceStatus(device.id, newStatus);
-    setActionState(device.id, { isPinging: false });
-    router.refresh();
-  }
-
-  const handleSyncDevice = async (device: Device) => {
-    setActionState(device.id, { isSyncing: true });
-
-    try {
-        const response = await fetch('/api/sync-device', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip: device.ipAddress, port: device.port, connectionKey: device.connectionKey }),
-        });
-        
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || 'Sync failed with an unknown error.');
-        }
-
-        if (result.success) {
-            toast({
-                title: 'Sync Successful',
-                description: `Fetched ${result.logs.length} logs from ${device.deviceName}.`,
-            });
-            setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: 'online' } : d));
-            setSyncedLogs(result.logs);
-            setShowLogsDialog(true);
-        } else {
-            throw new Error(result.message || 'The device responded with an error.');
-        }
-
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Sync Failed',
-            description: error.message,
-        });
-         setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: 'offline' } : d));
-    } finally {
-        setActionState(device.id, { isSyncing: false });
-    }
-  };
-
-  const handleProcessAndSaveLogs = async () => {
-    if (!syncedLogs || syncedLogs.length === 0) {
-      toast({ variant: 'destructive', title: 'No logs to save.' });
-      return;
-    }
-    
-    setIsSavingLogs(true);
-    const device = devices.find(d => actionStates[d.id]?.isSyncing || syncedLogs);
-    const propertyCode = device?.property_code;
-    
-    if(!propertyCode) {
-         toast({ variant: 'destructive', title: 'Could not determine property code for logs.' });
-         setIsSavingLogs(false);
-         return;
-    }
-
-    try {
-        const result = await processLogs(syncedLogs, propertyCode);
-        if(result.success) {
-            toast({
-                title: 'Logs Processed!',
-                description: result.message,
-                action: <FileCheck2 className="text-green-500" />
-            });
-            setShowLogsDialog(false);
-            setSyncedLogs(null);
-            router.refresh();
-        } else {
-            throw new Error(result.message);
-        }
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error Processing Logs',
-            description: error.message
-        });
-    } finally {
-        setIsSavingLogs(false);
-    }
-  }
-
 
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
@@ -213,7 +97,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Device Name</TableHead>
-                <TableHead>Branch</TableHead>
+                <TableHead>Serial Number</TableHead>
                 <TableHead>IP Address</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]">Actions</TableHead>
@@ -223,19 +107,15 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
               {devices && devices.length > 0 ? (
                 devices.map((device) => {
                   const state = actionStates[device.id] || {};
-                  const isLoading = state.isPinging || state.isSyncing || state.isDeleting;
+                  const isLoading = state.isDeleting;
                   
                   let statusLabel = device.status;
-                  if (state.isPinging) statusLabel = 'Pinging...';
-                  if (state.isSyncing) statusLabel = 'Syncing...';
                   if (state.isDeleting) statusLabel = 'Removing...';
 
                   return (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">{device.deviceName}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {device.branchName || 'N/A'}
-                    </TableCell>
+                    <TableCell className="font-medium text-muted-foreground">{device.serialNumber || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {device.ipAddress}
                     </TableCell>
@@ -267,17 +147,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                           <DropdownMenuItem onClick={() => handlePingDevice(device)}>
-                            <Activity className="mr-2 h-4 w-4" />
-                            Ping Device
-                          </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleSyncDevice(device)}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Sync Logs
-                          </DropdownMenuItem>
-                          <DropdownMenuItem disabled>
-                            <FileText className="mr-2 h-4 w-4" />
-                            View Logs
+                           <DropdownMenuItem disabled>
+                            <Info className="mr-2 h-4 w-4" />
+                            View Info
                           </DropdownMenuItem>
                           <DropdownMenuItem disabled>
                             <Edit className="mr-2 h-4 w-4" />
@@ -322,44 +194,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
-        <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Synced Logs</DialogTitle>
-                    <DialogDescription>
-                        Review the logs fetched from the device before saving them to the system. Found {syncedLogs?.length || 0} records.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[50vh] overflow-y-auto rounded-md border">
-                   <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User ID</TableHead>
-                                <TableHead>Timestamp</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {syncedLogs?.map((log, index) => (
-                                <TableRow key={`${log.userId}-${index}`}>
-                                    <TableCell>{log.userId}</TableCell>
-                                    <TableCell>{new Date(log.attTime).toLocaleString()}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                   </Table>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <Button onClick={handleProcessAndSaveLogs} disabled={isSavingLogs}>
-                        {isSavingLogs ? <Loader2 className="mr-2 animate-spin" /> : null}
-                        Save & Process Logs
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     </>
   );
 }
