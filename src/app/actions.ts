@@ -237,7 +237,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
                         return reject(err.message || 'Failed to get attendances');
                     }
                     resolve(data);
-                });
+});
             });
         });
 
@@ -264,9 +264,10 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        // CRITICAL: Ensure the message is always a plain string.
-        const errorMessage = typeof e === 'string' ? e : (e instanceof Error ? e.message : 'An unknown error occurred during sync.');
+        // CRITICAL: This is the definitive fix. We must ensure that the returned
+        // message is ALWAYS a plain string to prevent serialization errors.
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
+        const errorMessage = typeof e === 'string' ? e : (e?.message || 'An unknown error occurred during sync.');
         return { success: false, message: errorMessage };
 
     } finally {
@@ -274,4 +275,5 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             zkInstance.disconnect();
         }
     }
-}
+
+    
