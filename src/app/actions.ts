@@ -244,7 +244,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         return { success: false, message: e.message || 'An unknown error occurred during sync.' };
     } finally {
         if (zkInstance) {
-            await zkInstance.disconnect();
+            // In case of error, ensure disconnection is attempted.
+            try {
+                await zkInstance.disconnect();
+            } catch (disconnectError) {
+                // Ignore disconnect errors as the primary error is more important.
+            }
         }
     }
 }
