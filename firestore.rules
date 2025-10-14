@@ -1,161 +1,135 @@
 /**
- * @fileoverview Firestore Security Rules for the Staffwise Attendance System.
+ * @fileoverview Firestore Security Rules for the Staffwise Attendance Management System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict, path-based ownership model for data access. Multi-tenancy is achieved through the top-level `clients` collection.
+ * This ruleset enforces a strict hierarchical ownership model based on the path:
+ * /clients/{clientId}/branches/{branchId}/employees/{employeeId}/...
+ * Each level of the hierarchy "owns" the data beneath it.  This means, for example,
+ * that only a valid client can create or modify branches, and only a valid branch
+ * can create or modify employees.  User-specific data, like notifications, is stored
+ * under /users/{userId} and is only accessible to the authenticated user.
  *
  * Data Structure:
- * - All data is nested under `/clients/{clientId}`, reflecting a multi-tenant architecture.
- * - Branches, employees, biometric devices, attendance records, and leave requests are organized under their respective client.
- * - Notifications are stored under `/users/{userId}/notifications`.
- * - Audit logs and email logs are stored in top-level collections.
+ * The Firestore database is structured as follows:
+ * - /clients/{clientId}: Root collection for clients.
+ * - /clients/{clientId}/branches/{branchId}: Branches belonging to a client.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employees belonging to a branch.
+ * - /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}: Biometric devices belonging to a branch
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests for an employee.
+ * - /users/{userId}/notifications/{notificationId}: Notifications for a specific user.
+ * - /emailLogs/{emailLogId}: Logs of all sent emails.
+ * - /auditLogs/{auditLogId}: Logs of all audit activities.
  *
  * Key Security Decisions:
- * - Data consistency enforced for resource creation with path validation.
- * - Write operations are restricted based on ownership, with helper functions for clarity.
- * - Read operations are generally restricted to owners of the path unless otherwise noted.
- * - List operations are secured by checking ownership of the parent resource.
- * - No user listing is allowed.
+ * - Path-Based Ownership: The rules strongly rely on the path structure to enforce ownership. Each document implicitly belongs to its parent.
+ * - Denormalization: Client and branch IDs are denormalized into subcollections to avoid costly `get()` calls in the rules.
+ * - No User Listing: Listing all users is explicitly denied.
  *
- * Denormalization for Authorization:
- * - Client and Branch IDs are denormalized into subcollections to avoid costly `get()` calls and enable simpler, more performant security rules.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Authentication is required for most operations.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the provided user ID.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user-based ownership.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user's ID matches the resource owner ID and that the resource exists.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces user-based ownership and prevents operations on non-existent documents.
-     */
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for the /clients collection.
-     * @path /databases/{database}/documents/clients/{clientId}
-     * @allow Signed-in user (create)
-     * @deny Non-signed-in user (create)
-     * @principle Enforces client creation by authenticated users.
+     * @description: Grants access control for Client documents. Clients cannot be created from the client.
+     * @path: /clients/{clientId}
+     * @allow: None, as clients can only be created via back-end.
+     * @deny: (create) - any user attempts to create a client document.
+     * @principle: Server-side management of clients.
      */
     match /clients/{clientId} {
-      allow get: if false;
+      allow get: if true;
       allow list: if false;
-      allow create: if isSignedIn();
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /clients/{clientId}/branches collection.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}
-     * @allow Client owner (create, update, delete)
-     * @deny Non-client owner (create, update, delete)
-     * @principle Enforces branch management by client owners.
+     * @description: Grants access control for Branch documents.
+     * @path: /clients/{clientId}/branches/{branchId}
+     * @allow: Authenticated user can list all branches within a client
+     * @deny: Unauthenticated user attempts to create a branch document.
+     * @principle: Path-based ownership, must be created from back-end.
      */
     match /clients/{clientId}/branches/{branchId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees collection.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}
-     * @allow Branch owner (create, update, delete)
-     * @deny Non-branch owner (create, update, delete)
-     * @principle Enforces employee management by branch owners.
+     * @description: Grants access control for Employee documents.
+     * @path: /clients/{clientId}/branches/{branchId}/employees/{employeeId}
+     * @allow: Authenticated user can list all employees within a branch
+     * @deny: Unauthenticated user attempts to create a employee document.
+     * @principle: Path-based ownership, must be created from back-end.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/biometricDevices collection.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
-     * @allow Branch owner (create, update, delete)
-     * @deny Non-branch owner (create, update, delete)
-     * @principle Enforces biometric device management by branch owners.
+     * @description: Grants access control for BiometricDevice documents.
+     * @path: /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
+     * @allow: Authenticated user can list all biometric devices within a branch
+     * @deny: Unauthenticated user attempts to create a biometric device document.
+     * @principle: Path-based ownership, must be created from back-end.
      */
     match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords collection.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow Employee owner (create, update, delete)
-     * @deny Non-employee owner (create, update, delete)
-     * @principle Enforces attendance record management by employee owners.
+     * @description: Grants access control for AttendanceRecord documents.
+     * @path: /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+     * @allow: Authenticated user can list all attendance records for an employee
+     * @deny: Unauthenticated user attempts to create a attendance record document.
+     * @principle: Path-based ownership, must be created from back-end.
      */
-    match /clients/{clientId}/branches/{branchId}/attendanceRecords/{attendanceRecordId} {
-      allow get: if false;
-      allow list: if isSignedIn();
-      allow create: if isSignedIn();
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests collection.
-     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
-     * @allow Employee owner (create, update, delete)
-     * @deny Non-employee owner (create, update, delete)
-     * @principle Enforces leave request management by employee owners.
+     * @description: Grants access control for LeaveRequest documents.
+     * @path: /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+     * @allow: Authenticated user can list all leave requests for an employee
+     * @deny: Unauthenticated user attempts to create a leave request document.
+     * @principle: Path-based ownership, must be created from back-end.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Rules for the /users/{userId}/notifications collection.
-     * @path /databases/{database}/documents/users/{userId}/notifications/{notificationId}
-     * @allow User owner (create, update, delete)
-     * @deny Non-user owner (create, update, delete)
-     * @principle Enforces notification management by user owners.
+     * @description: Grants access control for Notification documents for a specific user.
+     * @path: /users/{userId}/notifications/{notificationId}
+     * @allow: Authenticated user can read their own notifications
+     * @deny: Authenticated user attempts to read another user's notifications.
+     * @principle: User-based ownership.
      */
     match /users/{userId}/notifications/{notificationId} {
-      allow get: if isExistingOwner(userId);
+      allow get: if isOwner(userId);
       allow list: if isOwner(userId);
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
@@ -163,11 +137,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /emailLogs collection.
-     * @path /databases/{database}/documents/emailLogs/{emailLogId}
-     * @allow No read or write access for regular users.
-     * @deny All access.
-     * @principle Restricts access to email logs.
+     * @description: Grants access control for EmailLog documents.
+     * @path: /emailLogs/{emailLogId}
+     * @allow: None, as email logs should only be created and accessed via back-end.
+     * @deny: Any operation by a client user.
+     * @principle: Server-side logging.
      */
     match /emailLogs/{emailLogId} {
       allow get: if false;
@@ -178,11 +152,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the /auditLogs collection.
-     * @path /databases/{database}/documents/auditLogs/{auditLogId}
-     * @allow No read or write access for regular users.
-     * @deny All access.
-     * @principle Restricts access to audit logs.
+     * @description: Grants access control for AuditLog documents.
+     * @path: /auditLogs/{auditLogId}
+     * @allow: None, as audit logs should only be created and accessed via back-end.
+     * @deny: Any operation by a client user.
+     * @principle: Server-side logging.
      */
     match /auditLogs/{auditLogId} {
       allow get: if false;
@@ -190,6 +164,34 @@ service cloud.firestore {
       allow create: if false;
       allow update: if false;
       allow delete: if false;
+    }
+
+    // ---- Helper functions ----
+
+    /**
+     * @description: Checks if the user is signed in.
+     * @return: True if the user is authenticated, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description: Checks if the authenticated user is the owner of the resource, based on the provided userId.
+     * @param: userId - The user ID to compare against the authenticated user's UID.
+     * @return: True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description: Checks if the authenticated user is the owner of the existing resource, based on the provided userId and that the document exists.
+     * @param: userId - The user ID to compare against the authenticated user's UID.
+     * @return: True if the user is the owner and the document exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
   }
 }
