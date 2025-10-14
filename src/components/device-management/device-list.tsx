@@ -137,13 +137,12 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip: device.ipAddress, port: device.port }),
         });
+        
+        const result = await response.json();
 
         if (!response.ok) {
-            const errorResult = await response.json();
-            throw new Error(errorResult.message || 'Sync failed with an unknown error.');
+            throw new Error(result.message || 'Sync failed with an unknown error.');
         }
-
-        const result = await response.json();
 
         if (result.success) {
             setSyncResult({ logs: result.data, message: `Found ${result.data.length} logs.` });

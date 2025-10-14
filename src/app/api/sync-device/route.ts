@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ZKLib from 'node-zklib';
 
-const safeError = (err: any) => ({
-    message: err?.message ?? String(err),
-    stack: process.env.NODE_ENV === 'development' ? err?.stack ?? '' : undefined,
-});
+const safeError = (err: any) => {
+    // Ensure we are returning a simple object, not a complex Error instance
+    const message = err?.message ?? String(err);
+    const stack = process.env.NODE_ENV === 'development' ? err?.stack ?? '' : undefined;
+    return { message, stack };
+};
+
 
 export async function POST(request: NextRequest) {
     const { ip, port = 4370, timeout = 5000 } = await request.json();
@@ -20,8 +23,6 @@ export async function POST(request: NextRequest) {
     try {
         zkInstance = new ZKLib(ip, port, timeout);
         
-        // The library's connect method is implicit in its operations.
-        // We can create a connection explicitly to test it.
         await zkInstance.createSocket();
 
 
@@ -39,9 +40,10 @@ export async function POST(request: NextRequest) {
 
     } catch (e: any) {
         console.error(`[SYNC-API] Error syncing with device ${ip}:${port}`, e);
+        const error = safeError(e);
         // Use the safeError utility to ensure the error is serializable
         return NextResponse.json(
-            { success: false, message: `Failed to sync with device: ${e.message || 'Unknown error' }`, error: safeError(e) },
+            { success: false, message: error.message, error: error },
             { status: 500 }
         );
     } finally {
