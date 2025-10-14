@@ -116,7 +116,6 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                 id="ipAddress"
                 name="ipAddress"
                 placeholder="e.g., 192.168.1.100"
-                defaultValue="192.168.1.201"
                 required
               />
             </div>
