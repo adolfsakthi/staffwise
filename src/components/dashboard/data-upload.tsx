@@ -20,7 +20,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { uploadData } from '@/app/actions';
 
 type UploadType = 'attendance' | 'employees' | 'punch_logs';
 
@@ -84,14 +83,13 @@ export default function DataUpload({ clientId, branchId, propertyCode, onUploadC
 
     setIsUploading(true);
     
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('uploadType', uploadType);
-    formData.append('propertyCode', propertyCode);
-    formData.append('clientId', clientId);
-    formData.append('branchId', branchId);
+    // Mocking the upload since backend is disconnected
+    const result = await new Promise<{success: boolean, message: string}>(resolve => {
+        setTimeout(() => {
+            resolve({ success: true, message: 'File has been processed (mock).' })
+        }, 1500)
+    });
 
-    const result = await uploadData(formData);
 
     if (result.success) {
         toast({

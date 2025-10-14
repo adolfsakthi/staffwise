@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -26,27 +26,24 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Eye } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import type { EmailLog } from '@/lib/types';
 import { format } from 'date-fns';
+import { MOCK_EMAIL_LOGS } from '@/lib/mock-data';
 
 export default function EmailLogsPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { isUserLoading } = useUser();
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
 
-  const emailLogsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'email_logs'), orderBy('sentAt', 'desc'), limit(100));
-  }, [firestore]);
+  const emailLogs = useMemo(() => MOCK_EMAIL_LOGS, []);
+  const isLoadingLogs = false;
+  const error = null;
 
-  const { data: emailLogs, isLoading: isLoadingLogs, error } = useCollection<EmailLog>(emailLogsQuery);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
-    // Firestore Timestamps can be converted to JS Date objects
-    const date = timestamp.toDate();
+    // Timestamps in mock data can be Date objects
+    const date = timestamp.toDate ? timestamp.toDate() : new Date();
     return format(date, 'PPP p');
   };
 

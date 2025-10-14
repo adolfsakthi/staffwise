@@ -6,31 +6,24 @@ import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
 import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { seedDatabase } from '@/lib/seed';
+import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
-  // In a real app, these would come from user claims or a user profile document
   const clientId = 'default_client';
   const branchId = 'default_branch';
   // @ts-ignore
   const propertyCode = user?.property_code || 'D001';
 
-  const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || !branchId || !propertyCode) return null;
-    return query(
-      collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`), 
-      where('property_code', '==', propertyCode)
-    );
-  }, [firestore, clientId, branchId, propertyCode]);
-  
-  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
+  const records = MOCK_ATTENDANCE_RECORDS.filter(r => r.property_code === propertyCode);
+  const isLoading = false;
+  const error = null;
+
 
   const stats = useMemo(() => {
     if (!records || records.length === 0) {
@@ -67,21 +60,18 @@ export default function DashboardPage() {
   }, [records]);
   
   const handleDataUpload = () => {
-    console.log("Data upload finished, dashboard will refresh automatically.");
+    console.log("Data upload finished.");
   }
   
   const handleSeed = async () => {
-    if (firestore) {
-      await seedDatabase(firestore, clientId, branchId);
-      alert('Database has been seeded with initial data.');
-    }
+    alert('Database seeding is currently disabled.');
   }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-between items-start">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <Button onClick={handleSeed} variant="outline">Initialize Database Collections</Button>
+        <Button onClick={handleSeed} variant="outline">Initialize Database (Disabled)</Button>
       </div>
       <StatsCards stats={stats} isLoading={isLoading || isUserLoading} propertyCode={propertyCode} />
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">

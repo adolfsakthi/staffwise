@@ -13,11 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
 import type { Device } from '@/lib/types';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 type AddDeviceFormProps = {
   clientId: string;
@@ -26,7 +22,6 @@ type AddDeviceFormProps = {
 };
 
 export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddDeviceFormProps) {
-  const firestore = useFirestore();
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [deviceName, setDeviceName] = useState('');
@@ -46,43 +41,19 @@ export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddD
     }
     setIsAdding(true);
 
-    const newDevice: Omit<Device, 'id'> = {
-      deviceName,
-      branchName,
-      model,
-      ipAddress,
-      port: 5000,
-      connectionKey: 'default-key',
-      status,
-      property_code: propertyCode,
-      clientId,
-      branchId,
-    };
-
-    const devicesCollection = collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`);
-
-    addDoc(devicesCollection, newDevice)
-      .then(() => {
+    // Mock functionality since backend is disabled
+    setTimeout(() => {
         toast({
-          title: 'Device Added',
-          description: `${deviceName} has been added successfully.`,
+          title: 'Device Added (Mock)',
+          description: `${deviceName} has been added to the mock list.`,
         });
         // Reset form
         setDeviceName('');
         setBranchName('Main Lobby');
         setModel('');
         setIpAddress('');
-      })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `clients/${clientId}/branches/${branchId}/biometricDevices`,
-            operation: 'create',
-            requestResourceData: newDevice
-        }))
-      })
-      .finally(() => {
         setIsAdding(false);
-      });
+    }, 1000)
   };
 
   return (

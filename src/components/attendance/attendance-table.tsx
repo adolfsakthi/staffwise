@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { AttendanceRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,8 +22,7 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from '@/lib/mock-data';
 
 
 interface AttendanceTableProps {
@@ -33,37 +32,24 @@ interface AttendanceTableProps {
 }
 
 export default function AttendanceTable({ clientId, branchId, propertyCode }: AttendanceTableProps) {
-  const firestore = useFirestore();
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
   
-  const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode || !clientId || !branchId) return null;
-    
-    const attendanceCollectionRef = collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`);
+  const isLoading = false;
+  const error = null;
 
-    const conditions = [
-      where('property_code', '==', propertyCode),
-      where('date', '==', dateFilter)
-    ];
-
-    if (departmentFilter !== 'all') {
-      conditions.push(where('department', '==', departmentFilter));
-    }
-    
-    return query(attendanceCollectionRef, ...conditions);
-
-  }, [firestore, clientId, branchId, propertyCode, dateFilter, departmentFilter]);
+  const filteredRecords = useMemo(() => {
+    return MOCK_ATTENDANCE_RECORDS.filter(rec => {
+        const dateMatch = rec.date === dateFilter;
+        const propertyMatch = rec.property_code === propertyCode;
+        const departmentMatch = departmentFilter === 'all' || rec.department === departmentFilter;
+        return dateMatch && propertyMatch && departmentMatch;
+    });
+  }, [dateFilter, departmentFilter, propertyCode]);
   
-  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
-
-  const departments = useMemo(() => {
-    if (!records) return [];
-    return [...new Set(records.map(rec => rec.department))];
-  }, [records]);
-
+  const departments = MOCK_DEPARTMENTS;
 
   return (
     <Card>
@@ -79,7 +65,6 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
           <Select
             value={departmentFilter}
             onValueChange={setDepartmentFilter}
-            disabled={departments.length === 0}
           >
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Filter by department" />
@@ -122,8 +107,8 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
                     Error: {error.message}
                   </TableCell>
                 </TableRow>
-              ) : records && records.length > 0 ? (
-                records.map((record) => (
+              ) : filteredRecords.length > 0 ? (
+                filteredRecords.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="font-medium">{record.employee_name}</div>

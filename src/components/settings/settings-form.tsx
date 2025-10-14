@@ -26,12 +26,8 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { getDepartmentsAction } from '@/app/actions';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { MOCK_DEPARTMENTS } from '@/lib/mock-data';
 
 
 type SettingsFormProps = {
@@ -44,75 +40,27 @@ const DEFAULT_AUTO_AUDIT_TIME = '00:00';
 
 export default function SettingsForm({ clientId, propertyCode }: SettingsFormProps) {
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const [departments, setDepartments] = useState<string[]>([]);
+  const departments = MOCK_DEPARTMENTS;
   const [graceDepartment, setGraceDepartment] = useState('global');
   
-  const settingsRef = useMemoFirebase(() => {
-    if (!firestore || !propertyCode || !clientId) return null;
-    return doc(firestore, `clients/${clientId}/settings/config`);
-  }, [firestore, clientId, propertyCode]);
-
-  const { data: settingsData, isLoading: isLoadingSettings } = useDoc(settingsRef);
+  const isLoadingSettings = false;
 
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_TIME);
   const [autoAuditEnabled, setAutoAuditEnabled] = useState(true);
   const [autoAuditTime, setAutoAuditTime] = useState(DEFAULT_AUTO_AUDIT_TIME);
 
-  useEffect(() => {
-    if(settingsData) {
-        setGraceMinutes(settingsData.grace_minutes || DEFAULT_GRACE_TIME);
-        setAutoAuditEnabled(settingsData.auto_audit_enabled ?? true);
-        setAutoAuditTime(settingsData.auto_audit_time || DEFAULT_AUTO_AUDIT_TIME);
-    }
-  }, [settingsData]);
-
-
-  useEffect(() => {
-    async function fetchDepartments() {
-        if (!propertyCode) return;
-      const depts = await getDepartmentsAction(propertyCode);
-      setDepartments(depts);
-    }
-    fetchDepartments();
-  }, [propertyCode]);
-
   const handleSaveGraceTime = async () => {
-    if (!settingsRef) return;
-    const settingToSave = { grace_minutes: graceMinutes };
-    
-    setDoc(settingsRef, settingToSave, { merge: true })
-      .then(() => {
-        toast({
-          title: 'Settings Saved',
-          description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
-        });
-      }).catch(err => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: settingsRef.path,
-            operation: 'update',
-            requestResourceData: settingToSave
-        }));
-      });
+    toast({
+        title: 'Settings Saved (Mock)',
+        description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
+    });
   };
 
   const handleSaveAutoAudit = async () => {
-    if (!settingsRef) return;
-    const settingToSave = { auto_audit_enabled: autoAuditEnabled, auto_audit_time: autoAuditTime };
-
-    setDoc(settingsRef, settingToSave, { merge: true })
-        .then(() => {
-            toast({
-                title: 'Settings Saved',
-                description: `Auto-audit settings have been updated.`,
-            });
-        }).catch(err => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: settingsRef.path,
-                operation: 'update',
-                requestResourceData: settingToSave
-            }));
-        });
+    toast({
+        title: 'Settings Saved (Mock)',
+        description: `Auto-audit settings have been updated.`,
+    });
   };
 
   if(isLoadingSettings) {

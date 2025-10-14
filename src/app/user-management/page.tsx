@@ -15,30 +15,23 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import type { Role, UserProfile } from '@/lib/types';
+import { MOCK_ROLES, MOCK_USERS } from '@/lib/mock-data';
+import { useMemo } from 'react';
 
 export default function UserManagementPage() {
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
     const clientId = 'default_client';
 
     // @ts-ignore
     const propertyCode = user?.property_code || 'D001';
 
-    const rolesQuery = useMemoFirebase(() => {
-        if (!firestore || !clientId) return null;
-        return query(collection(firestore, `clients/${clientId}/roles`), where('property_code', '==', propertyCode));
-    }, [firestore, clientId, propertyCode]);
+    const roles = useMemo(() => MOCK_ROLES.filter(r => r.property_code === propertyCode), [propertyCode]);
+    const users = useMemo(() => MOCK_USERS.filter(u => u.property_code === propertyCode), [propertyCode]);
 
-    const usersQuery = useMemoFirebase(() => {
-        if (!firestore || !clientId) return null;
-        return query(collection(firestore, `clients/${clientId}/users`), where('property_code', '==', propertyCode));
-    }, [firestore, clientId, propertyCode]);
-    
-    const { data: roles, isLoading: isLoadingRoles, error: rolesError } = useCollection<Role>(rolesQuery);
-    const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile>(usersQuery);
+    const isLoadingRoles = false;
+    const isLoadingUsers = false;
 
     if (isUserLoading || isLoadingRoles || isLoadingUsers) {
         return (

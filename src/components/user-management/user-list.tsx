@@ -30,11 +30,8 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, Role } from '@/lib/types';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 
 type UserListProps = {
@@ -46,7 +43,6 @@ type UserListProps = {
 
 export default function UserList({ roles, users, clientId, propertyCode }: UserListProps) {
   const auth = useAuth();
-  const firestore = useFirestore();
 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
@@ -64,18 +60,7 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
   }, [roles, newUserRole]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    const userRef = doc(firestore, `clients/${clientId}/users`, userId);
-    setDoc(userRef, { role: newRole }, { merge: true })
-        .then(() => {
-            toast({ title: "User role updated" });
-        })
-        .catch(err => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `clients/${clientId}/users/${userId}`,
-                operation: 'update',
-                requestResourceData: { role: newRole }
-            }))
-        })
+    toast({ title: "User role updated (Mock)" });
   };
 
   const handleAddUser = async () => {
@@ -89,19 +74,6 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
         const user = userCredential.user;
-
-        const newUserProfile: Omit<UserProfile, 'id'> = {
-            uid: user.uid,
-            displayName: newUserName,
-            email: newUserEmail,
-            role: newUserRole,
-            property_code: propertyCode,
-            clientId: clientId,
-        };
-
-        // We use setDoc with user.uid to keep user doc ID and auth UID in sync
-        const userCollection = collection(firestore, `clients/${clientId}/users`);
-        await setDoc(doc(userCollection, user.uid), newUserProfile);
 
         toast({
             title: 'User Created Successfully',

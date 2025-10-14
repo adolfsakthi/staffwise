@@ -25,8 +25,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { useUser } from '@/firebase';
+import { MOCK_LIVE_LOGS } from '@/lib/mock-data';
+import { useMemo } from 'react';
 
 
 const logConfig = {
@@ -39,20 +40,16 @@ const logConfig = {
 
 export default function LiveLogsPage() {
     const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-
-    const clientId = 'default_client';
-    const branchId = 'default_branch';
 
     // @ts-ignore
     const propertyCode = user?.property_code || 'D001';
 
-    const logsQuery = useMemoFirebase(() => {
-        if (!firestore || !propertyCode || !clientId || !branchId) return null;
-        return query(collection(firestore, `clients/${clientId}/branches/${branchId}/liveLogs`), where('property_code', '==', propertyCode), orderBy('timestamp', 'desc'), limit(50));
-    }, [firestore, clientId, branchId, propertyCode]);
-    
-    const { data: logs, isLoading: isLoadingLogs, error } = useCollection<LiveLog>(logsQuery);
+    const logs = useMemo(() => {
+        return MOCK_LIVE_LOGS.filter(l => l.property_code === propertyCode);
+    }, [propertyCode]);
+
+    const isLoadingLogs = false;
+    const error = null;
 
   return (
     <Card>

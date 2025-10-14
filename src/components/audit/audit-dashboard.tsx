@@ -26,8 +26,7 @@ import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
 
 
 interface AuditDashboardProps {
@@ -37,23 +36,18 @@ interface AuditDashboardProps {
 }
 
 export default function AuditDashboard({ clientId, branchId, propertyCode }: AuditDashboardProps) {
-  const firestore = useFirestore();
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
 
-  const unauditedQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode || !clientId || !branchId) return null;
-    const attendanceCollectionRef = collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`);
-    return query(
-        attendanceCollectionRef,
-        where('property_code', '==', propertyCode),
-        where('is_audited', '==', false)
-    );
-  }, [firestore, clientId, branchId, propertyCode]);
-  
-  const { data: unauditedRecords, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedQuery);
+  const unauditedRecords = useMemo(() => {
+    return MOCK_ATTENDANCE_RECORDS.filter(r => !r.is_audited && r.property_code === propertyCode);
+  }, [propertyCode]);
+
+  const isFetching = false;
+  const error = null;
+
 
   useEffect(() => {
     setSelectedRecords([]);
@@ -86,13 +80,15 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
     }
 
     setIsAuditing(true);
-    const result = await runAudit(clientId, branchId, selectedRecords, auditNotes);
+    // const result = await runAudit(clientId, branchId, selectedRecords, auditNotes);
+    // Mocking the result since actions are disabled
+    const result = { success: true, message: 'Audit functionality is currently disabled.' };
     setIsAuditing(false);
 
     if (result.success) {
       toast({
-          title: 'Audit Successful',
-          description: result.message,
+          title: 'Audit Mock Success',
+          description: `Successfully marked ${selectedRecords.length} records as audited (mock).`,
           action: <FileCheck2 className="text-green-500" />,
       });
       setSelectedRecords([]);

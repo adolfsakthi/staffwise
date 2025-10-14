@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,14 +32,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import AddDeviceForm from '@/components/device-management/add-device-form';
+import { MOCK_DEVICES } from '@/lib/mock-data';
 
 
 export default function DeviceManagementPage() {
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
   const clientId = 'default_client';
   const branchId = 'default_branch';
@@ -47,12 +46,11 @@ export default function DeviceManagementPage() {
   // @ts-ignore
   const propertyCode = user?.property_code || 'D001';
 
-  const devicesQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode || !clientId || !branchId) return null;
-    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`), where('property_code', '==', propertyCode));
-  }, [firestore, clientId, branchId, propertyCode]);
-  
-  const { data: devices, isLoading: isLoadingDevices, error } = useCollection<Device>(devicesQuery);
+  const devices = useMemo(() => {
+      return MOCK_DEVICES.filter(d => d.property_code === propertyCode)
+  }, [propertyCode]);
+  const isLoadingDevices = false;
+  const error = null;
 
   if (isUserLoading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
@@ -87,7 +85,7 @@ export default function DeviceManagementPage() {
               <TableBody>
                 {isLoadingDevices ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={7} className="text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
