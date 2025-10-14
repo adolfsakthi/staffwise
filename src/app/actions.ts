@@ -6,12 +6,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
+import { ZKLib } from 'zklib-js';
+
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 const employeesFilePath = path.join(process.cwd(), 'src', 'lib', 'employees.json');
 const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 const liveLogsFilePath = path.join(process.cwd(), 'src', 'lib', 'live-logs.json');
-const ZKLib = require('zklib');
 
 // --- Device Management ---
 
@@ -173,7 +174,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
         const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === device.property_code);
         if (!employee) return null;
 
-        const punchTime = new Date(log.attTime);
+        const punchTime = new Date(log.timestamp);
         const shiftStartTime = parse(employee.shiftStartTime, 'HH:mm', punchTime);
         
         const deviation = differenceInMinutes(punchTime, shiftStartTime);
@@ -218,35 +219,15 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         return { success: false, message: 'Device not found.' };
     }
 
-    let zkInstance: any = null;
-
+    let zkInstance: ZKLib | null = null;
     try {
-        const logs = await new Promise<any[]>((resolve, reject) => {
-            zkInstance = new ZKLib({
-                ip: device.ipAddress,
-                port: device.port,
-                inport: 5200,
-                timeout: 5000,
-            });
+        zkInstance = new ZKLib(device.ipAddress, device.port, 5000, 4000);
+        await zkInstance.connect();
 
-            zkInstance.connect((err: any) => {
-                if (err) {
-                    console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
-                    return reject('Connection failed');
-                }
+        const logs = await zkInstance.getAttendances();
 
-                zkInstance.getAttendances((err: any, data: any) => {
-                    if (err) {
-                        console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
-                        return reject('Failed to get attendances');
-                    }
-                    resolve(data);
-                });
-            });
-        });
-
-        if (logs && logs.length > 0) {
-            const rawLogs = logs;
+        if (logs && logs.data.length > 0) {
+            const rawLogs = logs.data;
             const existingLogs = await readLogs();
             const updatedLogs = [...existingLogs, ...rawLogs];
             await writeLogs(updatedLogs); 
@@ -256,6 +237,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             return {
                 success: true,
                 message: `Found ${rawLogs.length} logs on device ${device.deviceName}. Data saved.`,
+                // IMPORTANT: Serialize data to prevent crashes
                 data: JSON.stringify(rawLogs),
             };
         }
@@ -267,13 +249,13 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        const errorMessage = typeof e === 'string' ? e : 'An unknown error occurred during sync.';
+        console.error(`[ZKLIB_JS_ERROR] Error syncing with device ${device.deviceName}:`, e);
+        // Return a simple, serializable error message
+        const errorMessage = e.message || 'An unknown error occurred during sync.';
         return { success: false, message: errorMessage };
-
     } finally {
-        if (zkInstance && zkInstance.socket) {
-            zkInstance.disconnect();
+        if (zkInstance) {
+            await zkInstance.disconnect();
         }
     }
 }
