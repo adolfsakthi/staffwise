@@ -18,29 +18,6 @@ const safeError = (error: unknown): { message: string, stack?: string } => {
     }
 };
 
-const testConnection = (ip: string, port: number, timeout = 2000): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        const socket = new net.Socket();
-        socket.setTimeout(timeout);
-
-        socket.connect(port, ip, () => {
-            socket.destroy();
-            resolve();
-        });
-
-        socket.on('error', (err) => {
-            socket.destroy();
-            reject(err);
-        });
-
-        socket.on('timeout', () => {
-            socket.destroy();
-            reject(new Error('Connection timed out.'));
-        });
-    });
-};
-
-
 export async function POST(request: NextRequest) {
     const { ip, port, connectionKey } = await request.json();
 
@@ -50,10 +27,7 @@ export async function POST(request: NextRequest) {
 
     let zkInstance: ZKLib | null = null;
     try {
-        // 1. First, confirm basic network connectivity
-        await testConnection(ip, port);
-
-        // 2. If connection is successful, proceed with the library
+        // The library handles its own connection. A separate pre-check is not needed and can cause conflicts.
         zkInstance = new ZKLib(ip, port, 5000, 4370); // 5 second timeout
 
         // Create connection
@@ -68,7 +42,7 @@ export async function POST(request: NextRequest) {
         console.error("Error in POST /api/sync-device:", e);
         return NextResponse.json({ success: false, ...safeError(e) }, { status: 500 });
     } finally {
-        // 3. Ensure the connection is always closed
+        // Ensure the connection is always closed
         if (zkInstance) {
             await zkInstance.disconnect();
         }
