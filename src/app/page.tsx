@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
@@ -23,8 +23,11 @@ export default function DashboardPage() {
   const propertyCode = user?.property_code || 'D001';
 
   const recordsQuery = useMemoFirebase(() => {
-    if (!firestore || !clientId || !branchId) return null;
-    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`), where('property_code', '==', propertyCode));
+    if (!firestore || !clientId || !branchId || !propertyCode) return null;
+    return query(
+      collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`), 
+      where('property_code', '==', propertyCode)
+    );
   }, [firestore, clientId, branchId, propertyCode]);
   
   const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);

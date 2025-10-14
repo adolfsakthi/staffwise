@@ -1,4 +1,4 @@
-import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, getDocs, Firestore, query, where, doc, getDoc, setDoc, writeBatch, addDoc, serverTimestamp } from 'firebase/firestore';
 import { add, format, startOfWeek, parse, differenceInMinutes } from 'date-fns';
 import type { AttendanceRecord, Role } from './types';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -11,7 +11,7 @@ export type EmailLog = {
     subject: string;
     body: string;
     emailType: 'late_notice' | 'admin_report' | 'department_report';
-    sentAt?: Date;
+    sentAt?: any;
 }
 
 
@@ -167,7 +167,7 @@ export async function logEmail(email: Omit<EmailLog, 'id' | 'sentAt'>): Promise<
     const emailLogCollection = collection(db, 'emailLogs');
     const newLog = {
         ...email,
-        sentAt: new Date()
+        sentAt: serverTimestamp()
     };
     
     addDoc(emailLogCollection, newLog).catch(async (serverError) => {
@@ -183,7 +183,9 @@ export async function logEmail(email: Omit<EmailLog, 'id' | 'sentAt'>): Promise<
 
 
 export async function getDepartments(db: Firestore, propertyCode: string): Promise<string[]> {
-    const rolesQuery = query(collection(db, 'roles'), where('property_code', '==', propertyCode));
+    // This function needs to query a subcollection, so we need clientId
+    const clientId = 'default_client';
+    const rolesQuery = query(collection(db, `clients/${clientId}/roles`), where('property_code', '==', propertyCode));
     try {
         const querySnapshot = await getDocs(rolesQuery);
         // This is a simplification. A real app might have a dedicated 'departments' collection.
@@ -195,6 +197,10 @@ export async function getDepartments(db: Firestore, propertyCode: string): Promi
                 departments.add(role.name);
             }
         });
+        // Add fallback departments if none are found from roles
+        if (departments.size === 0) {
+            ['Engineering', 'Housekeeping', 'Front Desk'].forEach(d => departments.add(d));
+        }
         return Array.from(departments);
     } catch(e) {
         console.error("Error fetching departments (roles)", e);

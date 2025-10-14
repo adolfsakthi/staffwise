@@ -1,14 +1,14 @@
-import { collection, writeBatch, Firestore, doc } from 'firebase/firestore';
+import { collection, writeBatch, Firestore, doc, serverTimestamp } from 'firebase/firestore';
 
 // Define some mock data
 const MOCK_USERS = [
-    { uid: 'admin_user_uid', displayName: 'Admin User', email: 'admin@staffwise.com', role: 'Admin', property_code: 'D001' },
+    { uid: 'demo_user_uid', displayName: 'Demo User', email: 'demo@staffwise.com', role: 'Admin', property_code: 'D001', clientId: 'default_client' },
 ];
 
 const MOCK_ROLES = [
-    { name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'], property_code: 'D001' },
-    { name: 'Manager', permissions: ['read', 'write'], property_code: 'D001' },
-    { name: 'Staff', permissions: ['read'], property_code: 'D001' },
+    { name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'], property_code: 'D001', clientId: 'default_client' },
+    { name: 'Manager', permissions: ['read', 'write'], property_code: 'D001', clientId: 'default_client' },
+    { name: 'Staff', permissions: ['read'], property_code: 'D001', clientId: 'default_client' },
 ];
 
 const MOCK_ATTENDANCE_RECORDS = [
@@ -32,7 +32,7 @@ const MOCK_ATTENDANCE_RECORDS = [
 ];
 
 const MOCK_EMAIL_LOGS = [
-    { to: 'hr@staffwise.com', subject: 'Weekly Digest', body: '<p>Here is your weekly summary.</p>', emailType: 'admin_report', sentAt: new Date() }
+    { to: 'hr@staffwise.com', subject: 'Weekly Digest', body: '<p>Here is your weekly summary.</p>', emailType: 'admin_report', sentAt: serverTimestamp() }
 ]
 
 /**
@@ -44,14 +44,16 @@ export async function seedDatabase(db: Firestore, clientId: string, branchId: st
   const batch = writeBatch(db);
 
   // Seed Users
-  const usersCollection = collection(db, 'users');
+  // Note: In a real app, user creation should be handled via auth functions,
+  // this just creates the user profile document.
+  const usersCollection = collection(db, `clients/${clientId}/users`);
   MOCK_USERS.forEach(user => {
-    const userDocRef = doc(usersCollection, user.uid); // Use UID as document ID
+    const userDocRef = doc(usersCollection, user.uid); // Use a predictable UID
     batch.set(userDocRef, user);
   });
 
   // Seed Roles
-  const rolesCollection = collection(db, 'roles');
+  const rolesCollection = collection(db, `clients/${clientId}/roles`);
   MOCK_ROLES.forEach(role => {
     const roleDocRef = doc(rolesCollection, `${role.property_code}_${role.name.toLowerCase()}`); // Create a predictable ID
     batch.set(roleDocRef, role);
