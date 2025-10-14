@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
-import { useUser } from '@/firebase';
 import { add, format, startOfWeek } from 'date-fns';
 
 // Using local state and mock data as requested
@@ -22,10 +21,8 @@ const MOCK_RECORDS = [
 
 
 export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
-  // @ts-ignore
-  const propertyCode = user?.property_code || null;
-  const isLoading = isUserLoading;
+  const propertyCode = 'D001';
+  const isLoading = false;
 
   const filteredEmployees = useMemo(() => {
     if (!MOCK_EMPLOYEES || !propertyCode) return [];

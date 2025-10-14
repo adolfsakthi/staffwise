@@ -14,8 +14,6 @@ import {
   } from '@/components/ui/tabs';
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
-import { Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase';
 import type { Role, UserProfile } from '@/lib/types';
 import { useMemo, useState } from 'react';
 
@@ -34,10 +32,7 @@ const MOCK_USERS: UserProfile[] = [
 
 
 export default function UserManagementPage() {
-    const { user: currentUser, isUserLoading } = useUser();
-    
-    // @ts-ignore
-    const propertyCode = currentUser?.property_code || null;
+    const propertyCode = 'D001';
 
     const [rolesData, setRolesData] = useState(MOCK_ROLES);
     const [usersData, setUsersData] = useState(MOCK_USERS);
@@ -67,14 +62,6 @@ export default function UserManagementPage() {
         setUsersData(prev => [...prev, newUser]);
     }
 
-    if (isUserLoading) {
-        return (
-            <div className="flex min-h-[400px] w-full items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
-    }
-    
     return (
       <Card>
         <CardHeader>

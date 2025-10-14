@@ -32,7 +32,6 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
-import { useAuth, useUser } from '@/firebase';
 
 const navItems = [
   {
@@ -96,8 +95,6 @@ const navItems = [
 export default function MainSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useUser();
-  const auth = useAuth();
   const { setOpenMobile, isMobile } = useSidebar();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
 
@@ -112,13 +109,12 @@ export default function MainSidebar() {
     return name.split(' ').map(n => n[0]).join('');
   }
 
-  const handleSignOut = async () => {
-    await auth.signOut();
+  const handleSignOut = () => {
     router.push('/login');
   }
 
-  const displayName = user?.displayName || user?.email;
-  const email = user?.email;
+  const displayName = 'Demo User';
+  const email = 'demo@staffwise.com';
 
   return (
     <Sidebar>
@@ -157,14 +153,7 @@ export default function MainSidebar() {
             className="w-full justify-start gap-3 p-2 group-data-[collapsible=icon]:size-10 group-data-[collapsible=icon]:justify-center flex items-center"
           >
             <Avatar className="h-8 w-8">
-              {user?.photoURL ? (
-                 <AvatarImage
-                  src={user.photoURL}
-                  alt={displayName || 'User avatar'}
-                  width={32}
-                  height={32}
-                />
-              ) : userAvatar && (
+              {userAvatar && (
                 <AvatarImage
                   src={userAvatar.imageUrl}
                   alt={userAvatar.description}

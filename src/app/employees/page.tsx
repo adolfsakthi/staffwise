@@ -1,7 +1,5 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useUser } from '@/firebase';
-import { Loader2 } from 'lucide-react';
 import AddEmployeeForm from '@/components/employees/add-employee-form';
 import EmployeeList from '@/components/employees/employee-list';
 import type { Employee } from '@/lib/types';
@@ -14,11 +12,9 @@ const MOCK_EMPLOYEES: Employee[] = [
 
 
 export default function EmployeesPage() {
-    const { user, isUserLoading } = useUser();
     const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
     
-    // @ts-ignore - In a real app this would be a custom claim
-    const propertyCode = user?.property_code || null;
+    const propertyCode = 'D001';
 
     const filteredEmployees = useMemo(() => {
         if (!employees || !propertyCode) return [];
@@ -39,15 +35,10 @@ export default function EmployeesPage() {
         setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
     }
 
-
-    if (isUserLoading || !propertyCode) {
-        return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-    }
-
     return (
         <div className="space-y-6">
             <AddEmployeeForm onAddEmployee={handleAddEmployee} propertyCode={propertyCode} />
-            <EmployeeList employees={filteredEmployees} isLoading={isUserLoading} onDeleteEmployee={handleDeleteEmployee} />
+            <EmployeeList employees={filteredEmployees} isLoading={false} onDeleteEmployee={handleDeleteEmployee} />
         </div>
     )
 }

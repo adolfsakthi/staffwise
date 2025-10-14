@@ -25,7 +25,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { useUser } from '@/firebase';
 import { useMemo, useState } from 'react';
 
 
@@ -47,11 +46,9 @@ const logConfig = {
 
 
 export default function LiveLogsPage() {
-    const { user, isUserLoading } = useUser();
-    const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+    const [isLoadingLogs] = useState(false);
 
-    // @ts-ignore
-    const propertyCode = user?.property_code || null;
+    const propertyCode = 'D001';
 
     const filteredLogs = useMemo(() => {
       if (!MOCK_LOGS || !propertyCode) return [];
@@ -86,7 +83,7 @@ export default function LiveLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isUserLoading || isLoadingLogs ? (
+              {isLoadingLogs ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                         <Loader2 className="mx-auto h-8 w-8 animate-spin" />

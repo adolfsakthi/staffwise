@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +31,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { useUser } from '@/firebase';
 import AddDeviceForm from '@/components/device-management/add-device-form';
 
 const MOCK_DEVICES: Device[] = [
@@ -42,11 +41,9 @@ const MOCK_DEVICES: Device[] = [
 
 
 export default function DeviceManagementPage() {
-  const { user, isUserLoading } = useUser();
   const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
 
-  // @ts-ignore
-  const propertyCode = user?.property_code || null;
+  const propertyCode = 'D001';
   
   const handleAddDevice = (newDevice: Omit<Device, 'id' | 'clientId' | 'branchId'>) => {
     const newId = (Math.max(...devices.map(d => parseInt(d.id))) + 1).toString();
@@ -61,10 +58,6 @@ export default function DeviceManagementPage() {
   const filteredDevices = useMemo(() => {
     return devices.filter(d => d.property_code === propertyCode);
   }, [devices, propertyCode]);
-
-  if (isUserLoading || !propertyCode) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
-  }
 
   return (
     <div className='space-y-6'>
@@ -91,13 +84,7 @@ export default function DeviceManagementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isUserLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : filteredDevices && filteredDevices.length > 0 ? (
+                {filteredDevices && filteredDevices.length > 0 ? (
                   filteredDevices.map((device) => (
                     <TableRow key={device.id}>
                       <TableCell className="font-medium">{device.deviceName}</TableCell>
