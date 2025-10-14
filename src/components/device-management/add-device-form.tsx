@@ -16,7 +16,6 @@ import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Device } from '@/lib/types';
 import { addDevice } from '@/app/actions';
-import { revalidatePath } from 'next/cache';
 import { useRouter } from 'next/navigation';
 
 type AddDeviceFormProps = {
