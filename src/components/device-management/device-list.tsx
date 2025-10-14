@@ -134,24 +134,25 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setDeletingDeviceId(deviceToDelete.id);
     setShowDeleteAlert(false);
 
-    try {
-        await removeDevice(deviceToDelete.id);
+    const result = await removeDevice(deviceToDelete.id);
+
+    if (result.success) {
         setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
         toast({
             title: 'Device Removed',
             description: 'The device has been successfully removed.',
         });
         router.refresh();
-    } catch (error: any) {
+    } else {
         toast({
             variant: 'destructive',
             title: 'Removal Failed',
-            description: error.message || 'Could not remove the device.',
+            description: result.message || 'Could not remove the device.',
         });
-    } finally {
-        setDeletingDeviceId(null);
-        setDeviceToDelete(null);
     }
+    
+    setDeletingDeviceId(null);
+    setDeviceToDelete(null);
   }
 
   const isActionRunning = !!pingingDeviceId || !!syncingDeviceId || !!deletingDeviceId;
@@ -304,5 +305,3 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
-
-    

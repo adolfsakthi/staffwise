@@ -51,13 +51,19 @@ export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<void
     await writeDevices(updatedDevices);
 }
 
-export async function removeDevice(deviceId: string): Promise<void> {
-    const devices = await readDevices();
-    const updatedDevices = devices.filter(d => d.id !== deviceId);
-    if (devices.length === updatedDevices.length) {
-        throw new Error('Device not found.');
+export async function removeDevice(deviceId: string): Promise<{ success: boolean; message?: string }> {
+    try {
+        const devices = await readDevices();
+        const updatedDevices = devices.filter(d => d.id !== deviceId);
+        if (devices.length === updatedDevices.length) {
+            return { success: false, message: 'Device not found.' };
+        }
+        await writeDevices(updatedDevices);
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error in removeDevice:", error);
+        return { success: false, message: error.message || "An unexpected error occurred." };
     }
-    await writeDevices(updatedDevices);
 }
 
 
@@ -262,7 +268,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        const errorMessage = typeof e === 'string' ? e : (e?.message || 'An unknown error occurred during sync.');
+        const errorMessage = typeof e === 'string' ? e : 'An unknown error occurred during sync.';
         return { success: false, message: errorMessage };
 
     } finally {
