@@ -48,10 +48,10 @@ import {
   FileText,
   RefreshCw,
   FileCheck2,
-  PlugZap,
+  Activity,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, processLogs, pingDevice, updateDeviceStatus } from '@/app/actions';
+import { removeDevice, processLogs, pingDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -268,7 +268,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                            <DropdownMenuItem onClick={() => handlePingDevice(device)}>
-                            <PlugZap className="mr-2" />
+                            <Activity className="mr-2" />
                             Ping Device
                           </DropdownMenuItem>
                            <DropdownMenuItem onClick={() => handleSyncDevice(device)}>
