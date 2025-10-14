@@ -1,28 +1,8 @@
+
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
 import net from 'net';
-
-async function checkPort(host: string, port: number): Promise<boolean> {
-    return new Promise((resolve) => {
-        const socket = new net.Socket();
-        socket.setTimeout(1000);
-        socket.on('connect', () => {
-            socket.destroy();
-            resolve(true);
-        });
-        socket.on('timeout', () => {
-            socket.destroy();
-            resolve(false);
-        });
-        socket.on('error', () => {
-            socket.destroy();
-            resolve(false);
-        });
-        socket.connect(port, host);
-    });
-}
-
 
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
@@ -34,13 +14,6 @@ export async function GET(request: NextRequest) {
     }
 
     const portNumber = parseInt(port, 10);
-
-    const isPortOpen = await checkPort(ipAddress, portNumber);
-    if (!isPortOpen) {
-        return NextResponse.json({ message: `Could not connect to ${ipAddress}:${port}. Port is not open or device is offline.` }, { status: 504 });
-    }
-
-
     const url = `http://${ipAddress}:${port}/mock/adms/logs`;
 
     try {
