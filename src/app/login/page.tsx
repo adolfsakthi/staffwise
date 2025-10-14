@@ -16,8 +16,9 @@ export default function LoginPage() {
                 className="object-cover"
             />
             <div className="relative z-10 flex h-full flex-col justify-end bg-black/40 p-10 text-white">
-                <div className="mb-4 flex items-center gap-3 rounded-xl bg-white/90 p-4 w-fit backdrop-blur-sm">
+                <div className="mb-4 flex items-center gap-3">
                     <Icons.logo className="size-12" />
+                    <h1 className="text-3xl font-bold">HEZEE ACCESS</h1>
                 </div>
                 <p className="max-w-lg text-lg">
                     Manage your workforce efficiently and gain insights into attendance patterns with our comprehensive tracking system.
@@ -28,9 +29,8 @@ export default function LoginPage() {
             <div className="w-full max-w-sm space-y-6">
                 <div className="text-left">
                     <div className="mb-2 flex items-center gap-2">
-                        <div className='p-2 bg-white rounded-lg'>
-                           <Icons.logo className="size-8 text-primary" />
-                        </div>
+                        <Icons.logo className="size-8 text-primary" />
+                        <h2 className="text-2xl font-bold">HEZEE ACCESS</h2>
                     </div>
                     <h1 className="text-3xl font-bold tracking-tight text-foreground">
                         Login to your account
