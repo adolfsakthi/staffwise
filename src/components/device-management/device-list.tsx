@@ -34,7 +34,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogClose,
   DialogFooter,
   DialogDescription,
@@ -49,9 +48,10 @@ import {
   FileText,
   RefreshCw,
   FileCheck2,
+  PlugZap,
 } from 'lucide-react';
-import type { Device, LiveLog } from '@/lib/types';
-import { removeDevice, processLogs } from '@/app/actions';
+import type { Device } from '@/lib/types';
+import { removeDevice, processLogs, pingDevice, updateDeviceStatus } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -59,9 +59,15 @@ interface DeviceListProps {
     initialDevices: Device[];
 }
 
+type ActionState = {
+    isPinging?: boolean;
+    isSyncing?: boolean;
+    isDeleting?: boolean;
+}
+
 export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
-  const [actionStates, setActionStates] = useState<{[key: string]: {isSyncing?: boolean, isDeleting?: boolean}}>({});
+  const [actionStates, setActionStates] = useState<{[key: string]: ActionState}>({});
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
@@ -72,9 +78,24 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const { toast } = useToast();
   const router = useRouter();
 
-  const setActionState = (deviceId: string, state: {isSyncing?: boolean, isDeleting?: boolean}) => {
+  const setActionState = (deviceId: string, state: ActionState) => {
     setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
   };
+
+  const handlePingDevice = async (device: Device) => {
+    setActionState(device.id, { isPinging: true });
+    const result = await pingDevice(device.ipAddress, device.port);
+    toast({
+        title: result.success ? 'Ping Successful' : 'Ping Failed',
+        description: result.message,
+        variant: result.success ? 'default' : 'destructive',
+    });
+    const newStatus = result.success ? 'online' : 'offline';
+    setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
+    await updateDeviceStatus(device.id, newStatus);
+    setActionState(device.id, { isPinging: false });
+    router.refresh();
+  }
 
   const handleSyncDevice = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
@@ -85,7 +106,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ip: device.ipAddress, port: device.port, connectionKey: device.connectionKey }),
         });
-
+        
         const result = await response.json();
 
         if (!response.ok) {
@@ -201,8 +222,13 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             <TableBody>
               {devices && devices.length > 0 ? (
                 devices.map((device) => {
-                  const isLoading = actionStates[device.id]?.isSyncing || actionStates[device.id]?.isDeleting;
-                  const status = actionStates[device.id]?.isSyncing ? 'Syncing...' : (actionStates[device.id]?.isDeleting ? 'Removing...' : device.status);
+                  const state = actionStates[device.id] || {};
+                  const isLoading = state.isPinging || state.isSyncing || state.isDeleting;
+                  
+                  let statusLabel = device.status;
+                  if (state.isPinging) statusLabel = 'Pinging...';
+                  if (state.isSyncing) statusLabel = 'Syncing...';
+                  if (state.isDeleting) statusLabel = 'Removing...';
 
                   return (
                   <TableRow key={device.id}>
@@ -226,7 +252,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         ) : (
                           <WifiOff className="mr-2 text-red-500" />
                         )}
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                        {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -241,6 +267,10 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                           <DropdownMenuItem onClick={() => handlePingDevice(device)}>
+                            <PlugZap className="mr-2" />
+                            Ping Device
+                          </DropdownMenuItem>
                            <DropdownMenuItem onClick={() => handleSyncDevice(device)}>
                             <RefreshCw className="mr-2" />
                             Sync Logs
