@@ -237,7 +237,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
                         return reject(err.message || 'Failed to get attendances');
                     }
                     resolve(data);
-});
+                });
             });
         });
 
@@ -275,5 +275,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             zkInstance.disconnect();
         }
     }
+}
 
     
