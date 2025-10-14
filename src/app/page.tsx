@@ -8,7 +8,7 @@ import type { AttendanceRecord } from '@/lib/types';
 import { add, format, startOfWeek } from 'date-fns';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import { seedDatabase } from '@/lib/seed'; // Assuming seed functionality is moved here
+import { seedDatabase } from '@/lib/seed';
 import { Button } from '@/components/ui/button';
 
 

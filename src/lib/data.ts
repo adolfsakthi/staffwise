@@ -32,8 +32,8 @@ function processRecord(record: any): Omit<AttendanceRecord, 'id' | 'is_audited' 
         : 0;
     
     return {
-        clientId: record.clientId || 'default_client',
-        branchId: record.branchId || 'default_branch',
+        clientId: record.clientId,
+        branchId: record.branchId,
         property_code: record.property_code,
         employee_name: record.employee_name,
         email: record.email,
@@ -69,7 +69,7 @@ export async function addAttendanceRecords(db: Firestore, records: any[], client
         const permissionError = new FirestorePermissionError({
             path: `clients/${clientId}/branches/${branchId}/attendanceRecords`,
             operation: 'create',
-            requestResourceData: records.map(processRecord),
+            requestResourceData: records.map(rec => processRecord({...rec, clientId, branchId})),
         });
         errorEmitter.emit('permission-error', permissionError);
         throw serverError;
@@ -124,7 +124,7 @@ export async function getRecordsByIds(db: Firestore, clientId: string, branchId:
     const CHUNK_SIZE = 30; // Firestore 'in' query limit
     for (let i = 0; i < recordIds.length; i += CHUNK_SIZE) {
         const chunk = recordIds.slice(i, i + CHUNK_SIZE);
-        const recordsQuery = query(collection(db, `clients/${clientId}/branches/${branchId}/attendanceRecords`), where('id', 'in', chunk));
+        const recordsQuery = query(collection(db, `clients/${clientId}/branches/${branchId}/attendanceRecords`), where('__name__', 'in', chunk));
         
         try {
             const querySnapshot = await getDocs(recordsQuery);

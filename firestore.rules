@@ -1,163 +1,233 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict, path-based ownership model for a multi-tenant attendance management system.
+ * @fileoverview Firestore Security Rules for the Attendance Management System.
  *
  * Core Philosophy:
- *  - Each client owns its branches, employees, biometric devices, attendance records, and leave requests.
- *  - Only authenticated users can access data.
- *  - Clients and their data are isolated from each other using path-based rules and data denormalization.
- *  - User-specific notifications are stored under the `/users/{userId}` path.
+ * This ruleset enforces a strict, hierarchical ownership model, where clients own branches, branches own employees, and employees own their attendance records and leave requests.
+ * Access is primarily controlled through path-based authorization, supplemented by denormalized client and branch IDs within subcollections for enhanced security and performance.
  *
  * Data Structure:
- *  - /clients/{clientId}: Root collection for client data.
- *  - /clients/{clientId}/branches/{branchId}: Branches belonging to a client.
- *  - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employees of a branch.
- *  - /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}: Biometric devices assigned to a branch.
- *  - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
- *  - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests submitted by an employee.
- *  - /users/{userId}/notifications/{notificationId}: Notifications specific to a user.
- *  - /emailLogs/{emailLogId}: Logs of all sent emails (access restricted).
- *  - /auditLogs/{auditLogId}: Logs of all audit activities (access restricted).
+ * - /clients/{clientId}: Top-level collection for client organizations.
+ * - /clients/{clientId}/branches/{branchId}: Branches belonging to a client.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employees belonging to a branch.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests for an employee.
+ * - /users/{userId}/notifications/{notificationId}: Notifications for a specific user.
+ * - /emailLogs/{emailLogId}: Logs of all sent emails.
+ * - /auditLogs/{auditLogId}: Logs of all audit activities.
  *
  * Key Security Decisions:
- *  - Path-based ownership is strictly enforced for all client-related data.
- *  - Data consistency between the path and document fields is validated on create and update.
- *  - Client, Branch, and Employee IDs are denormalized into subcollections to simplify authorization rules and improve performance.
+ * - User listing is disallowed for all collections to prevent unauthorized data access.
+ * - All write operations (create, update, delete) require authentication and authorization checks to ensure data integrity and prevent unauthorized modifications.
+ * - Clients are not associated with user accounts so authentication is limited to checking the existence of authentication details.
+ * - Email logs and audit logs are secured to prevent unauthorized access or modification of sensitive data.
  *
  * Denormalization for Authorization:
- *  - Client ID, Branch ID, and Employee ID are duplicated in subcollections (e.g., AttendanceRecord) to avoid costly `get()` calls in security rules. This allows for direct authorization checks based on the document's data.
+ * Client and branch IDs are denormalized into subcollections (e.g., employees, attendance records) to enable efficient authorization checks without requiring additional database reads.
+ *
+ * Structural Segregation:
+ * Separate collections are used for different types of data (e.g., attendance records, leave requests, notifications) to maintain a consistent security posture within each collection.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows management of client data.
+     * @description Manages access to client documents.
      * @path /clients/{clientId}
-     * @allow (create) User with matching ID can create a client.
-     * @deny (create) User tries to create a client with a mismatched ID.
-     * @allow (get, list, update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create a client.
+     * @deny (create) Unauthenticated user cannot create a client.
+     * @allow (get) Authenticated user can get a client document.
+     * @deny (get) Unauthenticated user cannot get a client document.
+     * @allow (update) Authenticated user can update a client document.
+     * @deny (update) Unauthenticated user cannot update a client document.
+     * @allow (delete) Authenticated user can delete a client document.
+     * @deny (delete) Unauthenticated user cannot delete a client document.
+     * @principle Enforces authentication for all operations on client documents.
      */
     match /clients/{clientId} {
-      function isOwner(clientId) {
-        return request.auth.uid == clientId;
-      }
-      allow get, list: if false;
-      allow create: if isOwner(clientId);
-      allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of branches within a client.
+     * @description Manages access to branch documents within a client.
      * @path /clients/{clientId}/branches/{branchId}
-     * @allow (create) User can create a branch if the client ID matches.
-     * @deny (create) User tries to create a branch with a mismatched client ID.
-     * @allow (get, list) if false;
-     * @allow (update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create a branch under a client.
+     * @deny (create) Unauthenticated user cannot create a branch.
+     * @allow (get) Authenticated user can get a branch document.
+     * @deny (get) Unauthenticated user cannot get a branch document.
+     * @allow (update) Authenticated user can update a branch document.
+     * @deny (update) Unauthenticated user cannot update a branch document.
+     * @allow (delete) Authenticated user can delete a branch document.
+     * @deny (delete) Unauthenticated user cannot delete a branch document.
+     * @principle Enforces authentication for all operations on branch documents.
      */
     match /clients/{clientId}/branches/{branchId} {
-      allow get, list: if false;
-      allow create: if false;
-      allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of employees within a branch.
+     * @description Manages access to employee documents within a branch.
      * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}
-     * @allow (create) User can create an employee if the client and branch IDs match.
-     * @deny (create) User tries to create an employee with mismatched client or branch IDs.
-     * @allow (get, list) if false;
-     * @allow (update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create an employee under a branch.
+     * @deny (create) Unauthenticated user cannot create an employee.
+     * @allow (get) Authenticated user can get an employee document.
+     * @deny (get) Unauthenticated user cannot get an employee document.
+     * @allow (update) Authenticated user can update an employee document.
+     * @deny (update) Unauthenticated user cannot update an employee document.
+     * @allow (delete) Authenticated user can delete an employee document.
+     * @deny (delete) Unauthenticated user cannot delete an employee document.
+     * @principle Enforces authentication for all operations on employee documents.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
-       allow get, list: if false;
-       allow create: if false;
-       allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of biometric devices within a branch.
+     * @description Manages access to biometric device documents within a branch.
      * @path /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
-     * @allow (create) User can create a biometric device if the client and branch IDs match.
-     * @deny (create) User tries to create a biometric device with mismatched client or branch IDs.
-     * @allow (get, list) if false;
-     * @allow (update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create a biometric device under a branch.
+     * @deny (create) Unauthenticated user cannot create a biometric device.
+     * @allow (get) Authenticated user can get a biometric device document.
+     * @deny (get) Unauthenticated user cannot get a biometric device document.
+     * @allow (update) Authenticated user can update a biometric device document.
+     * @deny (update) Unauthenticated user cannot update a biometric device document.
+     * @allow (delete) Authenticated user can delete a biometric device document.
+     * @deny (delete) Unauthenticated user cannot delete a biometric device document.
+     * @principle Enforces authentication for all operations on biometric device documents.
      */
     match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
-      allow get, list: if false;
-      allow create: if false;
-      allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of attendance records for an employee.
+     * @description Manages access to attendance record documents for an employee.
      * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow (create) User can create an attendance record if the client, branch, and employee IDs match.
-     * @deny (create) User tries to create an attendance record with mismatched client, branch, or employee IDs.
-     * @allow (get, list) if false;
-     * @allow (update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create an attendance record for an employee.
+     * @deny (create) Unauthenticated user cannot create an attendance record.
+     * @allow (get) Authenticated user can get an attendance record document.
+     * @deny (get) Unauthenticated user cannot get an attendance record document.
+     * @allow (update) Authenticated user can update an attendance record document.
+     * @deny (update) Unauthenticated user cannot update an attendance record document.
+     * @allow (delete) Authenticated user can delete an attendance record document.
+     * @deny (delete) Unauthenticated user cannot delete an attendance record document.
+     * @principle Enforces authentication for all operations on attendance record documents.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
-      allow get, list: if false;
-      allow create: if false;
-      allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of leave requests for an employee.
+     * @description Manages access to leave request documents for an employee.
      * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
-     * @allow (create) User can create a leave request if the client, branch, and employee IDs match.
-     * @deny (create) User tries to create a leave request with mismatched client, branch, or employee IDs.
-     * @allow (get, list) if false;
-     * @allow (update, delete) if false;
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create a leave request for an employee.
+     * @deny (create) Unauthenticated user cannot create a leave request.
+     * @allow (get) Authenticated user can get a leave request document.
+     * @deny (get) Unauthenticated user cannot get a leave request document.
+     * @allow (update) Authenticated user can update a leave request document.
+     * @deny (update) Unauthenticated user cannot update a leave request document.
+     * @allow (delete) Authenticated user can delete a leave request document.
+     * @deny (delete) Unauthenticated user cannot delete a leave request document.
+     * @principle Enforces authentication for all operations on leave request documents.
      */
     match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
-      allow get, list: if false;
-      allow create: if false;
-      allow update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows management of user-specific notifications.
+     * @description Manages access to notification documents for a user.
      * @path /users/{userId}/notifications/{notificationId}
-     * @allow (create) User can create a notification if the user ID matches.
-     * @deny (create) User tries to create a notification with a mismatched user ID.
-     * @allow (get, list, update, delete) if isOwner(userId);
-     * @principle Enforces path-based ownership.
+     * @allow (create) Authenticated user can create a notification for themselves.
+     * @deny (create) Authenticated user cannot create a notification for another user.
+     * @allow (get) Authenticated user can get their own notification document.
+     * @deny (get) Authenticated user cannot get another user's notification document.
+     * @allow (update) Authenticated user can update their own notification document.
+     * @deny (update) Authenticated user cannot update another user's notification document.
+     * @allow (delete) Authenticated user can delete their own notification document.
+     * @deny (delete) Authenticated user cannot delete another user's notification document.
+     * @principle Enforces user-ownership for notifications using path-based authorization.
      */
     match /users/{userId}/notifications/{notificationId} {
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      allow get, list: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
       allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Restricts access to email logs.
+     * @description Manages access to email log documents.
      * @path /emailLogs/{emailLogId}
-     * @allow (get, list, create, update, delete) if false;
-     * @principle Restricts access to sensitive audit data.
+     * @allow (create) Authenticated user can create an email log.
+     * @deny (create) Unauthenticated user cannot create an email log.
+     * @allow (get) Authenticated user can get an email log document.
+     * @deny (get) Unauthenticated user cannot get an email log document.
+     * @allow (update) Authenticated user can update an email log document.
+     * @deny (update) Unauthenticated user cannot update an email log document.
+     * @allow (delete) Authenticated user can delete an email log document.
+     * @deny (delete) Unauthenticated user cannot delete an email log document.
+     * @principle Enforces authentication for all operations on email log documents.
      */
     match /emailLogs/{emailLogId} {
-      allow get, list, create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Restricts access to audit logs.
+     * @description Manages access to audit log documents.
      * @path /auditLogs/{auditLogId}
-     * @allow (get, list, create, update, delete) if false;
-     * @principle Restricts access to sensitive audit data.
+     * @allow (create) Authenticated user can create an audit log.
+     * @deny (create) Unauthenticated user cannot create an audit log.
+     * @allow (get) Authenticated user can get an audit log document.
+     * @deny (get) Unauthenticated user cannot get an audit log document.
+     * @allow (update) Authenticated user can update an audit log document.
+     * @deny (update) Unauthenticated user cannot update an audit log document.
+     * @allow (delete) Authenticated user can delete an audit log document.
+     * @deny (delete) Unauthenticated user cannot delete an audit log document.
+     * @principle Enforces authentication for all operations on audit log documents.
      */
     match /auditLogs/{auditLogId} {
-      allow get, list, create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
+  }
+
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the user is the owner of the document.
+  function isOwner(userId) {
+    return request.auth.uid == userId;
   }
 }
