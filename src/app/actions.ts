@@ -6,7 +6,6 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
-import { getDeviceLogs } from '@/lib/zklib';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -105,17 +104,6 @@ export async function pingDevice(
 }
 
 
-export async function syncLogs(device: Device): Promise<{ success: boolean; message: string, logs?: any[] }> {
-    try {
-        const result = await getDeviceLogs(device.ipAddress, device.port);
-        return result;
-    } catch (e: any) {
-        const errorMessage = e.message || String(e) || 'An unknown error occurred during sync.';
-        return { success: false, message: errorMessage };
-    }
-}
-
-
 // --- Log Processing & Management ---
 
 async function readLogs(): Promise<any[]> {
@@ -161,7 +149,7 @@ async function writeLiveLogs(logs: LiveLog[]): Promise<void> {
 }
 
 
-export async function processLogs(rawLogs: any[], device: Device): Promise<{ success: boolean, message: string }> {
+export async function processLogs(rawLogs: any[], propertyCode: string): Promise<{ success: boolean, message: string }> {
     if (!rawLogs || rawLogs.length === 0) {
         return { success: true, message: 'No new logs to process.' };
     }
@@ -178,10 +166,11 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
     const existingLiveLogs = await getLiveLogs();
 
     const newLiveLogs: LiveLog[] = rawLogs.map(log => {
-        const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === device.property_code);
+        // Find employee by employeeCode for the given property
+        const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === propertyCode);
         if (!employee) return null;
 
-        const punchTime = new Date(log.timestamp);
+        const punchTime = new Date(log.attTime);
         const shiftStartTime = parse(employee.shiftStartTime, 'HH:mm', punchTime);
         
         const deviation = differenceInMinutes(punchTime, shiftStartTime);
@@ -203,7 +192,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
             message,
             timestamp: punchTime.toISOString(),
             isRead: false,
-            property_code: device.property_code,
+            property_code: propertyCode,
             employee: `${employee.firstName} ${employee.lastName}`,
             department: employee.department,
             time: format(punchTime, 'HH:mm'),
@@ -211,7 +200,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
         };
     }).filter((log): log is LiveLog => log !== null);
     
-    const updatedLiveLogs = [...existingLiveLogs, ...newLiveLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const updatedLiveLogs = [...newLiveLogs, ...existingLiveLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     await writeLiveLogs(updatedLiveLogs);
 
     return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.` };

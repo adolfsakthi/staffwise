@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -10,39 +11,17 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, FileCheck2, Users, FileClock, Download, Loader2 } from 'lucide-react';
+import { Upload, FileCheck2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { processLogs } from '@/app/actions';
+import { useRouter } from 'next/navigation';
 
-type UploadType = 'attendance' | 'employees' | 'punch_logs';
+// Mock data simulating a file read from the device
+const MOCK_RAW_LOGS = [
+    { userId: 'EMP001', attTime: new Date(new Date().setHours(9, 15, 23)) },
+    { userId: 'EMP002', attTime: new Date(new Date().setHours(8, 58, 2)) },
+];
 
-const uploadTypes = {
-  attendance: {
-    label: 'Bulk Attendance',
-    icon: FileClock,
-    template: 'employee_name,email,department,shift_start,shift_end,entry_time,exit_time,date\nJohn Doe,john@company.com,Engineering,09:00,18:00,09:15,18:30,2024-05-22',
-    templateName: 'attendance_template.csv',
-  },
-  employees: {
-    label: 'Employee Details',
-    icon: Users,
-    template: 'employee_id,employee_name,email,department,role\nEMP001,Jane Doe,jane@company.com,Sales,Employee',
-    templateName: 'employee_template.csv',
-  },
-  punch_logs: {
-    label: 'Punch Logs',
-    icon: FileClock,
-    template: 'device_id,employee_id,punch_time\nDEV001,EMP001,2024-05-21 09:05:12',
-    templateName: 'punch_log_template.csv',
-  },
-};
 
 type DataUploadProps = {
   clientId: string;
@@ -54,8 +33,8 @@ type DataUploadProps = {
 export default function DataUpload({ clientId, branchId, propertyCode, onUploadComplete }: DataUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadType, setUploadType] = useState<UploadType>('attendance');
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -83,13 +62,9 @@ export default function DataUpload({ clientId, branchId, propertyCode, onUploadC
 
     setIsUploading(true);
     
-    // Mocking the upload since backend is disconnected
-    const result = await new Promise<{success: boolean, message: string}>(resolve => {
-        setTimeout(() => {
-            resolve({ success: true, message: 'File has been processed (mock).' })
-        }, 1500)
-    });
-
+    // In a real app, you would parse the file here.
+    // For this demonstration, we'll use mock data to simulate the file content.
+    const result = await processLogs(MOCK_RAW_LOGS, propertyCode);
 
     if (result.success) {
         toast({
@@ -100,6 +75,7 @@ export default function DataUpload({ clientId, branchId, propertyCode, onUploadC
         if (onUploadComplete) {
             onUploadComplete();
         }
+        router.refresh();
     } else {
         toast({
             variant: 'destructive',
@@ -115,49 +91,21 @@ export default function DataUpload({ clientId, branchId, propertyCode, onUploadC
     setIsUploading(false);
   };
   
-  const handleDownloadTemplate = () => {
-    const { template, templateName } = uploadTypes[uploadType];
-    const blob = new Blob([template], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = templateName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  };
-  
-  const CurrentIcon = uploadTypes[uploadType].icon;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-            <CurrentIcon className="text-primary" />
-            <span>Data Upload</span>
+            <Upload className="text-primary" />
+            <span>Upload Attendance Logs</span>
         </CardTitle>
         <CardDescription>
-          Upload CSV files for employees, attendance, or punch logs.
+          Upload CSV/DAT files exported from your biometric device.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-            <Label htmlFor="upload-type">Upload Type</Label>
-            <Select value={uploadType} onValueChange={(v) => setUploadType(v as UploadType)}>
-                <SelectTrigger id="upload-type">
-                    <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="attendance">Bulk Attendance</SelectItem>
-                    <SelectItem value="employees">Employee Details</SelectItem>
-                    <SelectItem value="punch_logs">Punch Logs</SelectItem>
-                </SelectContent>
-            </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="data-file">File</Label>
-          <Input id="data-file" type="file" onChange={handleFileChange} accept=".csv,.xlsx,.xls"/>
+          <Input id="data-file" type="file" onChange={handleFileChange} accept=".csv,.dat,.txt"/>
           {file && <p className="text-sm text-muted-foreground">Selected: {file.name}</p>}
         </div>
         <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
@@ -167,11 +115,7 @@ export default function DataUpload({ clientId, branchId, propertyCode, onUploadC
             ) : (
                 <Upload className="mr-2" />
             )}
-            {isUploading ? 'Uploading...' : 'Upload & Process'}
-          </Button>
-          <Button onClick={handleDownloadTemplate} variant="outline" className="w-full">
-            <Download className="mr-2" />
-            Template
+            {isUploading ? 'Processing...' : 'Upload & Process'}
           </Button>
         </div>
       </CardContent>

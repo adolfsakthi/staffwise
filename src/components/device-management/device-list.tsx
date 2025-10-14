@@ -20,13 +20,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -42,13 +35,12 @@ import {
   WifiOff,
   Loader2,
   Activity,
-  RefreshCw,
   Trash2,
   Edit,
   FileText,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, removeDevice, syncLogs } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, removeDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -59,9 +51,7 @@ interface DeviceListProps {
 export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
-  const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
-  const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const { toast } = useToast();
@@ -98,27 +88,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setPingingDeviceId(null);
   };
   
-  const handleSyncDevice = async (device: Device) => {
-    setSyncingDeviceId(device.id);
-    const result = await syncLogs(device);
-    if (result.success) {
-        toast({
-            title: 'Sync Successful',
-            description: result.message,
-        });
-        if (result.logs && Array.isArray(result.logs)) {
-            setSyncedLogs(result.logs);
-        }
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Sync Failed',
-            description: result.message,
-        });
-    }
-    setSyncingDeviceId(null);
-  }
-  
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
     
@@ -146,10 +115,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setDeviceToDelete(null);
   }
 
-  const isActionRunning = !!pingingDeviceId || !!syncingDeviceId || !!deletingDeviceId;
+  const isActionRunning = !!pingingDeviceId || !!deletingDeviceId;
   const getActionState = (deviceId: string) => {
       if (pingingDeviceId === deviceId) return 'Pinging...';
-      if (syncingDeviceId === deviceId) return 'Syncing...';
       if (deletingDeviceId === deviceId) return 'Removing...';
       return null;
   }
@@ -198,7 +166,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                            {isActionRunning && (pingingDeviceId === device.id || syncingDeviceId === device.id || deletingDeviceId === device.id) ? (
+                            {isActionRunning && (pingingDeviceId === device.id || deletingDeviceId === device.id) ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <MoreVertical />
@@ -209,10 +177,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
                             <Activity className="mr-2" />
                             Ping Device
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
-                              <RefreshCw className="mr-2" />
-                            Sync Device
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem disabled>
@@ -262,37 +226,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
-        <Dialog open={!!syncedLogs} onOpenChange={(isOpen) => !isOpen && setSyncedLogs(null)}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Synced Attendance Logs</DialogTitle>
-                    <DialogDescription>
-                        The following raw logs were downloaded from the device.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[60vh] overflow-y-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>User ID</TableHead>
-                                <TableHead>Timestamp</TableHead>
-                                <TableHead>Punch Type</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {syncedLogs?.map((log, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>{log.userId}</TableCell>
-                                    <TableCell>{log.attTime}</TableCell>
-                                    <TableCell>{log.type}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-            </DialogContent>
-        </Dialog>
     </>
   );
 }
