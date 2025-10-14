@@ -114,14 +114,14 @@ export default function MainSidebar() {
   }
 
   const displayName = 'Demo User';
-  const email = 'demo@staffwise.com';
+  const email = 'demo@hezeeaccess.com';
 
   return (
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Icons.logo className="size-7 text-primary" />
-          <span className="text-lg font-semibold text-foreground">StaffWise</span>
+          <span className="text-lg font-semibold text-foreground">HEZEE ACCESS</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="p-2">

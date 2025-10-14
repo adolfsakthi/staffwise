@@ -20,7 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>StaffWise - Employee Attendance Management</title>
+        <title>HEZEE ACCESS - Employee Attendance Management</title>
         <meta name="description" content="A comprehensive Employee Attendance Tracking and Audit Management System." />
       </head>
       <body
