@@ -242,7 +242,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
         // Create a simple, serializable message for the client
         let errorMessage = 'An unknown error occurred during sync.';
-        if (typeof e === 'object' && e !== null) {
+        if (e && typeof e === 'object') {
             if ('err' in e && e.err instanceof Error) {
                 errorMessage = e.err.message;
             } else if ('message' in e && typeof e.message === 'string') {
