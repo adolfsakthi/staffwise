@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { addDevice } from '@/app/actions';
+import { useRouter } from 'next/navigation';
 
 type AddDeviceFormProps = {
   propertyCode: string;
@@ -22,6 +23,7 @@ type AddDeviceFormProps = {
 
 export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   
   async function handleAddDeviceAction(formData: FormData) {
@@ -63,6 +65,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
         // Reset form by clearing the form element
         const form = document.getElementById('add-device-form-element') as HTMLFormElement;
         form?.reset();
+        router.refresh();
 
     } catch(error) {
         console.error(error);
@@ -113,6 +116,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                 id="ipAddress"
                 name="ipAddress"
                 placeholder="e.g., 192.168.1.100"
+                defaultValue="192.168.1.201"
                 required
               />
             </div>
@@ -134,6 +138,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                 name="connectionKey"
                 type="password"
                 placeholder="Device password (e.g. 0)"
+                defaultValue="0"
               />
             </div>
           </div>
