@@ -30,8 +30,32 @@ import { useUser } from '@/firebase';
 import type { EmailLog } from '@/lib/types';
 import { format } from 'date-fns';
 
+const LATE_ENTRY_TEMPLATE = `
+<div style="font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <div style="background: linear-gradient(to right, #6d28d9, #a78bfa); color: #ffffff; padding: 20px; text-align: center; font-size: 24px; font-weight: bold;">
+      ⏰ Late Entry Notice
+    </div>
+    <div style="padding: 30px 20px; color: #333;">
+      <p style="margin-bottom: 20px;">Dear Test User,</p>
+      <p style="margin-bottom: 20px;">
+        This is to inform you that you were late by <strong style="color: #ef4444;">30 minutes</strong> on <strong style="color: #333;">2025-10-11</strong>.
+      </p>
+      <p style="margin-bottom: 30px;">
+        Please ensure timely attendance going forward.
+      </p>
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+      <p style="font-size: 12px; color: #9ca3af; text-align: center;">
+        This is an automated message from the Attendance Management System.
+      </p>
+    </div>
+  </div>
+</div>
+`;
+
+
 const MOCK_EMAIL_LOGS: EmailLog[] = [
-    { id: '1', recipient: 'manager@staffwise.com', subject: 'Late Arrival Notice', body: '<div>Employee John Doe arrived late.</div>', timestamp: new Date(), emailType: 'late_notice' },
+    { id: '1', recipient: 'manager@staffwise.com', subject: 'Late Arrival Notice', body: LATE_ENTRY_TEMPLATE, timestamp: new Date(), emailType: 'late_notice' },
     { id: '2', recipient: 'admin@staffwise.com', subject: 'Daily Audit Report', body: '<div>Please find the daily audit report attached.</div>', timestamp: new Date(), emailType: 'admin_report' },
 ]
 
