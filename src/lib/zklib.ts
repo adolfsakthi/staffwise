@@ -1,57 +1,51 @@
 
-import ZKLib from 'zklib-js';
+import ZKLib from 'node-zklib';
 
-const safeError = (err: any): string => {
-    if (!err) {
-        return 'An unknown error occurred.';
-    }
-    if (typeof err === 'string') {
-        return err;
-    }
-    if (err.message) {
-        return err.message;
-    }
-    return JSON.stringify(err);
-};
-
-export const getDeviceLogs = async (ipAddress: string, port: number): Promise<{ success: boolean; message: string, logs?: any[] }> => {
+export const getDeviceLogs = async (ipAddress: string, port: number): Promise<{ success: boolean; message: string; logs?: any[] }> => {
     if (!ipAddress || !port) {
         return { success: false, message: 'Device IP address and port are required.' };
     }
 
     let zkInstance: ZKLib | null = null;
     try {
-        zkInstance = new ZKLib(ipAddress, port, 5000, 4000);
-        await zkInstance.connect();
-        
-        // The library returns an object with a `data` property which is the array of logs
-        const logsResponse = await zkInstance.getAttendances();
+        // Correctly instantiate the new library
+        zkInstance = new ZKLib({
+            ip: ipAddress,
+            port: port,
+            timeout: 5000,
+        });
 
-        if (logsResponse && logsResponse.data) {
+        // Connect to the device
+        await zkInstance.connect();
+
+        // Get logs
+        const logs = await zkInstance.getAttendances();
+
+        // The new library returns the array directly
+        if (logs && Array.isArray(logs)) {
              return {
                 success: true,
-                message: `Found ${logsResponse.data.length} logs.`,
-                logs: logsResponse.data,
+                message: `Found ${logs.length} logs.`,
+                logs: logs,
             };
         }
         
         return { success: false, message: 'No logs found or invalid response from device.' };
 
     } catch (e: any) {
-        let errorMessage = 'An unknown error occurred during sync.';
-        
-        // zklib-js often wraps errors
-        if (e && e.err && e.err.message) {
-            errorMessage = e.err.message;
-        } else if (e && e.message) {
-            errorMessage = e.message;
-        }
-
+        // Provide a specific error message
+        const errorMessage = e.message || 'An unknown error occurred during device communication.';
         return { success: false, message: errorMessage };
 
     } finally {
+        // Ensure disconnection in all cases
         if (zkInstance) {
-            await zkInstance.disconnect();
+            try {
+                await zkInstance.disconnect();
+            } catch (disconnectError: any) {
+                // Log disconnection error if necessary, but don't let it hide the main error
+                console.error("Error during device disconnection:", disconnectError.message);
+            }
         }
     }
 };

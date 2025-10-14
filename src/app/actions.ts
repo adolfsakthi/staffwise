@@ -107,16 +107,9 @@ export async function pingDevice(
 
 export async function syncLogs(device: Device): Promise<{ success: boolean; message: string, logs?: any[] }> {
     try {
+        // The getDeviceLogs function now returns a clean, serializable object.
         const result = await getDeviceLogs(device.ipAddress, device.port);
-        if (result.success) {
-            return {
-                success: true,
-                message: `Found ${result.logs.length} logs.`,
-                logs: result.logs,
-            };
-        } else {
-            return { success: false, message: result.message };
-        }
+        return result;
     } catch (e: any) {
         const errorMessage = e.message || 'An unknown error occurred during sync.';
         return { success: false, message: errorMessage };
