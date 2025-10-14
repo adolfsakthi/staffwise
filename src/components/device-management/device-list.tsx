@@ -40,7 +40,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, processLogs } from '@/app/actions';
+import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -85,67 +85,33 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   }
   
   const handleSyncLogs = async (device: Device) => {
+    if (!device.serialNumber) {
+        toast({
+            variant: 'destructive',
+            title: 'Sync Failed',
+            description: 'Device serial number is missing. Cannot queue sync request.',
+        });
+        return;
+    }
+
     setActionState(device.id, { isSyncing: true });
     try {
-        const response = await fetch('/api/sync-device', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ip: device.ipAddress,
-                port: device.port,
-                connectionKey: device.connectionKey
-            }),
-        });
-
-        // The response might not be JSON if an unexpected server error occurs.
-        // First, check if the response is ok, then check the content type.
-        if (!response.ok) {
-            const errorBody = await response.json();
-            throw new Error(errorBody.message || `Sync failed with status ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // The API now returns the raw data object, which contains a `data` property with the logs.
-        const logs = result.logs?.data || [];
-        const formattedLogs = logs.map((log: any) => ({
-             userId: log.userId,
-             attTime: log.recordTime,
-        }));
-
-
-        if (result.success && formattedLogs.length > 0) {
-            // Now process these logs
-            if (device.property_code) {
-                const processResult = await processLogs(formattedLogs, device.property_code);
-                 toast({
-                    title: 'Sync Successful',
-                    description: `Successfully synced ${formattedLogs.length} logs. ${processResult.message}`,
-                });
-            } else {
-                 toast({
-                    title: 'Sync Successful, Processing Skipped',
-                    description: `Synced ${formattedLogs.length} logs, but no property code set for device.`,
-                });
-            }
-        } else if (result.success) {
+        const result = await requestLogSync(device.serialNumber);
+        if (result.success) {
             toast({
-                title: 'No New Logs',
-                description: 'The device is connected, but there are no new attendance logs to sync.',
+                title: 'Sync Request Queued',
+                description: 'Device will upload logs on its next check-in.',
             });
         } else {
-             toast({
+            toast({
                 variant: 'destructive',
-                title: 'Sync Failed',
+                title: 'Failed to Queue Sync',
                 description: result.message,
             });
         }
-
-        router.refresh();
-
     } catch(e: any) {
-        console.error("Error during sync:", e);
-        toast({ variant: 'destructive', title: 'Error During Sync', description: e.message || "An unexpected error occurred." });
+        console.error("Error queueing sync request:", e);
+        toast({ variant: 'destructive', title: 'Error', description: e.message || "An unexpected error occurred." });
     } finally {
         setActionState(device.id, { isSyncing: false });
     }

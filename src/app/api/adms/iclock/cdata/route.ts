@@ -11,6 +11,15 @@ import path from 'path';
 const commandQueue: { [sn: string]: string[] } = {};
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 
+// This function is now exported so we can use it in our server action
+export function addCommandToQueue(sn: string, command: string) {
+    if (!commandQueue[sn]) {
+        commandQueue[sn] = [];
+    }
+    commandQueue[sn].push(command);
+    console.log(`Command '${command}' queued for device ${sn}.`);
+}
+
 
 async function getDevicePropertyCode(sn: string): Promise<string | null> {
     try {
@@ -46,14 +55,9 @@ export async function GET(request: NextRequest) {
     
     if (commands.length > 0) {
         // Send the first command in the queue.
-        responseBody = `C:${commands.length}:${commands.shift()!}`;
-        console.log(`Sent command to ${sn}. Remaining queue:`, commandQueue[sn]);
-    } else {
-        // If no commands, you can send device options.
-        // This tells the device how often to sync, etc.
-        // The registry value tells the device where our server is.
-        const host = request.headers.get('host');
-        responseBody = `GetDate\nPostInterval=30\nRegistry=http://${host}/api/adms/iclock/cdata\n`;
+        const commandToSend = commands.shift()!;
+        responseBody = `C:${Math.floor(Date.now() / 1000)}:${commandToSend}`;
+        console.log(`Sent command to ${sn}: ${responseBody}`);
     }
     
     console.log(`[ADMS GET] SN: ${sn} | Response: \n${responseBody}`);

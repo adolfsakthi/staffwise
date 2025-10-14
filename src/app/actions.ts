@@ -5,6 +5,7 @@ import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
 import net from 'net';
+import { addCommandToQueue } from './api/adms/iclock/cdata/route';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -97,6 +98,17 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
     if (deviceIndex > -1) {
         devices[deviceIndex].status = status;
         await writeDevices(devices);
+    }
+}
+
+export async function requestLogSync(serialNumber: string): Promise<{ success: boolean, message?: string }> {
+    try {
+        // This command requests all attendance logs.
+        const command = 'DATA QUERY ATTLog StartTime=2000-01-01 00:00:00 EndTime=2099-12-31 23:59:59';
+        addCommandToQueue(serialNumber, command);
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, message: e.message || 'Failed to queue sync command.' };
     }
 }
 
