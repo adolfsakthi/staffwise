@@ -26,7 +26,8 @@ import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { runAudit } from '@/app/actions';
 import { format } from 'date-fns';
-import { MOCK_ATTENDANCE_RECORDS } from '@/lib/mock-data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, updateDoc, doc, writeBatch } from 'firebase/firestore';
 
 
 interface AuditDashboardProps {
@@ -40,18 +41,28 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
   const [auditNotes, setAuditNotes] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
+  const firestore = useFirestore();
+
+  const unauditedRecordsQuery = useMemoFirebase(() => {
+    if (!firestore || !clientId || !branchId) return null;
+    return query(
+        collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`),
+        where('is_audited', '==', false)
+        // We filter by propertyCode on the client side. A composite index on `is_audited` and `property_code` would be better.
+    );
+  }, [firestore, clientId, branchId]);
+
+  const { data: unauditedRecordsData, isLoading: isFetching, error } = useCollection<AttendanceRecord>(unauditedRecordsQuery);
 
   const unauditedRecords = useMemo(() => {
-    return MOCK_ATTENDANCE_RECORDS.filter(r => !r.is_audited && r.property_code === propertyCode);
-  }, [propertyCode]);
-
-  const isFetching = false;
-  const error = null;
+    if (!unauditedRecordsData) return [];
+    return unauditedRecordsData.filter(r => r.property_code === propertyCode);
+  }, [unauditedRecordsData, propertyCode]);
 
 
   useEffect(() => {
     setSelectedRecords([]);
-  }, [unauditedRecords]);
+  }, [unauditedRecordsData]);
 
 
   const handleSelectRecord = (id: string) => {
@@ -78,27 +89,37 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
       });
       return;
     }
+    if (!firestore) return;
 
     setIsAuditing(true);
-    // const result = await runAudit(clientId, branchId, selectedRecords, auditNotes);
-    // Mocking the result since actions are disabled
-    const result = { success: true, message: 'Audit functionality is currently disabled.' };
-    setIsAuditing(false);
 
-    if (result.success) {
+    try {
+      const batch = writeBatch(firestore);
+      selectedRecords.forEach(recordId => {
+        const recordRef = doc(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`, recordId);
+        batch.update(recordRef, {
+          is_audited: true,
+          audit_notes: auditNotes,
+        });
+      });
+      await batch.commit();
+
       toast({
-          title: 'Audit Mock Success',
-          description: `Successfully marked ${selectedRecords.length} records as audited (mock).`,
+          title: 'Audit Complete',
+          description: `Successfully marked ${selectedRecords.length} records as audited.`,
           action: <FileCheck2 className="text-green-500" />,
       });
       setSelectedRecords([]);
       setAuditNotes('');
-    } else {
+
+    } catch (e: any) {
        toast({
         variant: 'destructive',
         title: 'Audit Failed',
-        description: result.message,
+        description: e.message || "An unexpected error occurred.",
       });
+    } finally {
+        setIsAuditing(false);
     }
   };
 
@@ -124,7 +145,6 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
                     />
                   </TableHead>
                   <TableHead>Employee</TableHead>
-                  <TableHead>Property Code</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Times</TableHead>
                   <TableHead>Status</TableHead>
@@ -133,13 +153,13 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
               <TableBody>
                 {isFetching ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-destructive">
+                        <TableCell colSpan={5} className="h-24 text-center text-destructive">
                             Error: {error.message}
                         </TableCell>
                     </TableRow>
@@ -161,8 +181,7 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
                           {record.department}
                         </div>
                       </TableCell>
-                      <TableCell>{record.property_code}</TableCell>
-                      <TableCell>{format(new Date(record.date), 'PPP')}</TableCell>
+                      <TableCell>{format(new Date(record.attendanceDate), 'PPP')}</TableCell>
                       <TableCell>
                         {record.entry_time} / {record.exit_time}
                       </TableCell>
@@ -179,7 +198,7 @@ export default function AuditDashboard({ clientId, branchId, propertyCode }: Aud
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No unaudited records found. Great job!
                     </TableCell>
                   </TableRow>

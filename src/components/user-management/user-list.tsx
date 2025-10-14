@@ -30,8 +30,9 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import type { UserProfile, Role } from '@/lib/types';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
 
 type UserListProps = {
@@ -43,11 +44,12 @@ type UserListProps = {
 
 export default function UserList({ roles, users, clientId, propertyCode }: UserListProps) {
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserName, setNewUserName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState(roles[0]?.name || '');
+  const [newUserRole, setNewUserRole] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   
@@ -60,11 +62,18 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
   }, [roles, newUserRole]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    toast({ title: "User role updated (Mock)" });
+    if (!firestore) return;
+    try {
+        const userDocRef = doc(firestore, 'users', userId);
+        await updateDoc(userDocRef, { role: newRole });
+        toast({ title: "User role updated" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Failed to update role', description: e.message });
+    }
   };
 
   const handleAddUser = async () => {
-    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode || !newUserPassword) {
+    if (!newUserEmail.trim() || !newUserName.trim() || !propertyCode || !newUserPassword || !firestore) {
       toast({ variant: 'destructive', title: 'Please fill all fields.' });
       return;
     }
@@ -72,8 +81,20 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
     setIsCreatingUser(true);
     
     try {
+        // Step 1: Create user in Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, newUserEmail, newUserPassword);
         const user = userCredential.user;
+
+        // Step 2: Create user profile in Firestore
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDoc(userDocRef, {
+            uid: user.uid,
+            displayName: newUserName,
+            email: newUserEmail,
+            role: newUserRole,
+            property_code: propertyCode,
+            clientId: clientId
+        });
 
         toast({
             title: 'User Created Successfully',
@@ -175,7 +196,6 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
             <TableHeader>
             <TableRow>
                 <TableHead>User</TableHead>
-                <TableHead>Property Code</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="w-[50px]">Actions</TableHead>
             </TableRow>
@@ -203,7 +223,6 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
                     </div>
                     </div>
                 </TableCell>
-                <TableCell>{user.property_code}</TableCell>
                 <TableCell>
                     <Select
                     value={user.role}
@@ -241,7 +260,7 @@ export default function UserList({ roles, users, clientId, propertyCode }: UserL
             ))
             ) : (
                 <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={3} className="h-24 text-center">
                         No users found for this property.
                     </TableCell>
                 </TableRow>

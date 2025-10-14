@@ -1,85 +1,10 @@
-export type AttendanceRecord = {
-  id: string;
-  clientId: string;
-  branchId: string;
-  property_code: string;
-  employee_name: string;
-  email: string;
-  department: string;
-  shift_start: string;
-  shift_end: string;
-  entry_time: string;
-  exit_time: string;
-  date: string;
-  is_late: boolean;
-  late_by_minutes: number;
-  overtime_minutes: number;
-  is_audited: boolean;
-  audit_notes?: string;
-};
 
-export type Device = {
-  id: string;
-  property_code: string;
-  deviceName: string;
-  model: string;
-  ipAddress: string;
-  port: number;
-  connectionKey: string;
-  status: 'online' | 'offline';
-  branchName: string;
-  clientId: string;
-  branchId: string;
-};
-
-export type LiveLog = {
-    id: string;
-    property_code: string;
-    type: 'late' | 'overtime' | 'early' | 'on_time';
-    employee: string;
-    department: string;
-    time: string;
-    deviation: number;
-    timestamp: any; // Firestore timestamp
-    clientId: string;
-    branchId: string;
-};
-
-export type UserProfile = {
-  id: string;
-  uid: string;
-  displayName: string | null;
-  email: string;
-  role: string;
-  property_code: string;
-  photoURL?: string;
-  clientId: string;
-};
-
-// This type is deprecated, use UserProfile instead.
-export type User = UserProfile;
-
-
-export type Role = {
-  id: string;
-  property_code: string;
-  name: string;
-  permissions: string[];
-  clientId: string;
-};
-
-export type EmailLog = {
-  id: string;
-  to: string;
-  subject: string;
-  body: string;
-  emailType: 'late_notice' | 'admin_report' | 'department_report';
-  sentAt: any; // Firestore timestamp
-}
-
+// Maps to the 'Employee' entity
 export type Employee = {
   id: string;
-  property_code: string;
+  clientId: string;
+  branchId: string;
+  property_code: string; // This is a custom claim or derived property
   firstName: string;
   lastName: string;
   email: string;
@@ -87,6 +12,120 @@ export type Employee = {
   employeeCode: string;
   shiftStartTime: string;
   shiftEndTime: string;
+};
+
+// Maps to the 'AttendanceRecord' entity
+export type AttendanceRecord = {
+  id: string;
+  employeeId: string;
+  deviceId: string;
+  punchInTime: any; // Firestore Timestamp
+  punchOutTime?: any; // Firestore Timestamp
+  attendanceDate: string; // YYYY-MM-DD
+  logType: string;
+
+  // Denormalized/calculated data for easier display
+  employee_name?: string;
+  email?: string;
+  department?: string;
+  property_code?: string;
+  entry_time?: string; // HH:mm
+  exit_time?: string; // HH:mm
+  is_late?: boolean;
+  late_by_minutes?: number;
+  overtime_minutes?: number;
+  is_audited?: boolean;
+  audit_notes?: string;
+};
+
+// Maps to the 'BiometricDevice' entity
+export type Device = {
+  id: string;
   clientId: string;
   branchId: string;
+  deviceName: string;
+  ipAddress: string;
+  port: number;
+  connectionKey: string;
+  
+  // UI-specific or derived properties
+  model?: string;
+  branchName?: string;
+  property_code?: string; // This is a custom claim or derived property
+  status?: 'online' | 'offline'; // This would be determined by a separate process
 };
+
+// Maps to the 'Notification' entity, with added denormalized data
+export type LiveLog = {
+    id: string;
+    employeeId?: string; // employeeId is optional in Notification schema
+    type: 'late' | 'overtime' | 'early' | 'on_time' | 'audit_summary'; // From Notification 'type'
+    message: string; // from Notification 'message'
+    timestamp: any; // Firestore timestamp
+    isRead: boolean;
+
+    // Denormalized data for display
+    property_code?: string;
+    employee?: string; // employee name
+    department?: string;
+    time?: string; // Formatted time
+    deviation?: number; // Calculated deviation
+};
+
+
+// Represents a user profile, potentially stored in a 'users' collection
+export type UserProfile = {
+  id: string;       // Firestore document ID
+  uid: string;      // Firebase Auth UID
+  displayName: string | null;
+  email: string;
+  role: string;     // e.g., 'Admin', 'Manager'
+  property_code: string; // The property they have access to
+  photoURL?: string;
+  clientId: string;
+};
+
+// Maps to a potential 'roles' collection for RBAC
+export type Role = {
+  id: string;
+  clientId: string;
+  property_code: string;
+  name: string;
+  permissions: string[];
+};
+
+// Maps to the 'EmailLog' entity
+export type EmailLog = {
+  id: string;
+  recipient: string;
+  subject: string;
+  body: string;
+  timestamp: any; // Firestore timestamp
+  emailType: 'late_notice' | 'admin_report' | 'department_report';
+};
+
+// Maps to the 'AuditLog' entity
+export type AuditLog = {
+  id: string;
+  timestamp: any; // Firestore timestamp
+  auditorId: string;
+  auditType: 'daily' | 'weekly' | 'monthly' | 'manual';
+  summary: string;
+}
+
+// Maps to the 'Client' entity
+export type Client = {
+    id: string;
+    name: string;
+    contactEmail: string;
+    createdAt: any; // Firestore timestamp
+}
+
+// Maps to the 'Branch' entity
+export type Branch = {
+    id: string;
+    clientId: string;
+    name: string;
+    location: string;
+    biometricDeviceId: string;
+}

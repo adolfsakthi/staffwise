@@ -12,30 +12,50 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
 import type { Employee } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import { doc, deleteDoc } from 'firebase/firestore';
 
 type EmployeeListProps = {
-  employees: Employee[];
+  employees: Employee[] | null;
+  isLoading: boolean;
+  error: Error | null;
 };
 
-export default function EmployeeList({ employees }: EmployeeListProps) {
+export default function EmployeeList({ employees, isLoading, error }: EmployeeListProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
 
   const handleEdit = (employee: Employee) => {
+    // In a real app, this would open a dialog/form to edit the employee
     toast({
-      title: 'Edit Employee (Mock)',
+      title: 'Edit Employee (Not Implemented)',
       description: `Editing ${employee.firstName} ${employee.lastName}.`,
     });
   };
 
-  const handleDelete = (employee: Employee) => {
-    toast({
-      title: 'Delete Employee (Mock)',
-      description: `${employee.firstName} ${employee.lastName} has been deleted.`,
-      variant: 'destructive',
-    });
+  const handleDelete = async (employee: Employee) => {
+    if (!firestore) return;
+    if (!confirm(`Are you sure you want to delete ${employee.firstName} ${employee.lastName}?`)) {
+        return;
+    }
+    
+    try {
+        const docRef = doc(firestore, `clients/${employee.clientId}/branches/${employee.branchId}/employees`, employee.id);
+        await deleteDoc(docRef);
+        toast({
+          title: 'Employee Deleted',
+          description: `${employee.firstName} ${employee.lastName} has been deleted.`,
+        });
+    } catch(e: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Deleting Employee',
+            description: e.message || 'An unexpected error occurred.',
+        });
+    }
   };
 
   return (
@@ -57,7 +77,19 @@ export default function EmployeeList({ employees }: EmployeeListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {employees.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                  </TableCell>
+                </TableRow>
+              ) : error ? (
+                 <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                    Error: {error.message}
+                  </TableCell>
+                </TableRow>
+              ) : employees && employees.length > 0 ? (
                 employees.map((employee) => (
                   <TableRow key={employee.id}>
                     <TableCell>

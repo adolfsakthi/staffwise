@@ -27,40 +27,87 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { MOCK_DEPARTMENTS } from '@/lib/mock-data';
+import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
+
+// In a real app, departments would be its own collection
+const DEPARTMENTS = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales', 'Global (All Departments)'];
 
 type SettingsFormProps = {
   clientId: string;
   propertyCode: string;
 };
 
+type Settings = {
+    graceTime: { [department: string]: number };
+    autoAudit: {
+        enabled: boolean;
+        time: string;
+    };
+}
+
 const DEFAULT_GRACE_TIME = 15;
 const DEFAULT_AUTO_AUDIT_TIME = '00:00';
 
 export default function SettingsForm({ clientId, propertyCode }: SettingsFormProps) {
   const { toast } = useToast();
-  const departments = MOCK_DEPARTMENTS;
-  const [graceDepartment, setGraceDepartment] = useState('global');
+  const firestore = useFirestore();
+  const [graceDepartment, setGraceDepartment] = useState('Global (All Departments)');
   
-  const isLoadingSettings = false;
+  const settingsRef = useMemoFirebase(() => {
+    if (!firestore || !clientId) return null;
+    return doc(firestore, `clients/${clientId}/settings`, 'config');
+  }, [firestore, clientId]);
+
+  const { data: settings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsRef);
 
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_TIME);
   const [autoAuditEnabled, setAutoAuditEnabled] = useState(true);
   const [autoAuditTime, setAutoAuditTime] = useState(DEFAULT_AUTO_AUDIT_TIME);
 
+  useEffect(() => {
+    if (settings) {
+        setGraceMinutes(settings.graceTime?.[graceDepartment] ?? settings.graceTime?.['global'] ?? DEFAULT_GRACE_TIME);
+        setAutoAuditEnabled(settings.autoAudit?.enabled ?? true);
+        setAutoAuditTime(settings.autoAudit?.time ?? DEFAULT_AUTO_AUDIT_TIME);
+    }
+  }, [settings, graceDepartment]);
+
   const handleSaveGraceTime = async () => {
-    toast({
-        title: 'Settings Saved (Mock)',
-        description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
-    });
+    if (!settingsRef) return;
+    try {
+        await setDoc(settingsRef, {
+            graceTime: {
+                ...settings?.graceTime,
+                [graceDepartment === 'Global (All Departments)' ? 'global' : graceDepartment]: graceMinutes,
+            }
+        }, { merge: true });
+        toast({
+            title: 'Settings Saved',
+            description: `Grace time for ${graceDepartment} set to ${graceMinutes} minutes.`,
+        });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error saving settings', description: e.message });
+    }
   };
 
   const handleSaveAutoAudit = async () => {
-    toast({
-        title: 'Settings Saved (Mock)',
-        description: `Auto-audit settings have been updated.`,
-    });
+    if (!settingsRef) return;
+     try {
+        await setDoc(settingsRef, {
+            autoAudit: {
+                enabled: autoAuditEnabled,
+                time: autoAuditTime,
+            }
+        }, { merge: true });
+        toast({
+            title: 'Settings Saved',
+            description: `Auto-audit settings have been updated.`,
+        });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error saving settings', description: e.message });
+    }
   };
 
   if(isLoadingSettings) {
@@ -96,8 +143,7 @@ export default function SettingsForm({ clientId, propertyCode }: SettingsFormPro
                                     <SelectValue placeholder="Select department" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="global">Global (All Departments)</SelectItem>
-                                    {departments.map(dept => (
+                                    {DEPARTMENTS.map(dept => (
                                         <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                     ))}
                                 </SelectContent>

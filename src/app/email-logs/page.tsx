@@ -26,24 +26,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Eye } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { EmailLog } from '@/lib/types';
 import { format } from 'date-fns';
-import { MOCK_EMAIL_LOGS } from '@/lib/mock-data';
+import { collection } from 'firebase/firestore';
 
 export default function EmailLogsPage() {
   const { isUserLoading } = useUser();
+  const firestore = useFirestore();
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
 
-  const emailLogs = useMemo(() => MOCK_EMAIL_LOGS, []);
-  const isLoadingLogs = false;
-  const error = null;
+  const emailLogsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'emailLogs');
+  }, [firestore]);
 
+  const { data: emailLogs, isLoading: isLoadingLogs, error } = useCollection<EmailLog>(emailLogsQuery);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
-    // Timestamps in mock data can be Date objects
-    const date = timestamp.toDate ? timestamp.toDate() : new Date();
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return format(date, 'PPP p');
   };
 
@@ -87,13 +89,13 @@ export default function EmailLogsPage() {
                     <TableCell>
                       <Mail className="text-muted-foreground" />
                     </TableCell>
-                    <TableCell className="font-medium">{log.to}</TableCell>
+                    <TableCell className="font-medium">{log.recipient}</TableCell>
                     <TableCell className="text-muted-foreground">{log.subject}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{log.emailType}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDate(log.sentAt)}
+                      {formatDate(log.timestamp)}
                     </TableCell>
                     <TableCell>
                       <Dialog onOpenChange={(isOpen) => !isOpen && setSelectedEmail(null)}>
@@ -123,9 +125,9 @@ export default function EmailLogsPage() {
                     <DialogHeader>
                         <DialogTitle>Email Preview</DialogTitle>
                         <div className="text-sm text-muted-foreground space-y-1 pt-2">
-                            <p><strong>To:</strong> {selectedEmail.to}</p>
+                            <p><strong>To:</strong> {selectedEmail.recipient}</p>
                             <p><strong>Subject:</strong> {selectedEmail.subject}</p>
-                            <p><strong>Date:</strong> {formatDate(selectedEmail.sentAt)}</p>
+                            <p><strong>Date:</strong> {formatDate(selectedEmail.timestamp)}</p>
                         </div>
                     </DialogHeader>
                     <div className="mt-4 rounded-md border bg-white">

@@ -20,7 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MOCK_DEPARTMENTS } from '@/lib/mock-data';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+
+
+// Departments could be fetched from a dedicated collection
+const DEPARTMENTS = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales'];
 
 type AddEmployeeFormProps = {
   clientId: string;
@@ -30,6 +35,7 @@ type AddEmployeeFormProps = {
 
 export default function AddEmployeeForm({ clientId, branchId, propertyCode }: AddEmployeeFormProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const [isAdding, setIsAdding] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -40,7 +46,7 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
   const [shiftEndTime, setShiftEndTime] = useState('18:00');
 
   const handleAddEmployee = async () => {
-    if (!firstName || !lastName || !email || !department || !employeeCode) {
+    if (!firstName || !lastName || !email || !department || !employeeCode || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
@@ -50,12 +56,27 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
     }
     setIsAdding(true);
 
-    // Mock functionality since backend is disabled
-    setTimeout(() => {
-        toast({
-          title: 'Employee Added (Mock)',
-          description: `${firstName} ${lastName} has been added to the mock list.`,
+    try {
+        const employeesCollection = collection(firestore, `clients/${clientId}/branches/${branchId}/employees`);
+        await addDoc(employeesCollection, {
+            clientId,
+            branchId,
+            property_code: propertyCode,
+            firstName,
+            lastName,
+            email,
+            department,
+            employeeCode,
+            shiftStartTime,
+            shiftEndTime,
+            createdAt: new Date(),
         });
+
+        toast({
+          title: 'Employee Added',
+          description: `${firstName} ${lastName} has been added.`,
+        });
+
         // Reset form
         setFirstName('');
         setLastName('');
@@ -64,8 +85,15 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
         setEmployeeCode('');
         setShiftStartTime('09:00');
         setShiftEndTime('18:00');
+    } catch(e: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Adding Employee',
+            description: e.message || 'An unexpected error occurred.',
+        });
+    } finally {
         setIsAdding(false);
-    }, 1000)
+    }
   };
 
   return (
@@ -101,7 +129,7 @@ export default function AddEmployeeForm({ clientId, branchId, propertyCode }: Ad
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                {MOCK_DEPARTMENTS.map(dept => (
+                {DEPARTMENTS.map(dept => (
                     <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                 ))}
               </SelectContent>

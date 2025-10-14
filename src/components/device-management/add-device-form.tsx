@@ -14,6 +14,8 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Device } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 type AddDeviceFormProps = {
   clientId: string;
@@ -23,37 +25,61 @@ type AddDeviceFormProps = {
 
 export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddDeviceFormProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const [isAdding, setIsAdding] = useState(false);
   const [deviceName, setDeviceName] = useState('');
   const [branchName, setBranchName] = useState('Main Lobby');
-  const [model, setModel] = useState('');
   const [ipAddress, setIpAddress] = useState('');
-  const [status, setStatus] = useState<'online' | 'offline'>('online');
+  const [port, setPort] = useState(4370);
+  const [connectionKey, setConnectionKey] = useState('');
+
 
   const handleAddDevice = async () => {
-    if (!deviceName || !branchName || !model || !ipAddress) {
+    if (!deviceName || !branchName || !ipAddress || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
-        description: 'Please fill out all fields to add a device.',
+        description: 'Please fill out all required fields to add a device.',
       });
       return;
     }
     setIsAdding(true);
 
-    // Mock functionality since backend is disabled
-    setTimeout(() => {
-        toast({
-          title: 'Device Added (Mock)',
-          description: `${deviceName} has been added to the mock list.`,
+    try {
+        const devicesCol = collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`);
+        await addDoc(devicesCol, {
+            deviceName,
+            branchName, // This should probably be derived from branchId
+            ipAddress,
+            port,
+            connectionKey,
+            clientId,
+            branchId,
+            property_code: propertyCode,
+            status: 'offline', // Default status, should be updated by a monitoring service
         });
+        
+        toast({
+          title: 'Device Added',
+          description: `${deviceName} has been registered.`,
+        });
+
         // Reset form
         setDeviceName('');
         setBranchName('Main Lobby');
-        setModel('');
         setIpAddress('');
+        setPort(4370);
+        setConnectionKey('');
+
+    } catch (e: any) {
+         toast({
+            variant: 'destructive',
+            title: 'Error Adding Device',
+            description: e.message || 'An unexpected error occurred.',
+        });
+    } finally {
         setIsAdding(false);
-    }, 1000)
+    }
   };
 
   return (
@@ -85,21 +111,22 @@ export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddD
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="model">Device Model</Label>
-            <Input
-              id="model"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g., ZK-Teco-X10"
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="ip-address">IP Address</Label>
             <Input
               id="ip-address"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
               placeholder="e.g., 192.168.1.100"
+            />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="port">Port</Label>
+            <Input
+              id="port"
+              type="number"
+              value={port}
+              onChange={(e) => setPort(Number(e.target.value))}
+              placeholder="e.g., 4370"
             />
           </div>
         </div>

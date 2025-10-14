@@ -15,23 +15,44 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import { Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import type { Role, UserProfile } from '@/lib/types';
-import { MOCK_ROLES, MOCK_USERS } from '@/lib/mock-data';
 import { useMemo } from 'react';
+import { collection, query, where } from 'firebase/firestore';
+
 
 export default function UserManagementPage() {
-    const { user, isUserLoading } = useUser();
+    const { user: currentUser, isUserLoading } = useUser();
+    const firestore = useFirestore();
     const clientId = 'default_client';
 
     // @ts-ignore
-    const propertyCode = user?.property_code || 'D001';
+    const propertyCode = currentUser?.property_code || null;
 
-    const roles = useMemo(() => MOCK_ROLES.filter(r => r.property_code === propertyCode), [propertyCode]);
-    const users = useMemo(() => MOCK_USERS.filter(u => u.property_code === propertyCode), [propertyCode]);
+    const rolesQuery = useMemoFirebase(() => {
+        if (!firestore || !clientId) return null;
+        return query(collection(firestore, `clients/${clientId}/roles`));
+    }, [firestore, clientId]);
 
-    const isLoadingRoles = false;
-    const isLoadingUsers = false;
+    const usersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        // This fetches all users. In a real app, this should be paginated and filtered.
+        return collection(firestore, 'users');
+    }, [firestore]);
+
+
+    const { data: rolesData, isLoading: isLoadingRoles, error: rolesError } = useCollection<Role>(rolesQuery);
+    const { data: usersData, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile>(usersQuery);
+
+    const roles = useMemo(() => {
+      if (!rolesData || !propertyCode) return [];
+      return rolesData.filter(r => r.property_code === propertyCode);
+    }, [rolesData, propertyCode]);
+    
+    const users = useMemo(() => {
+      if (!usersData || !propertyCode) return [];
+      return usersData.filter(u => u.property_code === propertyCode);
+    }, [usersData, propertyCode]);
 
     if (isUserLoading || isLoadingRoles || isLoadingUsers) {
         return (
@@ -56,10 +77,10 @@ export default function UserManagementPage() {
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList roles={roles || []} users={users || []} clientId={clientId} propertyCode={propertyCode} />
+                <UserList roles={roles || []} users={users || []} clientId={clientId} propertyCode={propertyCode || ''} />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
-                <RoleManagement initialRoles={roles || []} clientId={clientId} propertyCode={propertyCode} />
+                <RoleManagement initialRoles={roles || []} clientId={clientId} propertyCode={propertyCode || ''} />
             </TabsContent>
           </Tabs>
         </CardContent>

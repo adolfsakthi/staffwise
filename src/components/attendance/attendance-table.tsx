@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-import { MOCK_ATTENDANCE_RECORDS, MOCK_DEPARTMENTS } from '@/lib/mock-data';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 
 interface AttendanceTableProps {
@@ -36,20 +37,35 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  
-  const isLoading = false;
-  const error = null;
+  const firestore = useFirestore();
 
-  const filteredRecords = useMemo(() => {
-    return MOCK_ATTENDANCE_RECORDS.filter(rec => {
-        const dateMatch = rec.date === dateFilter;
-        const propertyMatch = rec.property_code === propertyCode;
-        const departmentMatch = departmentFilter === 'all' || rec.department === departmentFilter;
-        return dateMatch && propertyMatch && departmentMatch;
-    });
-  }, [dateFilter, departmentFilter, propertyCode]);
+  const recordsQuery = useMemoFirebase(() => {
+    if (!firestore || !clientId || !branchId) return null;
+
+    let q = query(
+      collection(firestore, `clients/${clientId}/branches/${branchId}/attendanceRecords`),
+      where('attendanceDate', '==', dateFilter)
+    );
+    
+    if (departmentFilter !== 'all') {
+      // Note: This requires a composite index in Firestore.
+      // The app will throw an error with a link to create it if it doesn't exist.
+      q = query(q, where('department', '==', departmentFilter));
+    }
+    
+    return q;
+  }, [firestore, clientId, branchId, dateFilter, departmentFilter]);
   
-  const departments = MOCK_DEPARTMENTS;
+  const { data: records, isLoading, error } = useCollection<AttendanceRecord>(recordsQuery);
+
+  // Departments would ideally be fetched from a 'departments' collection.
+  // For now, we derive it from the records or a static list.
+  const departments = useMemo(() => {
+    if (!records) return [];
+    const depts = new Set(records.map(r => r.department || ''));
+    return Array.from(depts).filter(Boolean);
+  }, [records]);
+
 
   return (
     <Card>
@@ -86,7 +102,6 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
             <TableHeader>
               <TableRow>
                 <TableHead>Employee</TableHead>
-                <TableHead>Property Code</TableHead>
                 <TableHead>Department</TableHead>
                 <TableHead>Times (Entry/Exit)</TableHead>
                 <TableHead>Status</TableHead>
@@ -97,18 +112,18 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
                 </TableRow>
               ) : error ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                  <TableCell colSpan={6} className="h-24 text-center text-destructive">
                     Error: {error.message}
                   </TableCell>
                 </TableRow>
-              ) : filteredRecords.length > 0 ? (
-                filteredRecords.map((record) => (
+              ) : records && records.length > 0 ? (
+                records.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell>
                       <div className="font-medium">{record.employee_name}</div>
@@ -116,7 +131,6 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
                         {record.email}
                       </div>
                     </TableCell>
-                    <TableCell>{record.property_code}</TableCell>
                     <TableCell>{record.department}</TableCell>
                     <TableCell>
                       {record.entry_time} / {record.exit_time}
@@ -131,7 +145,7 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
                       )}
                     </TableCell>
                     <TableCell>
-                      {record.overtime_minutes > 0 ? (
+                      {record.overtime_minutes && record.overtime_minutes > 0 ? (
                         <span>{record.overtime_minutes} min</span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
@@ -146,7 +160,7 @@ export default function AttendanceTable({ clientId, branchId, propertyCode }: At
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No records found for the selected criteria.
                   </TableCell>
                 </TableRow>

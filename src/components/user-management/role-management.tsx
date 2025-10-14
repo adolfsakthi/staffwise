@@ -11,14 +11,16 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/componentsui/badge';
+import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Trash2, Edit, X, Check } from 'lucide-react';
 import type { Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 
 // This can be fetched from a 'settings' collection in a real app
-export const ALL_PERMISSIONS = ['read', 'write', 'delete', 'manage_users'];
+export const ALL_PERMISSIONS = ['read', 'write', 'delete', 'manage_users', 'manage_devices', 'run_audit'];
 
 type RoleManagementProps = {
     initialRoles: Role[];
@@ -29,6 +31,7 @@ type RoleManagementProps = {
 
 export default function RoleManagement({ initialRoles, clientId, propertyCode }: RoleManagementProps) {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const [roles, setRoles] = useState(initialRoles);
   const [newRoleName, setNewRoleName] = useState('');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -38,14 +41,33 @@ export default function RoleManagement({ initialRoles, clientId, propertyCode }:
   }, [initialRoles]);
 
   const handleAddRole = async () => {
-    if (newRoleName.trim() && propertyCode) {
-      toast({title: 'Role added (Mock)', description: `Role "${newRoleName.trim()}" created.`})
-      setNewRoleName('');
+    if (newRoleName.trim() && propertyCode && firestore) {
+      try {
+        const rolesCol = collection(firestore, `clients/${clientId}/roles`);
+        await addDoc(rolesCol, {
+            name: newRoleName,
+            permissions: [],
+            clientId,
+            property_code: propertyCode,
+        });
+        toast({title: 'Role added', description: `Role "${newRoleName.trim()}" created.`})
+        setNewRoleName('');
+      } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error adding role', description: e.message });
+      }
     }
   };
 
-  const handleDeleteRole = (id: string) => {
-    toast({title: 'Role deleted (Mock)'})
+  const handleDeleteRole = async (id: string) => {
+    if (!firestore) return;
+    if (!confirm('Are you sure you want to delete this role?')) return;
+    try {
+        const roleDoc = doc(firestore, `clients/${clientId}/roles`, id);
+        await deleteDoc(roleDoc);
+        toast({title: 'Role deleted'});
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Error deleting role', description: e.message });
+    }
   };
 
   const handleStartEdit = (role: Role) => {
@@ -57,9 +79,18 @@ export default function RoleManagement({ initialRoles, clientId, propertyCode }:
   };
 
   const handleSaveEdit = async () => {
-    if (editingRole) {
-        setEditingRole(null);
-        toast({ title: 'Role updated (Mock)' });
+    if (editingRole && firestore) {
+        try {
+            const roleDoc = doc(firestore, `clients/${clientId}/roles`, editingRole.id);
+            await updateDoc(roleDoc, {
+                name: editingRole.name,
+                permissions: editingRole.permissions,
+            });
+            setEditingRole(null);
+            toast({ title: 'Role updated' });
+        } catch(e: any) {
+             toast({ variant: 'destructive', title: 'Error updating role', description: e.message });
+        }
     }
   };
 
@@ -96,7 +127,6 @@ export default function RoleManagement({ initialRoles, clientId, propertyCode }:
             <TableHeader>
               <TableRow>
                 <TableHead>Role Name</TableHead>
-                <TableHead>Property Code</TableHead>
                 <TableHead>Permissions</TableHead>
                 <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
@@ -108,9 +138,6 @@ export default function RoleManagement({ initialRoles, clientId, propertyCode }:
                      <>
                         <TableCell>
                             <Input value={editingRole.name} onChange={(e) => setEditingRole({...editingRole, name: e.target.value})} />
-                        </TableCell>
-                        <TableCell>
-                           {editingRole.property_code}
                         </TableCell>
                         <TableCell>
                             <div className="flex flex-wrap gap-2">
@@ -131,7 +158,6 @@ export default function RoleManagement({ initialRoles, clientId, propertyCode }:
                   ) : (
                     <>
                       <TableCell className="font-medium">{role.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{role.property_code}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {role.permissions.length > 0 ? role.permissions.map((p) => (

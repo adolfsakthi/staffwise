@@ -32,27 +32,29 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import AddDeviceForm from '@/components/device-management/add-device-form';
-import { MOCK_DEVICES } from '@/lib/mock-data';
+import { collection, query, where } from 'firebase/firestore';
 
 
 export default function DeviceManagementPage() {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
   const clientId = 'default_client';
   const branchId = 'default_branch';
 
   // @ts-ignore
-  const propertyCode = user?.property_code || 'D001';
+  const propertyCode = user?.property_code || null;
+  
+  const devicesQuery = useMemoFirebase(() => {
+    if (!firestore || !clientId || !branchId) return null;
+    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`));
+  }, [firestore, clientId, branchId]);
 
-  const devices = useMemo(() => {
-      return MOCK_DEVICES.filter(d => d.property_code === propertyCode)
-  }, [propertyCode]);
-  const isLoadingDevices = false;
-  const error = null;
+  const { data: devices, isLoading: isLoadingDevices, error } = useCollection<Device>(devicesQuery);
 
-  if (isUserLoading) {
+  if (isUserLoading || !propertyCode) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>
   }
 
@@ -74,9 +76,7 @@ export default function DeviceManagementPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Device Name</TableHead>
-                  <TableHead>Property Code</TableHead>
                   <TableHead>Branch</TableHead>
-                  <TableHead>Model</TableHead>
                   <TableHead>IP Address</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]">Actions</TableHead>
@@ -85,13 +85,13 @@ export default function DeviceManagementPage() {
               <TableBody>
                 {isLoadingDevices ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">
+                    <TableCell colSpan={5} className="text-center">
                       <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                     </TableCell>
                   </TableRow>
                 ) : error ? (
                    <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-destructive">
+                    <TableCell colSpan={5} className="h-24 text-center text-destructive">
                       Error: {error.message}
                     </TableCell>
                   </TableRow>
@@ -100,13 +100,7 @@ export default function DeviceManagementPage() {
                     <TableRow key={device.id}>
                       <TableCell className="font-medium">{device.deviceName}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {device.property_code}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {device.branchName}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {device.model}
+                        {device.branchName || 'N/A'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {device.ipAddress}
@@ -127,8 +121,7 @@ export default function DeviceManagementPage() {
                           ) : (
                             <WifiOff className="mr-2" />
                           )}
-                          {device.status.charAt(0).toUpperCase() +
-                            device.status.slice(1)}
+                          {device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -152,7 +145,7 @@ export default function DeviceManagementPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No devices found for this property.
                     </TableCell>
                   </TableRow>
