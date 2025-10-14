@@ -7,11 +7,14 @@ import path from 'path';
 // This is the main endpoint for ADMS communication.
 
 // A simple in-memory store for commands to be sent to the device.
-// In a real production app, this should be a database or a Redis cache.
 const commandQueue: { [sn: string]: string[] } = {};
+
+// In-memory store for response promises
+type ResponseResolver = (value: { success: boolean; message?: string, count: number }) => void;
+const responseWaiters: { [sn: string]: ResponseResolver } = {};
+
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 
-// This function is now exported so we can use it in our server action
 export function addCommandToQueue(sn: string, command: string) {
     if (!commandQueue[sn]) {
         commandQueue[sn] = [];
@@ -20,6 +23,27 @@ export function addCommandToQueue(sn: string, command: string) {
     console.log(`Command '${command}' queued for device ${sn}.`);
 }
 
+export function waitForDeviceResponse(sn: string, timeout: number): Promise<{ success: boolean; message?: string, count: number }> {
+    return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+            delete responseWaiters[sn];
+            resolve({ success: false, message: 'Device did not respond in time.', count: 0 });
+        }, timeout);
+
+        responseWaiters[sn] = (result) => {
+            clearTimeout(timer);
+            delete responseWaiters[sn];
+            resolve(result);
+        };
+    });
+}
+
+export function clearDeviceResponse(sn: string) {
+    if (responseWaiters[sn]) {
+        responseWaiters[sn]({ success: false, message: 'Sync request cancelled.', count: 0 });
+        delete responseWaiters[sn];
+    }
+}
 
 async function getDevicePropertyCode(sn: string): Promise<string | null> {
     try {
@@ -35,7 +59,6 @@ async function getDevicePropertyCode(sn: string): Promise<string | null> {
 
 
 // When a device connects, it sends a GET request.
-// The server responds with commands for the device to execute.
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const sn = searchParams.get('SN');
@@ -44,17 +67,13 @@ export async function GET(request: NextRequest) {
         return new NextResponse('Error: No Serial Number (SN) in request.', { status: 400 });
     }
 
-    // When a device checks in, we'll mark it as online.
     await updateDeviceStatus(sn, 'online');
 
-    // Check if there are any commands queued for this device.
     const commands = commandQueue[sn] || [];
     
-    // Default response is "OK".
     let responseBody = 'OK';
     
     if (commands.length > 0) {
-        // Send the first command in the queue.
         const commandToSend = commands.shift()!;
         responseBody = `C:${Math.floor(Date.now() / 1000)}:${commandToSend}`;
         console.log(`Sent command to ${sn}: ${responseBody}`);
@@ -62,7 +81,6 @@ export async function GET(request: NextRequest) {
     
     console.log(`[ADMS GET] SN: ${sn} | Response: \n${responseBody}`);
 
-    // The response must be plain text.
     return new NextResponse(responseBody, {
         headers: {
             'Content-Type': 'text/plain',
@@ -70,7 +88,7 @@ export async function GET(request: NextRequest) {
     });
 }
 
-// When the device has data to send (like attendance logs), it sends a POST request.
+// When the device has data to send, it sends a POST request.
 export async function POST(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const sn = searchParams.get('SN');
@@ -83,7 +101,7 @@ export async function POST(request: NextRequest) {
     const propertyCode = await getDevicePropertyCode(sn);
     if (!propertyCode) {
         console.error(`[ADMS POST] Received data from unknown device SN: ${sn}`);
-        return new NextResponse('OK', { status: 200 }); // Acknowledge to prevent retries
+        return new NextResponse('OK', { status: 200 }); 
     }
 
     const bodyText = await request.text();
@@ -93,7 +111,6 @@ export async function POST(request: NextRequest) {
         const logs = bodyText.trim().split('\n').map(line => {
             const [userId, timestamp] = line.trim().split('\t');
             if (!userId || !timestamp) return null;
-            // The format is '2\t2025-01-01 10:00:00'
             return {
                 userId,
                 attTime: new Date(timestamp),
@@ -102,9 +119,17 @@ export async function POST(request: NextRequest) {
 
         if (logs.length > 0) {
             console.log(`Processing ${logs.length} attendance logs for property ${propertyCode}`);
-            await processLogs(logs as any[], propertyCode);
+            const processResult = await processLogs(logs as any[], propertyCode);
+            
+            // If a function is waiting for this response, resolve it
+            if (responseWaiters[sn]) {
+                responseWaiters[sn]({ success: true, message: `Synced ${processResult.count} logs.`, count: processResult.count });
+            }
+        } else {
+             if (responseWaiters[sn]) {
+                responseWaiters[sn]({ success: true, message: `No new logs to sync.`, count: 0 });
+            }
         }
     }
-    // Acknowledge the receipt of data.
     return new NextResponse('OK', { status: 200 });
 }

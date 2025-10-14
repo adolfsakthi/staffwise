@@ -5,7 +5,7 @@ import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
 import net from 'net';
-import { addCommandToQueue } from './api/adms/iclock/cdata/route';
+import { addCommandToQueue, waitForDeviceResponse, clearDeviceResponse } from './api/adms/iclock/cdata/route';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -101,14 +101,30 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
     }
 }
 
-export async function requestLogSync(serialNumber: string): Promise<{ success: boolean, message?: string }> {
+export async function requestLogSync(serialNumber: string): Promise<{ success: boolean, message: string, count: number }> {
     try {
         // This command requests all attendance logs.
         const command = 'DATA QUERY ATTLog StartTime=2000-01-01 00:00:00 EndTime=2099-12-31 23:59:59';
+        
+        // Clear any previous response for this device
+        clearDeviceResponse(serialNumber);
+        
+        // Queue the command for the device
         addCommandToQueue(serialNumber, command);
-        return { success: true };
+        console.log(`Sync command queued for ${serialNumber}. Waiting for device to respond...`);
+
+        // Wait for the device to post the logs back
+        const result = await waitForDeviceResponse(serialNumber, 30000); // Wait up to 30 seconds
+
+        if (result.success) {
+             return { success: true, message: `Successfully synced ${result.count} new logs.`, count: result.count };
+        } else {
+            return { success: false, message: result.message || 'Device did not respond to sync command in time.', count: 0 };
+        }
+
     } catch (e: any) {
-        return { success: false, message: e.message || 'Failed to queue sync command.' };
+        console.error(`Error during log sync for ${serialNumber}:`, e);
+        return { success: false, message: e.message || 'Failed to sync logs.', count: 0 };
     }
 }
 

@@ -99,13 +99,14 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         const result = await requestLogSync(device.serialNumber);
         if (result.success) {
             toast({
-                title: 'Sync Request Queued',
-                description: 'Device will upload logs on its next check-in.',
+                title: 'Sync Complete',
+                description: result.message,
             });
+            router.refresh(); // Refresh live logs page if open
         } else {
             toast({
                 variant: 'destructive',
-                title: 'Failed to Queue Sync',
+                title: 'Sync Failed',
                 description: result.message,
             });
         }
@@ -174,7 +175,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                     <TableCell className="font-medium">{device.deviceName}</TableCell>
                     <TableCell className="font-medium text-muted-foreground">{device.serialNumber || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {device.ipAddress}
+                      {device.ipAddress}:{device.port}
                     </TableCell>
                     <TableCell>
                       <Badge
