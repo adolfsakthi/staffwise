@@ -71,6 +71,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [logs, setLogs] = useState<any[] | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [deviceForLogs, setDeviceForLogs] = useState<Device | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -107,13 +108,14 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
 
     setActionState(device.id, { isSyncing: true });
-    toast({
-      title: "Sync Initiated",
-      description: "A sync request has been sent to the device. New logs will appear on the Live Logs page shortly."
-    });
     
     // This is a fire-and-forget action in the ADMS protocol
     requestLogSync(device.serialNumber);
+
+    toast({
+      title: "Sync Request Sent",
+      description: "A sync request has been sent to the device. New logs will appear on the Live Logs page shortly."
+    });
 
     setTimeout(() => {
         setActionState(device.id, { isSyncing: false });
@@ -126,19 +128,26 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setShowLogsDialog(true);
     setIsLoadingLogs(true);
     setLogs(null);
+    setLogError(null);
+
     try {
-      const response = await fetch('/api/logs');
+      const response = await fetch(`/api/fetch-mock-logs?ip=${device.ipAddress}&port=${device.port}`);
+      const result = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch logs from server.');
+        throw new Error(result.message || 'Failed to fetch logs from device.');
       }
-      const data = await response.json();
-      setLogs(data);
+      
+      setLogs(result);
+
     } catch (error: any) {
       console.error(error);
-      toast({
+      const errorMessage = error.message || 'Could not retrieve mock logs.';
+      setLogError(errorMessage);
+       toast({
         variant: 'destructive',
         title: 'Failed to View Logs',
-        description: error.message || 'Could not retrieve raw logs.',
+        description: errorMessage,
       });
       setLogs([]); // show empty state instead of loading
     } finally {
@@ -291,9 +300,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Raw Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
+                    <DialogTitle>Mock Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
                     <DialogDescription>
-                        This is the raw, unprocessed data stored on the server.
+                        Displaying data from <code className='bg-muted text-muted-foreground rounded-sm px-1 py-0.5'>{`http://${deviceForLogs?.ipAddress}:${deviceForLogs?.port}/mock/adms/logs`}</code>
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">
@@ -307,7 +316,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </pre>
                     ) : (
                         <div className="flex justify-center items-center h-48 text-muted-foreground">
-                            <p>No raw logs found.</p>
+                            <p>{logError ? logError : "No logs found at the specified endpoint."}</p>
                         </div>
                     )}
                 </div>
