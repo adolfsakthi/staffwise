@@ -97,25 +97,36 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 connectionKey: device.connectionKey
             }),
         });
+
+        // The response might not be JSON if an unexpected server error occurs.
+        // First, check if the response is ok, then check the content type.
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(result.message || `Sync failed: ${errorText}`);
+        }
         
         const result = await response.json();
+        
+        // The API now returns the raw data object, which contains a `data` property with the logs.
+        const logs = result.logs?.data || [];
+        const formattedLogs = logs.map((log: any) => ({
+             userId: log.userId,
+             attTime: log.recordTime,
+        }));
 
-        if (!response.ok) {
-            throw new Error(result.message || 'Failed to sync logs from device.');
-        }
 
-        if (result.success && result.logs.length > 0) {
+        if (result.success && formattedLogs.length > 0) {
             // Now process these logs
             if (device.property_code) {
-                const processResult = await processLogs(result.logs, device.property_code);
+                const processResult = await processLogs(formattedLogs, device.property_code);
                  toast({
                     title: 'Sync Successful',
-                    description: `Successfully synced ${result.logs.length} logs. ${processResult.message}`,
+                    description: `Successfully synced ${formattedLogs.length} logs. ${processResult.message}`,
                 });
             } else {
                  toast({
                     title: 'Sync Successful, Processing Skipped',
-                    description: `Synced ${result.logs.length} logs, but no property code set for device.`,
+                    description: `Synced ${formattedLogs.length} logs, but no property code set for device.`,
                 });
             }
         } else if (result.success) {
@@ -134,6 +145,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         router.refresh();
 
     } catch(e: any) {
+        console.error("Error during sync:", e);
         toast({ variant: 'destructive', title: 'Error During Sync', description: e.message || "An unexpected error occurred." });
     } finally {
         setActionState(device.id, { isSyncing: false });

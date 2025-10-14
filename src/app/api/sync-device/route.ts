@@ -23,13 +23,8 @@ export async function POST(request: NextRequest) {
         // Get attendance logs
         const logs = await zkInstance.getAttendances();
 
-        // The logs are raw, so we need to format them slightly for processing
-        const formattedLogs = logs.data.map((log: any) => ({
-            userId: log.userId,
-            attTime: log.recordTime,
-        }));
-        
-        return NextResponse.json({ success: true, logs: formattedLogs });
+        // Return the raw logs for debugging.
+        return NextResponse.json({ success: true, logs: logs });
 
     } catch (e: any) {
         console.error(`Error connecting to device ${ip}:${port}`, e);

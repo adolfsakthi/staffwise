@@ -19,7 +19,7 @@
     "port": 81,
     "connectionKey": "",
     "property_code": "D001",
-    "status": "offline",
+    "status": "online",
     "clientId": "default_client",
     "branchId": "default_branch",
     "id": "2"
