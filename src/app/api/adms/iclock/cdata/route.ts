@@ -24,18 +24,6 @@ async function getDevicePropertyCode(sn: string): Promise<string | null> {
     }
 }
 
-// Function to add a command to the queue for a specific device
-export function addCommand(sn: string, command: string) {
-    if (!commandQueue[sn]) {
-        commandQueue[sn] = [];
-    }
-    // Prevent duplicate commands
-    if (!commandQueue[sn].includes(command)) {
-        commandQueue[sn].push(command);
-    }
-    console.log(`Command added for ${sn}. Queue:`, commandQueue[sn]);
-}
-
 
 // When a device connects, it sends a GET request.
 // The server responds with commands for the device to execute.

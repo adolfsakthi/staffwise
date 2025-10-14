@@ -40,7 +40,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
+import { removeDevice, pingDevice, processLogs, updateDeviceStatus } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -68,17 +68,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   };
 
   const handlePingDevice = async (device: Device) => {
-    if (!device.ipAddress) {
-        toast({
-            variant: 'destructive',
-            title: 'IP Address Missing',
-            description: 'Cannot ping a device without an IP address.',
-        });
-        return;
-    }
     setActionState(device.id, { isPinging: true });
     
-    const result = await pingDevice(device.ipAddress);
+    const result = await pingDevice(device.ipAddress, device.port);
     
     toast({
         title: result.success ? 'Ping Successful' : 'Ping Failed',
@@ -87,27 +79,62 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     });
 
     const newStatus = result.success ? 'online' : 'offline';
-    // This is an optimistic update. The device's true status will be updated when it checks in.
     setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
-    
+    await updateDeviceStatus(device.id, newStatus);
     setActionState(device.id, { isPinging: false });
     router.refresh();
   }
   
   const handleSyncLogs = async (device: Device) => {
-    if (!device.serialNumber) {
-        toast({ variant: 'destructive', title: 'Serial Number Missing' });
-        return;
-    }
     setActionState(device.id, { isSyncing: true });
     try {
-        await requestLogSync(device.serialNumber);
-        toast({
-            title: 'Sync Queued',
-            description: `A sync request has been queued for ${device.deviceName}. Logs will appear shortly.`,
+        const response = await fetch('/api/sync-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ip: device.ipAddress,
+                port: device.port,
+                connectionKey: device.connectionKey
+            }),
         });
+        
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to sync logs from device.');
+        }
+
+        if (result.success && result.logs.length > 0) {
+            // Now process these logs
+            if (device.property_code) {
+                const processResult = await processLogs(result.logs, device.property_code);
+                 toast({
+                    title: 'Sync Successful',
+                    description: `Successfully synced ${result.logs.length} logs. ${processResult.message}`,
+                });
+            } else {
+                 toast({
+                    title: 'Sync Successful, Processing Skipped',
+                    description: `Synced ${result.logs.length} logs, but no property code set for device.`,
+                });
+            }
+        } else if (result.success) {
+            toast({
+                title: 'No New Logs',
+                description: 'The device is connected, but there are no new attendance logs to sync.',
+            });
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: result.message,
+            });
+        }
+
+        router.refresh();
+
     } catch(e: any) {
-        toast({ variant: 'destructive', title: 'Failed to queue sync', description: e.message });
+        toast({ variant: 'destructive', title: 'Error During Sync', description: e.message || "An unexpected error occurred." });
     } finally {
         setActionState(device.id, { isSyncing: false });
     }
@@ -200,7 +227,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={!device.ipAddress}>
+                          <DropdownMenuItem onClick={() => handlePingDevice(device)}>
                             <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>

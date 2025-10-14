@@ -5,7 +5,6 @@ import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
 import net from 'net';
-import { addCommand } from './api/adms/iclock/cdata/route';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -66,14 +65,29 @@ export async function removeDevice(deviceId: string): Promise<{ success: boolean
     }
 }
 
-export async function pingDevice(ip: string): Promise<{ success: boolean; message: string }> {
-  // ADMS devices don't typically respond to simple pings or TCP connections on a specific port.
-  // The 'ping' here simulates a check. The real status is 'online' if the device is checking in.
-  // For a real check, we could check the last check-in time from a database.
-  // Here, we just return a success message as the concept of pinging is different for ADMS.
-  return new Promise((resolve) => {
-    resolve({ success: true, message: 'Ping action is for validating UI. Device status is updated via ADMS check-in.' });
-  });
+export async function pingDevice(ip: string, port: number): Promise<{ success: boolean; message: string }> {
+    return new Promise((resolve) => {
+        const socket = new net.Socket();
+        const timeout = 2000; // 2 seconds
+
+        socket.setTimeout(timeout);
+
+        socket.on('connect', () => {
+            socket.destroy();
+            resolve({ success: true, message: `Successfully connected to ${ip}:${port}` });
+        });
+
+        socket.on('error', (err) => {
+            resolve({ success: false, message: `Connection to ${ip}:${port} failed: ${err.message}` });
+        });
+        
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve({ success: false, message: `Connection to ${ip}:${port} timed out.` });
+        });
+
+        socket.connect(port, ip);
+    });
 }
 
 
@@ -190,11 +204,4 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
     await writeLiveLogs(updatedLiveLogs);
 
     return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: newLiveLogs.length };
-}
-
-
-export async function requestLogSync(serialNumber: string): Promise<{success: boolean}> {
-    const command = 'DATA QUERY ATTLOG StartTime=2024-01-01 00:00:00 EndTime=2024-12-31 23:59:59';
-    addCommand(serialNumber, command);
-    return { success: true };
 }
