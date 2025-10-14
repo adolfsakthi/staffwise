@@ -104,7 +104,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         const response = await fetch('/api/sync-device', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ device }),
+            body: JSON.stringify({ ipAddress: device.ipAddress, port: device.port }),
         });
 
         const result = await response.json();

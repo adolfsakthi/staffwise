@@ -5,17 +5,16 @@ import ZKLib from 'zklib-js';
 const safeError = (err: any) => ({ message: err?.message ?? String(err), stack: err?.stack ?? '' });
 
 export async function POST(request: NextRequest) {
-  const { device } = await request.json();
+  const { ipAddress, port = 4370 } = await request.json();
 
-  if (!device || !device.ipAddress) {
+  if (!ipAddress) {
     return NextResponse.json({ success: false, message: 'Device IP is required.' }, { status: 400 });
   }
 
-  const { ipAddress: ip, port = 4370 } = device;
   let zkInstance: ZKLib | null = null;
 
   try {
-    zkInstance = new ZKLib(ip, port, 5000, 4000);
+    zkInstance = new ZKLib(ipAddress, port, 5000, 4000);
     await zkInstance.connect();
 
     const logs = await zkInstance.getAttendances();
