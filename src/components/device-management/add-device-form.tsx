@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -14,14 +15,17 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Device } from '@/lib/types';
+import { addDevice } from '@/app/actions';
+import { revalidatePath } from 'next/cache';
+import { useRouter } from 'next/navigation';
 
 type AddDeviceFormProps = {
-  onAddDevice: (device: Omit<Device, 'id' | 'clientId' | 'branchId'>) => void;
   propertyCode: string;
 };
 
-export default function AddDeviceForm({ onAddDevice, propertyCode }: AddDeviceFormProps) {
+export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   const [deviceName, setDeviceName] = useState('');
   const [branchName, setBranchName] = useState('Main Lobby');
@@ -41,31 +45,45 @@ export default function AddDeviceForm({ onAddDevice, propertyCode }: AddDeviceFo
     }
     setIsAdding(true);
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    onAddDevice({
-        deviceName,
-        branchName,
-        ipAddress,
-        port,
-        connectionKey,
-        property_code: propertyCode,
-        status: 'offline', // Default status
-    });
+    try {
+        await addDevice({
+            deviceName,
+            branchName,
+            ipAddress,
+            port,
+            connectionKey,
+            property_code: propertyCode,
+            status: 'offline', // Default status
+            // These would come from the user's session in a real app
+            clientId: 'default_client', 
+            branchId: 'default_branch',
+        });
         
-    toast({
-        title: 'Device Added',
-        description: `${deviceName} has been registered.`,
-    });
+        toast({
+            title: 'Device Added',
+            description: `${deviceName} has been registered.`,
+        });
 
-    // Reset form
-    setDeviceName('');
-    setBranchName('Main Lobby');
-    setIpAddress('');
-    setPort(4370);
-    setConnectionKey('');
+        // Reset form
+        setDeviceName('');
+        setBranchName('Main Lobby');
+        setIpAddress('');
+        setPort(4370);
+        setConnectionKey('');
 
-    setIsAdding(false);
+        // Re-route to refresh the page and show the new device
+        router.refresh();
+
+    } catch(error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Error Adding Device',
+            description: 'Could not save the new device. Please check the logs.'
+        })
+    } finally {
+        setIsAdding(false);
+    }
   };
 
   return (
