@@ -4,7 +4,7 @@
 import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
-import type { Device, Employee, AttendanceRecord, LiveLog } from '@/lib/types';
+import type { Device, Employee, LiveLog } from '@/lib/types';
 import ZKLib from 'zklib-js';
 import { format, differenceInMinutes, parse } from 'date-fns';
 
@@ -42,12 +42,11 @@ export async function getDevices(): Promise<Device[]> {
   return await readDevices();
 }
 
-export async function addDevice(newDeviceData: Omit<Device, 'id' | 'status'>): Promise<Device> {
+export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<Device> {
     const devices = await readDevices();
     const newDevice: Device = {
         ...newDeviceData,
         id: (Math.max(0, ...devices.map(d => parseInt(d.id, 10))) + 1).toString(),
-        status: 'offline' // Always default to offline
     };
     const updatedDevices = [...devices, newDevice];
     await writeDevices(updatedDevices);

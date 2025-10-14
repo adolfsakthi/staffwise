@@ -1,5 +1,6 @@
 
 
+
 // Maps to the 'Employee' entity
 export type Employee = {
   id: string;
@@ -35,6 +36,10 @@ export type AttendanceRecord = {
   is_late?: boolean;
   late_by_minutes?: number;
   overtime_minutes?: number;
+  is_present?: boolean;
+  is_absent?: boolean;
+  is_on_leave?: boolean;
+  early_going_minutes?: number;
   is_audited?: boolean;
   audit_notes?: string;
 };
@@ -53,7 +58,9 @@ export type Device = {
   model?: string;
   branchName?: string;
   property_code?: string; // This is a custom claim or derived property
-  status?: 'online' | 'offline'; // This would be determined by a separate process
+  status: 'online' | 'offline'; // This would be determined by a separate process
+  serialNumber?: string;
+  lastPing?: string;
 };
 
 // Maps to the 'Notification' entity, with added denormalized data
