@@ -41,13 +41,16 @@ export default function DeviceManagementPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
+  const clientId = 'default_client';
+  const branchId = 'default_branch';
+
   // @ts-ignore
   const propertyCode = user?.property_code || 'D001';
 
   const devicesQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
-    return query(collection(firestore, 'devices'), where('property_code', '==', propertyCode));
-  }, [firestore, propertyCode]);
+    if (!firestore || !propertyCode || !clientId || !branchId) return null;
+    return query(collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`), where('property_code', '==', propertyCode));
+  }, [firestore, clientId, branchId, propertyCode]);
   
   const { data: devices, isLoading: isLoadingDevices, error } = useCollection<Device>(devicesQuery);
 
@@ -57,7 +60,7 @@ export default function DeviceManagementPage() {
 
   return (
     <div className='space-y-6'>
-      <AddDeviceForm propertyCode={propertyCode} />
+      <AddDeviceForm clientId={clientId} branchId={branchId} propertyCode={propertyCode} />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -97,18 +100,18 @@ export default function DeviceManagementPage() {
                 ) : devices && devices.length > 0 ? (
                   devices.map((device) => (
                     <TableRow key={device.id}>
-                      <TableCell className="font-medium">{device.name}</TableCell>
+                      <TableCell className="font-medium">{device.deviceName}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {device.property_code}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {device.branch}
+                        {device.branchName}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {device.model}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {device.ip}
+                        {device.ipAddress}
                       </TableCell>
                       <TableCell>
                         <Badge

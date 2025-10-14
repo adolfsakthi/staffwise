@@ -41,13 +41,16 @@ export default function LiveLogsPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
+    const clientId = 'default_client';
+    const branchId = 'default_branch';
+
     // @ts-ignore
     const propertyCode = user?.property_code || 'D001';
 
     const logsQuery = useMemoFirebase(() => {
-        if (!firestore || !propertyCode) return null;
-        return query(collection(firestore, 'live_logs'), where('property_code', '==', propertyCode), orderBy('timestamp', 'desc'), limit(50));
-    }, [firestore, propertyCode]);
+        if (!firestore || !propertyCode || !clientId || !branchId) return null;
+        return query(collection(firestore, `clients/${clientId}/branches/${branchId}/liveLogs`), where('property_code', '==', propertyCode), orderBy('timestamp', 'desc'), limit(50));
+    }, [firestore, clientId, branchId, propertyCode]);
     
     const { data: logs, isLoading: isLoadingLogs, error } = useCollection<LiveLog>(logsQuery);
 

@@ -35,22 +35,23 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 
 type SettingsFormProps = {
+  clientId: string;
   propertyCode: string;
 };
 
 const DEFAULT_GRACE_TIME = 15;
 const DEFAULT_AUTO_AUDIT_TIME = '00:00';
 
-export default function SettingsForm({ propertyCode }: SettingsFormProps) {
+export default function SettingsForm({ clientId, propertyCode }: SettingsFormProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const [departments, setDepartments] = useState<string[]>([]);
   const [graceDepartment, setGraceDepartment] = useState('global');
   
   const settingsRef = useMemoFirebase(() => {
-    if (!firestore || !propertyCode) return null;
-    return doc(firestore, `properties/${propertyCode}/settings/config`);
-  }, [firestore, propertyCode]);
+    if (!firestore || !propertyCode || !clientId) return null;
+    return doc(firestore, `clients/${clientId}/settings/config`);
+  }, [firestore, clientId, propertyCode]);
 
   const { data: settingsData, isLoading: isLoadingSettings } = useDoc(settingsRef);
 

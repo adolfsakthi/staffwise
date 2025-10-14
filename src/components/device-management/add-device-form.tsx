@@ -20,21 +20,23 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 type AddDeviceFormProps = {
+  clientId: string;
+  branchId: string;
   propertyCode: string;
 };
 
-export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
+export default function AddDeviceForm({ clientId, branchId, propertyCode }: AddDeviceFormProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isAdding, setIsAdding] = useState(false);
   const [deviceName, setDeviceName] = useState('');
-  const [branch, setBranch] = useState('');
+  const [branchName, setBranchName] = useState('Main Lobby');
   const [model, setModel] = useState('');
   const [ipAddress, setIpAddress] = useState('');
   const [status, setStatus] = useState<'online' | 'offline'>('online');
 
   const handleAddDevice = async () => {
-    if (!deviceName || !branch || !model || !ipAddress) {
+    if (!deviceName || !branchName || !model || !ipAddress) {
       toast({
         variant: 'destructive',
         title: 'Missing Fields',
@@ -45,15 +47,19 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
     setIsAdding(true);
 
     const newDevice: Omit<Device, 'id'> = {
-      name: deviceName,
-      branch,
+      deviceName,
+      branchName,
       model,
-      ip: ipAddress,
+      ipAddress,
+      port: 5000,
+      connectionKey: 'default-key',
       status,
       property_code: propertyCode,
+      clientId,
+      branchId,
     };
 
-    const devicesCollection = collection(firestore, 'devices');
+    const devicesCollection = collection(firestore, `clients/${clientId}/branches/${branchId}/biometricDevices`);
 
     addDoc(devicesCollection, newDevice)
       .then(() => {
@@ -63,13 +69,13 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
         });
         // Reset form
         setDeviceName('');
-        setBranch('');
+        setBranchName('Main Lobby');
         setModel('');
         setIpAddress('');
       })
       .catch((err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'devices',
+            path: `clients/${clientId}/branches/${branchId}/biometricDevices`,
             operation: 'create',
             requestResourceData: newDevice
         }))
@@ -102,8 +108,8 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             <Label htmlFor="branch">Branch/Location</Label>
             <Input
               id="branch"
-              value={branch}
-              onChange={(e) => setBranch(e.target.value)}
+              value={branchName}
+              onChange={(e) => setBranchName(e.target.value)}
               placeholder="e.g., Main Lobby"
             />
           </div>

@@ -76,18 +76,18 @@ export async function addAttendanceRecords(db: Firestore, records: any[], client
     });
 }
 
-export async function addEmployees(db: Firestore, employees: any[]): Promise<void> {
+export async function addEmployees(db: Firestore, employees: any[], clientId: string, branchId: string): Promise<void> {
     const batch = writeBatch(db);
-    const employeeCollection = collection(db, 'employees');
+    const employeeCollection = collection(db, `clients/${clientId}/branches/${branchId}/employees`);
 
     employees.forEach((emp) => {
         const newDocRef = doc(employeeCollection);
-        batch.set(newDocRef, emp);
+        batch.set(newDocRef, { ...emp, clientId, branchId });
     });
     
     return batch.commit().catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: 'employees',
+            path: `clients/${clientId}/branches/${branchId}/employees`,
             operation: 'create',
             requestResourceData: employees,
         });
@@ -96,18 +96,18 @@ export async function addEmployees(db: Firestore, employees: any[]): Promise<voi
     });
 }
 
-export async function addPunchLogs(db: Firestore, logs: any[]): Promise<void> {
+export async function addPunchLogs(db: Firestore, logs: any[], clientId: string, branchId: string): Promise<void> {
     const batch = writeBatch(db);
-    const punchLogCollection = collection(db, 'punch_logs');
+    const punchLogCollection = collection(db, `clients/${clientId}/branches/${branchId}/punchLogs`);
     
     logs.forEach((log) => {
         const newDocRef = doc(punchLogCollection);
-        batch.set(newDocRef, log);
+        batch.set(newDocRef, { ...log, clientId, branchId });
     });
     
     return batch.commit().catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
-            path: 'punch_logs',
+            path: `clients/${clientId}/branches/${branchId}/punchLogs`,
             operation: 'create',
             requestResourceData: logs,
         });

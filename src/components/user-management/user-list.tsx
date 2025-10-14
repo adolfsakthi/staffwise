@@ -40,10 +40,11 @@ import { FirestorePermissionError } from '@/firebase/errors';
 type UserListProps = {
     roles: Role[];
     users: UserProfile[];
+    clientId: string;
     propertyCode: string;
 }
 
-export default function UserList({ roles, users, propertyCode }: UserListProps) {
+export default function UserList({ roles, users, clientId, propertyCode }: UserListProps) {
   const auth = useAuth();
   const firestore = useFirestore();
 
@@ -63,14 +64,14 @@ export default function UserList({ roles, users, propertyCode }: UserListProps) 
   }, [roles, newUserRole]);
 
   const handleRoleChange = async (userId: string, newRole: string) => {
-    const userRef = doc(firestore, 'users', userId);
+    const userRef = doc(firestore, `clients/${clientId}/users`, userId);
     setDoc(userRef, { role: newRole }, { merge: true })
         .then(() => {
             toast({ title: "User role updated" });
         })
         .catch(err => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `users/${userId}`,
+                path: `clients/${clientId}/users/${userId}`,
                 operation: 'update',
                 requestResourceData: { role: newRole }
             }))
@@ -95,10 +96,11 @@ export default function UserList({ roles, users, propertyCode }: UserListProps) 
             email: newUserEmail,
             role: newUserRole,
             property_code: propertyCode,
+            clientId: clientId,
         };
 
         // We use setDoc with user.uid to keep user doc ID and auth UID in sync
-        const userCollection = collection(firestore, 'users');
+        const userCollection = collection(firestore, `clients/${clientId}/users`);
         await setDoc(doc(userCollection, user.uid), newUserProfile);
 
         toast({

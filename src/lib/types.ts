@@ -21,11 +21,15 @@ export type AttendanceRecord = {
 export type Device = {
   id: string;
   property_code: string;
-  name: string;
+  deviceName: string;
   model: string;
-  ip: string;
+  ipAddress: string;
+  port: number;
+  connectionKey: string;
   status: 'online' | 'offline';
-  branch: string;
+  branchName: string;
+  clientId: string;
+  branchId: string;
 };
 
 export type LiveLog = {
@@ -37,6 +41,8 @@ export type LiveLog = {
     time: string;
     deviation: number;
     timestamp: any; // Firestore timestamp
+    clientId: string;
+    branchId: string;
 };
 
 export type UserProfile = {
@@ -47,6 +53,7 @@ export type UserProfile = {
   role: string;
   property_code: string;
   photoURL?: string;
+  clientId: string;
 };
 
 // This type is deprecated, use UserProfile instead.
@@ -58,6 +65,7 @@ export type Role = {
   property_code: string;
   name: string;
   permissions: string[];
+  clientId: string;
 };
 
 export type EmailLog = {

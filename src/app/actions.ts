@@ -87,11 +87,11 @@ export async function uploadData(formData: FormData) {
         break;
       case 'employees':
         const validEmployees = z.array(EmployeeSchema).parse(processedRecords);
-        await addEmployees(db, validEmployees);
+        await addEmployees(db, validEmployees, clientId, branchId);
         break;
       case 'punch_logs':
         const validPunchLogs = z.array(PunchLogSchema).parse(processedRecords);
-        await addPunchLogs(db, validPunchLogs);
+        await addPunchLogs(db, validPunchLogs, clientId, branchId);
         break;
       default:
         return { success: false, message: 'Invalid upload type.' };

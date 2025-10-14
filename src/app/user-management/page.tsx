@@ -22,19 +22,20 @@ import type { Role, UserProfile } from '@/lib/types';
 export default function UserManagementPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
+    const clientId = 'default_client';
 
     // @ts-ignore
     const propertyCode = user?.property_code || 'D001';
 
     const rolesQuery = useMemoFirebase(() => {
-        if (!firestore || !propertyCode) return null;
-        return query(collection(firestore, 'roles'), where('property_code', '==', propertyCode));
-    }, [firestore, propertyCode]);
+        if (!firestore || !clientId) return null;
+        return query(collection(firestore, `clients/${clientId}/roles`), where('property_code', '==', propertyCode));
+    }, [firestore, clientId, propertyCode]);
 
     const usersQuery = useMemoFirebase(() => {
-        if (!firestore || !propertyCode) return null;
-        return query(collection(firestore, 'users'), where('property_code', '==', propertyCode));
-    }, [firestore, propertyCode]);
+        if (!firestore || !clientId) return null;
+        return query(collection(firestore, `clients/${clientId}/users`), where('property_code', '==', propertyCode));
+    }, [firestore, clientId, propertyCode]);
     
     const { data: roles, isLoading: isLoadingRoles, error: rolesError } = useCollection<Role>(rolesQuery);
     const { data: users, isLoading: isLoadingUsers, error: usersError } = useCollection<UserProfile>(usersQuery);
@@ -62,10 +63,10 @@ export default function UserManagementPage() {
               <TabsTrigger value="roles">Roles</TabsTrigger>
             </TabsList>
             <TabsContent value="users" className="pt-6">
-                <UserList roles={roles || []} users={users || []} propertyCode={propertyCode} />
+                <UserList roles={roles || []} users={users || []} clientId={clientId} propertyCode={propertyCode} />
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
-                <RoleManagement initialRoles={roles || []} propertyCode={propertyCode} />
+                <RoleManagement initialRoles={roles || []} clientId={clientId} propertyCode={propertyCode} />
             </TabsContent>
           </Tabs>
         </CardContent>

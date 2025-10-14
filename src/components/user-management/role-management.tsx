@@ -26,11 +26,12 @@ export const ALL_PERMISSIONS = ['read', 'write', 'delete', 'manage_users'];
 
 type RoleManagementProps = {
     initialRoles: Role[];
+    clientId: string;
     propertyCode: string;
 }
 
 
-export default function RoleManagement({ initialRoles, propertyCode }: RoleManagementProps) {
+export default function RoleManagement({ initialRoles, clientId, propertyCode }: RoleManagementProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [roles, setRoles] = useState(initialRoles);
@@ -47,16 +48,17 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
         name: newRoleName.trim(),
         permissions: ['read'],
         property_code: propertyCode,
+        clientId,
       };
 
-      const rolesCollection = collection(firestore, 'roles');
+      const rolesCollection = collection(firestore, `clients/${clientId}/roles`);
       addDoc(rolesCollection, newRole)
         .then(() => {
             toast({title: 'Role added', description: `Role "${newRole.name}" created.`})
             setNewRoleName('');
         }).catch(err => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: 'roles',
+                path: `clients/${clientId}/roles`,
                 operation: 'create',
                 requestResourceData: newRole
             }));
@@ -65,14 +67,14 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
   };
 
   const handleDeleteRole = (id: string) => {
-    const roleRef = doc(firestore, 'roles', id);
+    const roleRef = doc(firestore, `clients/${clientId}/roles`, id);
     deleteDoc(roleRef)
     .then(() => {
         toast({title: 'Role deleted'})
     })
     .catch(err => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `roles/${id}`,
+            path: `clients/${clientId}/roles/${id}`,
             operation: 'delete'
         }));
     });
@@ -89,7 +91,7 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
   const handleSaveEdit = async () => {
     if (editingRole) {
         const { id, ...roleData } = editingRole;
-        const roleRef = doc(firestore, 'roles', id);
+        const roleRef = doc(firestore, `clients/${clientId}/roles`, id);
         setDoc(roleRef, roleData, { merge: true })
             .then(() => {
                 setEditingRole(null);
@@ -97,7 +99,7 @@ export default function RoleManagement({ initialRoles, propertyCode }: RoleManag
             })
             .catch(err => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: `roles/${id}`,
+                    path: `clients/${clientId}/roles/${id}`,
                     operation: 'update',
                     requestResourceData: roleData
                 }));
