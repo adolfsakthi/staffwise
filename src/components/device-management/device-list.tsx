@@ -35,7 +35,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   MoreVertical,
@@ -305,3 +304,5 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
+
+    
