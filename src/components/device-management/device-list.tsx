@@ -51,7 +51,7 @@ import {
   Activity,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, processLogs, pingDevice } from '@/app/actions';
+import { removeDevice, processLogs, pingDevice, updateDeviceStatus } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -268,23 +268,23 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                            <DropdownMenuItem onClick={() => handlePingDevice(device)}>
-                            <Activity className="mr-2" />
+                            <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>
                            <DropdownMenuItem onClick={() => handleSyncDevice(device)}>
-                            <RefreshCw className="mr-2" />
+                            <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
                           <DropdownMenuItem disabled>
-                            <FileText className="mr-2" />
+                            <FileText className="mr-2 h-4 w-4" />
                             View Logs
                           </DropdownMenuItem>
                           <DropdownMenuItem disabled>
-                            <Edit className="mr-2" />
+                            <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setDeviceToDelete(device); setShowDeleteAlert(true); }}>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => { setDeviceToDelete(device); setShowDeleteAlert(true); }}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Remove Device
                           </DropdownMenuItem>
