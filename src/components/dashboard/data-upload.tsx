@@ -16,11 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { processLogs } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 
-// Mock data simulating a file read from the device
-const MOCK_RAW_LOGS = [
-    { userId: 'EMP001', attTime: new Date(new Date().setHours(9, 15, 23)) },
-    { userId: 'EMP002', attTime: new Date(new Date().setHours(8, 58, 2)) },
-];
+// Mock data has been removed to rely on actual file uploads.
+const MOCK_RAW_LOGS: any[] = [];
 
 
 type DataUploadProps = {
