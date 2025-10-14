@@ -27,6 +27,17 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   MoreVertical,
   Wifi,
   WifiOff,
@@ -52,6 +63,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
   const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -96,7 +109,16 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         description: result.message,
       });
       // CRITICAL: Parse the JSON string from the server action
-      setSyncedLogs(JSON.parse(result.data));
+      try {
+        setSyncedLogs(JSON.parse(result.data));
+      } catch (e) {
+        console.error("Failed to parse logs data:", e);
+        toast({
+            variant: 'destructive',
+            title: 'Sync Error',
+            description: 'Received invalid log data from the device.',
+        });
+      }
     } else {
         toast({
             variant: 'destructive',
@@ -107,28 +129,30 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setSyncingDeviceId(null);
   }
   
-  const handleRemoveDevice = async (deviceId: string) => {
-      if (!confirm('Are you sure you want to remove this device? This action cannot be undone.')) {
-          return;
-      }
-      setDeletingDeviceId(deviceId);
-      try {
-          await removeDevice(deviceId);
-          setDevices(prev => prev.filter(d => d.id !== deviceId));
-          toast({
-              title: 'Device Removed',
-              description: 'The device has been successfully removed.',
-          });
-          router.refresh();
-      } catch (error: any) {
-          toast({
-              variant: 'destructive',
-              title: 'Removal Failed',
-              description: error.message || 'Could not remove the device.',
-          });
-      } finally {
-          setDeletingDeviceId(null);
-      }
+  const confirmRemoveDevice = async () => {
+    if (!deviceToDelete) return;
+    
+    setDeletingDeviceId(deviceToDelete.id);
+    setShowDeleteAlert(false);
+
+    try {
+        await removeDevice(deviceToDelete.id);
+        setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
+        toast({
+            title: 'Device Removed',
+            description: 'The device has been successfully removed.',
+        });
+        router.refresh();
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Removal Failed',
+            description: error.message || 'Could not remove the device.',
+        });
+    } finally {
+        setDeletingDeviceId(null);
+        setDeviceToDelete(null);
+    }
   }
 
   const isActionRunning = !!pingingDeviceId || !!syncingDeviceId || !!deletingDeviceId;
@@ -209,7 +233,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleRemoveDevice(device.id)} disabled={isActionRunning}>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setDeviceToDelete(device); setShowDeleteAlert(true); }} disabled={isActionRunning}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Remove Device
                           </DropdownMenuItem>
@@ -228,6 +252,25 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             </TableBody>
           </Table>
         </div>
+
+        <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the device
+                        <span className='font-bold'> {deviceToDelete?.deviceName}</span>.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeviceToDelete(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={confirmRemoveDevice}>
+                        {deletingDeviceId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Continue
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
         <Dialog open={!!syncedLogs} onOpenChange={(isOpen) => !isOpen && setSyncedLogs(null)}>
             <DialogContent className="max-w-2xl">
@@ -249,8 +292,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         <TableBody>
                             {syncedLogs?.map((log, index) => (
                                 <TableRow key={index}>
-                                    <TableCell>{log.id}</TableCell>
-                                    <TableCell>{log.timestamp}</TableCell>
+                                    <TableCell>{log.userId}</TableCell>
+                                    <TableCell>{log.attTime}</TableCell>
                                     <TableCell>{log.type}</TableCell>
                                 </TableRow>
                             ))}

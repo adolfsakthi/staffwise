@@ -226,14 +226,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             zkInstance.connect((err: any) => {
                 if (err) {
                     console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
-                    // CRITICAL: Reject with a simple string message
                     return reject('Connection failed');
                 }
 
                 zkInstance.getAttendances((err: any, data: any) => {
                     if (err) {
                         console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
-                        // CRITICAL: Reject with a simple string message
                         return reject('Failed to get attendances');
                     }
                     resolve(data);
@@ -252,7 +250,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             return {
                 success: true,
                 message: `Found ${rawLogs.length} logs on device ${device.deviceName}. Data saved.`,
-                // CRITICAL: Serialize complex data to a string before returning
                 data: JSON.stringify(rawLogs),
             };
         }
@@ -264,8 +261,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        // CRITICAL: This is the definitive fix. We must ensure that the returned
-        // message is ALWAYS a plain string to prevent serialization errors.
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
         const errorMessage = typeof e === 'string' ? e : (e?.message || 'An unknown error occurred during sync.');
         return { success: false, message: errorMessage };
@@ -276,7 +271,3 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         }
     }
 }
-
-    
-
-    
