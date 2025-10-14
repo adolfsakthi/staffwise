@@ -230,8 +230,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             await processLogs(logs.data, device);
         }
 
-        await zkInstance.disconnect();
-
         return {
             success: true,
             message: `Found ${logs.data.length} logs on device ${device.deviceName}. Data saved.`,
@@ -240,15 +238,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`Error syncing with device ${device.deviceName}:`, e);
-        return { success: false, message: e.message || 'An unknown error occurred during sync.' };
+        const errorMessage = typeof e === 'object' && e !== null && 'message' in e ? String(e.message) : String(e);
+        return { success: false, message: errorMessage || 'An unknown error occurred during sync.' };
     } finally {
         if (zkInstance) {
             // In case of error, ensure disconnection is attempted.
-            try {
-                await zkInstance.disconnect();
-            } catch (disconnectError) {
-                // Ignore disconnect errors as the primary error is more important.
-            }
+            await zkInstance.disconnect();
         }
     }
 }
