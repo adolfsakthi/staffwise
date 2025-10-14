@@ -24,6 +24,18 @@ async function getDevicePropertyCode(sn: string): Promise<string | null> {
     }
 }
 
+// Function to add a command to the queue for a specific device
+export function addCommand(sn: string, command: string) {
+    if (!commandQueue[sn]) {
+        commandQueue[sn] = [];
+    }
+    // Prevent duplicate commands
+    if (!commandQueue[sn].includes(command)) {
+        commandQueue[sn].push(command);
+    }
+    console.log(`Command added for ${sn}. Queue:`, commandQueue[sn]);
+}
+
 
 // When a device connects, it sends a GET request.
 // The server responds with commands for the device to execute.
@@ -46,13 +58,14 @@ export async function GET(request: NextRequest) {
     
     if (commands.length > 0) {
         // Send the first command in the queue.
-        responseBody = commands.shift()!;
+        responseBody = `C:${commands.length}:${commands.shift()!}`;
+        console.log(`Sent command to ${sn}. Remaining queue:`, commandQueue[sn]);
     } else {
         // If no commands, you can send device options.
         // This tells the device how often to sync, etc.
         // The registry value tells the device where our server is.
         const host = request.headers.get('host');
-        responseBody = `GetDate\nPostInterval=60\nRegistry=http://${host}/api/adms/iclock/cdata\n`;
+        responseBody = `GetDate\nPostInterval=30\nRegistry=http://${host}/api/adms/iclock/cdata\n`;
     }
     
     console.log(`[ADMS GET] SN: ${sn} | Response: \n${responseBody}`);

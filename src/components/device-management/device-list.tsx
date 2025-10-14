@@ -35,13 +35,12 @@ import {
   Loader2,
   Trash2,
   Edit,
-  Info,
   Activity,
   FileText,
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, updateDeviceStatus } from '@/app/actions';
+import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -79,7 +78,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
     setActionState(device.id, { isPinging: true });
     
-    const result = await pingDevice(device.ipAddress, device.port);
+    const result = await pingDevice(device.ipAddress);
     
     toast({
         title: result.success ? 'Ping Successful' : 'Ping Failed',
@@ -88,10 +87,30 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     });
 
     const newStatus = result.success ? 'online' : 'offline';
+    // This is an optimistic update. The device's true status will be updated when it checks in.
     setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
-    await updateDeviceStatus(device.id, newStatus);
+    
     setActionState(device.id, { isPinging: false });
     router.refresh();
+  }
+  
+  const handleSyncLogs = async (device: Device) => {
+    if (!device.serialNumber) {
+        toast({ variant: 'destructive', title: 'Serial Number Missing' });
+        return;
+    }
+    setActionState(device.id, { isSyncing: true });
+    try {
+        await requestLogSync(device.serialNumber);
+        toast({
+            title: 'Sync Queued',
+            description: `A sync request has been queued for ${device.deviceName}. Logs will appear shortly.`,
+        });
+    } catch(e: any) {
+        toast({ variant: 'destructive', title: 'Failed to queue sync', description: e.message });
+    } finally {
+        setActionState(device.id, { isSyncing: false });
+    }
   }
 
   const confirmRemoveDevice = async () => {
@@ -181,11 +200,11 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handlePingDevice(device)}>
+                          <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={!device.ipAddress}>
                             <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem onClick={() => handleSyncLogs(device)}>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
