@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
-import ZKLib from 'zklib-js';
+import { getDeviceLogs } from '@/lib/zklib';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -103,6 +103,26 @@ export async function pingDevice(
     });
   });
 }
+
+
+export async function syncLogs(device: Device): Promise<{ success: boolean; message: string, logs?: any[] }> {
+    try {
+        const result = await getDeviceLogs(device.ipAddress, device.port);
+        if (result.success) {
+            return {
+                success: true,
+                message: `Found ${result.logs.length} logs.`,
+                logs: result.logs,
+            };
+        } else {
+            return { success: false, message: result.message };
+        }
+    } catch (e: any) {
+        const errorMessage = e.message || 'An unknown error occurred during sync.';
+        return { success: false, message: errorMessage };
+    }
+}
+
 
 // --- Log Processing & Management ---
 

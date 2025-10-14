@@ -48,7 +48,7 @@ import {
   FileText,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, removeDevice } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, removeDevice, syncLogs } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -100,35 +100,23 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   
   const handleSyncDevice = async (device: Device) => {
     setSyncingDeviceId(device.id);
-    try {
-        const response = await fetch('/api/sync-device', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ipAddress: device.ipAddress, port: device.port }),
+    const result = await syncLogs(device);
+    if (result.success) {
+        toast({
+            title: 'Sync Successful',
+            description: result.message,
         });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            toast({
-                title: 'Sync Successful',
-                description: result.message,
-            });
-            if (result.data && Array.isArray(result.data)) {
-                setSyncedLogs(result.data);
-            }
-        } else {
-            throw new Error(result.message || 'Sync failed with an unknown error.');
+        if (result.logs && Array.isArray(result.logs)) {
+            setSyncedLogs(result.logs);
         }
-    } catch (error: any) {
+    } else {
         toast({
             variant: 'destructive',
             title: 'Sync Failed',
-            description: error.message,
+            description: result.message,
         });
-    } finally {
-        setSyncingDeviceId(null);
     }
+    setSyncingDeviceId(null);
   }
   
   const confirmRemoveDevice = async () => {
