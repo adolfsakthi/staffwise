@@ -10,5 +10,18 @@
     "clientId": "default_client",
     "branchId": "default_branch",
     "id": "1"
+  },
+  {
+    "deviceName": "Test Device Static",
+    "branchName": "Main Lobby",
+    "ipAddress": "103.159.10.130",
+    "serialNumber": "123465789",
+    "port": 81,
+    "connectionKey": "",
+    "property_code": "D001",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch",
+    "id": "2"
   }
 ]

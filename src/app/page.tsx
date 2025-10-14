@@ -2,7 +2,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import DataUpload from '@/components/dashboard/data-upload';
 import OverviewChart from '@/components/dashboard/overview-chart';
 import StatsCards from '@/components/dashboard/stats-cards';
 import { add, format, startOfWeek } from 'date-fns';
@@ -105,9 +104,6 @@ export default function DashboardPage() {
       ]
   }, [stats]);
   
-  const handleDataUpload = () => {
-    console.log("Data upload finished.");
-  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -125,11 +121,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-         <div className="lg:col-span-2">
+         <div className="lg:col-span-3">
           <OverviewChart data={weeklyData} isLoading={isLoading} />
-        </div>
-        <div>
-          <DataUpload clientId="mock_client" branchId="mock_branch" propertyCode={propertyCode} onUploadComplete={handleDataUpload} />
         </div>
       </div>
       
