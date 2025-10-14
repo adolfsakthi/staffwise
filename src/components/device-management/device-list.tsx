@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,9 +33,12 @@ import {
   Loader2,
   Activity,
   RefreshCw,
+  Trash2,
+  Edit,
+  FileText,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, syncDevice } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, syncDevice, removeDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -46,6 +50,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
   const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
+  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
   const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
   const { toast } = useToast();
   const router = useRouter();
@@ -72,6 +77,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     try {
         await updateDeviceStatus(device.id, newStatus);
         setDevices(prev => prev.map(d => d.id === device.id ? {...d, status: newStatus} : d));
+        router.refresh();
     } catch(error) {
         console.error(error);
         toast({ variant: 'destructive', title: 'Error updating status', description: 'Could not save device status.' });
@@ -99,8 +105,38 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
     setSyncingDeviceId(null);
   }
+  
+  const handleRemoveDevice = async (deviceId: string) => {
+      if (!confirm('Are you sure you want to remove this device? This action cannot be undone.')) {
+          return;
+      }
+      setDeletingDeviceId(deviceId);
+      try {
+          await removeDevice(deviceId);
+          setDevices(prev => prev.filter(d => d.id !== deviceId));
+          toast({
+              title: 'Device Removed',
+              description: 'The device has been successfully removed.',
+          });
+          router.refresh();
+      } catch (error: any) {
+          toast({
+              variant: 'destructive',
+              title: 'Removal Failed',
+              description: error.message || 'Could not remove the device.',
+          });
+      } finally {
+          setDeletingDeviceId(null);
+      }
+  }
 
-  const isActionRunning = !!pingingDeviceId || !!syncingDeviceId;
+  const isActionRunning = !!pingingDeviceId || !!syncingDeviceId || !!deletingDeviceId;
+  const getActionState = (deviceId: string) => {
+      if (pingingDeviceId === deviceId) return 'Pinging...';
+      if (syncingDeviceId === deviceId) return 'Syncing...';
+      if (deletingDeviceId === deviceId) return 'Removing...';
+      return null;
+  }
 
   return (
       <>
@@ -131,27 +167,26 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         variant={
                           device.status === 'online' ? 'secondary' : 'destructive'
                         }
-                        className={
-                          device.status === 'online'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-500'
-                            : 'border-red-200 bg-red-50 text-red-500'
-                        }
                       >
-                        {pingingDeviceId === device.id ? (
+                        {getActionState(device.id) ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : device.status === 'online' ? (
                           <Wifi className="mr-2" />
                         ) : (
                           <WifiOff className="mr-2" />
                         )}
-                        {pingingDeviceId === device.id ? 'Pinging...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
+                        {getActionState(device.id) || (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                            <MoreVertical />
+                            {isActionRunning && (pingingDeviceId === device.id || syncingDeviceId === device.id || deletingDeviceId === device.id) ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <MoreVertical />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
@@ -160,16 +195,21 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             Ping Device
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
-                              {syncingDeviceId === device.id ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              ) : (
-                                  <RefreshCw className="mr-2" />
-                              )}
+                              <RefreshCw className="mr-2" />
                             Sync Device
                           </DropdownMenuItem>
-                          <DropdownMenuItem disabled={isActionRunning}>View Logs</DropdownMenuItem>
-                          <DropdownMenuItem disabled={isActionRunning}>Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={isActionRunning}>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem disabled>
+                            <FileText className="mr-2" />
+                            View Logs
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled>
+                            <Edit className="mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleRemoveDevice(device.id)} disabled={isActionRunning}>
+                            <Trash2 className="mr-2 h-4 w-4" />
                             Remove Device
                           </DropdownMenuItem>
                         </DropdownMenuContent>

@@ -53,6 +53,16 @@ export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<Devi
     return newDevice;
 }
 
+export async function removeDevice(deviceId: string): Promise<void> {
+    const devices = await readDevices();
+    const updatedDevices = devices.filter(d => d.id !== deviceId);
+    if (devices.length === updatedDevices.length) {
+        throw new Error('Device not found.');
+    }
+    await writeDevices(updatedDevices);
+}
+
+
 export async function updateDeviceStatus(deviceId: string, status: 'online' | 'offline'): Promise<void> {
     const devices = await readDevices();
     const deviceIndex = devices.findIndex(d => d.id === deviceId);
