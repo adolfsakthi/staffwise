@@ -247,13 +247,16 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        let errorMessage = 'An unknown error occurred during sync.';
+        let errorMessage: string;
+        // Safely extract the error message to ensure it's a primitive string
         if (e && typeof e === 'object' && 'err' in e && e.err instanceof Error) {
             errorMessage = e.err.message;
         } else if (e instanceof Error) {
             errorMessage = e.message;
         } else if (typeof e === 'string') {
             errorMessage = e;
+        } else {
+            errorMessage = 'An unknown error occurred during sync.';
         }
         
         return { success: false, message: errorMessage };
