@@ -11,6 +11,7 @@ const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 const employeesFilePath = path.join(process.cwd(), 'src', 'lib', 'employees.json');
 const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 const liveLogsFilePath = path.join(process.cwd(), 'src', 'lib', 'live-logs.json');
+const ZKLib = require('zklib');
 
 // --- Device Management ---
 
@@ -211,7 +212,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         return { success: false, message: 'Device not found.' };
     }
 
-    const ZKLib = require('zklib');
     let zkInstance: any = null;
 
     try {
@@ -225,28 +225,21 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         // Create socket connection
         await zkInstance.createSocket();
         
-        // Get attendance logs using a promise-wrapped callback
-        const logs: any[] = await new Promise((resolve, reject) => {
-            zkInstance.getAttendances((err: Error | null, data: any[] | null) => {
-                if (err) {
-                    return reject(err);
-                }
-                resolve(data || []);
-            });
-        });
+        // Get attendance logs
+        const logs = await zkInstance.getAttendances();
 
-
-        if (logs && logs.length > 0) {
+        if (logs && logs.data.length > 0) {
+            const rawLogs = logs.data;
             const existingLogs = await readLogs();
-            const updatedLogs = [...existingLogs, ...logs];
+            const updatedLogs = [...existingLogs, ...rawLogs];
             await writeLogs(updatedLogs); 
 
-            await processLogs(logs, device);
+            await processLogs(rawLogs, device);
 
             return {
                 success: true,
-                message: `Found ${logs.length} logs on device ${device.deviceName}. Data saved.`,
-                data: logs,
+                message: `Found ${rawLogs.length} logs on device ${device.deviceName}. Data saved.`,
+                data: rawLogs,
             };
         }
 
@@ -258,7 +251,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        
         const errorMessage = e.message || 'An unknown error occurred during sync. Check server logs.';
         return { success: false, message: errorMessage };
 
