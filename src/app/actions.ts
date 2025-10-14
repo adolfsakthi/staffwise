@@ -218,21 +218,21 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         zkInstance = new ZKLib({
             ip: device.ipAddress,
             port: device.port,
-            inport: 5200, // Optional,
+            inport: 5200,
             timeout: 5000,
         });
 
         // Connect to the device
         await zkInstance.connect();
         
-        // Get all logs
+        // Get all logs using the correct method name
         const logs = await zkInstance.getAttendances();
 
-        if (logs && logs.length > 0) {
-            const transformedLogs = logs.map((log: any) => ({
+        if (logs && logs.data && logs.data.length > 0) {
+            const transformedLogs = logs.data.map((log: any) => ({
                 id: log.userId,
                 timestamp: log.attTime,
-                type: log.attType, // You may need to map this to a more readable string
+                type: log.attType,
             }));
 
             const existingLogs = await readLogs();
@@ -243,7 +243,7 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             await processLogs(transformedLogs, device);
              return {
                 success: true,
-                message: `Found ${logs.length} logs on device ${device.deviceName}. Data saved.`,
+                message: `Found ${logs.data.length} logs on device ${device.deviceName}. Data saved.`,
                 data: transformedLogs,
             };
         }
