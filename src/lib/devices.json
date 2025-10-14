@@ -1,2 +1,14 @@
-
-[]
+[
+  {
+    "deviceName": "Hezze office",
+    "branchName": "Bengaluru",
+    "ipAddress": "192.162.1.201",
+    "port": 4370,
+    "connectionKey": "0",
+    "property_code": "D001",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch",
+    "id": "1"
+  }
+]

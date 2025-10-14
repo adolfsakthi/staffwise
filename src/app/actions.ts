@@ -42,7 +42,7 @@ export async function getDevices(): Promise<Device[]> {
   return await readDevices();
 }
 
-export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<Device> {
+export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<void> {
     const devices = await readDevices();
     const newDevice: Device = {
         ...newDeviceData,
@@ -50,7 +50,6 @@ export async function addDevice(newDeviceData: Omit<Device, 'id'>): Promise<Devi
     };
     const updatedDevices = [...devices, newDevice];
     await writeDevices(updatedDevices);
-    return newDevice;
 }
 
 export async function removeDevice(deviceId: string): Promise<void> {
