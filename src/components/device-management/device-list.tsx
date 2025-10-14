@@ -30,6 +30,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   MoreVertical,
   Wifi,
   WifiOff,
@@ -37,9 +47,11 @@ import {
   Trash2,
   Edit,
   FileText,
+  RefreshCw,
+  FileCheck2,
 } from 'lucide-react';
-import type { Device } from '@/lib/types';
-import { removeDevice } from '@/app/actions';
+import type { Device, LiveLog } from '@/lib/types';
+import { removeDevice, processLogs } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -49,17 +61,107 @@ interface DeviceListProps {
 
 export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
-  const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [actionStates, setActionStates] = useState<{[key: string]: {isSyncing?: boolean, isDeleting?: boolean}}>({});
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
+  const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
+  const [showLogsDialog, setShowLogsDialog] = useState(false);
+  const [isSavingLogs, setIsSavingLogs] = useState(false);
+
 
   const { toast } = useToast();
   const router = useRouter();
 
+  const setActionState = (deviceId: string, state: {isSyncing?: boolean, isDeleting?: boolean}) => {
+    setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
+  };
+
+  const handleSyncDevice = async (device: Device) => {
+    setActionState(device.id, { isSyncing: true });
+
+    try {
+        const response = await fetch('/api/sync-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: device.ipAddress, port: device.port, connectionKey: device.connectionKey }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Sync failed with an unknown error.');
+        }
+
+        if (result.success) {
+            toast({
+                title: 'Sync Successful',
+                description: `Fetched ${result.logs.length} logs from ${device.deviceName}.`,
+            });
+            setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: 'online' } : d));
+            setSyncedLogs(result.logs);
+            setShowLogsDialog(true);
+        } else {
+            throw new Error(result.message || 'The device responded with an error.');
+        }
+
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Sync Failed',
+            description: error.message,
+        });
+         setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: 'offline' } : d));
+    } finally {
+        setActionState(device.id, { isSyncing: false });
+    }
+  };
+
+  const handleProcessAndSaveLogs = async () => {
+    if (!syncedLogs || syncedLogs.length === 0) {
+      toast({ variant: 'destructive', title: 'No logs to save.' });
+      return;
+    }
+    
+    setIsSavingLogs(true);
+    const device = devices.find(d => actionStates[d.id]?.isSyncing || syncedLogs);
+    const propertyCode = device?.property_code;
+    
+    if(!propertyCode) {
+         toast({ variant: 'destructive', title: 'Could not determine property code for logs.' });
+         setIsSavingLogs(false);
+         return;
+    }
+
+    try {
+        const result = await processLogs(syncedLogs, propertyCode);
+        if(result.success) {
+            toast({
+                title: 'Logs Processed!',
+                description: result.message,
+                action: <FileCheck2 className="text-green-500" />
+            });
+            setShowLogsDialog(false);
+            setSyncedLogs(null);
+            router.refresh();
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error Processing Logs',
+            description: error.message
+        });
+    } finally {
+        setIsSavingLogs(false);
+    }
+  }
+
+
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
     
-    setDeletingDeviceId(deviceToDelete.id);
+    setActionState(deviceToDelete.id, { isDeleting: true });
     setShowDeleteAlert(false);
 
     const result = await removeDevice(deviceToDelete.id);
@@ -79,11 +181,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         });
     }
     
-    setDeletingDeviceId(null);
+    setActionState(deviceToDelete.id, { isDeleting: false });
     setDeviceToDelete(null);
   };
-
-  const isActionRunning = !!deletingDeviceId;
 
   return (
       <>
@@ -100,7 +200,11 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             </TableHeader>
             <TableBody>
               {devices && devices.length > 0 ? (
-                devices.map((device) => (
+                devices.map((device) => {
+                  const isLoading = actionStates[device.id]?.isSyncing || actionStates[device.id]?.isDeleting;
+                  const status = actionStates[device.id]?.isSyncing ? 'Syncing...' : (actionStates[device.id]?.isDeleting ? 'Removing...' : device.status);
+
+                  return (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">{device.deviceName}</TableCell>
                     <TableCell className="text-muted-foreground">
@@ -115,21 +219,21 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           device.status === 'online' ? 'secondary' : 'outline'
                         }
                       >
-                         {deletingDeviceId === device.id ? (
+                         {isLoading ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                          ) : device.status === 'online' ? (
-                          <Wifi className="mr-2" />
+                          <Wifi className="mr-2 text-green-500" />
                         ) : (
-                          <WifiOff className="mr-2" />
+                          <WifiOff className="mr-2 text-red-500" />
                         )}
-                        {deletingDeviceId === device.id ? 'Removing...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                            {isActionRunning && deletingDeviceId === device.id ? (
+                          <Button variant="ghost" size="icon" disabled={isLoading}>
+                            {isLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <MoreVertical />
@@ -137,6 +241,10 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                           <DropdownMenuItem onClick={() => handleSyncDevice(device)}>
+                            <RefreshCw className="mr-2" />
+                            Sync Logs
+                          </DropdownMenuItem>
                           <DropdownMenuItem disabled>
                             <FileText className="mr-2" />
                             View Logs
@@ -146,7 +254,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setDeviceToDelete(device); setShowDeleteAlert(true); }} disabled={isActionRunning}>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => { setDeviceToDelete(device); setShowDeleteAlert(true); }}>
                             <Trash2 className="mr-2 h-4 w-4" />
                             Remove Device
                           </DropdownMenuItem>
@@ -154,7 +262,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                )})
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
@@ -178,12 +286,50 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setDeviceToDelete(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={confirmRemoveDevice}>
-                        {deletingDeviceId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {actionStates[deviceToDelete?.id || '']?.isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Continue
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Synced Logs</DialogTitle>
+                    <DialogDescription>
+                        Review the logs fetched from the device before saving them to the system. Found {syncedLogs?.length || 0} records.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[50vh] overflow-y-auto rounded-md border">
+                   <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User ID</TableHead>
+                                <TableHead>Timestamp</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {syncedLogs?.map((log, index) => (
+                                <TableRow key={`${log.userId}-${index}`}>
+                                    <TableCell>{log.userId}</TableCell>
+                                    <TableCell>{new Date(log.attTime).toLocaleString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                   </Table>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button onClick={handleProcessAndSaveLogs} disabled={isSavingLogs}>
+                        {isSavingLogs ? <Loader2 className="mr-2 animate-spin" /> : null}
+                        Save & Process Logs
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }

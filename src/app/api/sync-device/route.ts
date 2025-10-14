@@ -1,7 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import ZKLib from 'node-zklib';
-import net from 'net';
 
 export const maxDuration = 60; // Allow this function to run for up to 60 seconds
 
@@ -40,7 +39,8 @@ export async function POST(request: NextRequest) {
 
     } catch (e: unknown) {
         console.error("Error in POST /api/sync-device:", e);
-        return NextResponse.json({ success: false, ...safeError(e) }, { status: 500 });
+        // Ensure a valid JSON response is always sent
+        return NextResponse.json({ success: false, message: safeError(e).message }, { status: 500 });
     } finally {
         // Ensure the connection is always closed
         if (zkInstance) {
