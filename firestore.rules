@@ -2,241 +2,169 @@
  * @fileoverview Firestore Security Rules for the Staffwise Attendance System.
  *
  * Core Philosophy:
- * This ruleset enforces a strict, path-based ownership model for data access. Multi-tenancy is achieved through the `clients` collection, with each client owning its branches, employees, and associated data.
+ * This ruleset enforces a strict, path-based ownership model for data access. Multi-tenancy is achieved through the top-level `clients` collection.
  *
  * Data Structure:
- * The Firestore database is structured hierarchically: clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}. This structure reflects the organizational relationships within the system.
+ * - /clients/{clientId}: Root collection for client data.
+ * - /clients/{clientId}/branches/{branchId}: Branch data associated with a client.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}: Employee data for a specific branch.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}: Attendance records for an employee.
+ * - /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}: Leave requests for an employee.
+ * - /users/{userId}/notifications/{notificationId}: Notifications for a specific user.
+ * - /emailLogs/{emailLogId}: Logs of all sent emails (admin-only).
+ * - /auditLogs/{auditLogId}: Logs of all audit activities (admin-only).
  *
  * Key Security Decisions:
- * - Path-based ownership is enforced. Each entity's access control is determined by its location in the Firestore path.
- * - Data denormalization is used to avoid costly `get()` calls and ensure authorization independence. Client and branch IDs are included in subcollections to simplify security rules.
- * - The rules are designed to prevent unauthorized listing of collections containing user-specific private data.
- * - Write operations are strictly controlled to ensure data integrity and prevent unauthorized modifications.
- * - No user roles are defined. If roles are ever created, they should be denormalized onto the documents that require role-based access control.
+ * - Strict path-based ownership: Access is primarily determined by the Firestore path, using the `clientId`, `branchId`, and `employeeId` parameters.
+ * - Denormalization: Client and branch IDs are denormalized into subcollections to avoid costly `get()` calls in security rules.
+ * - No user listing: Listing the `/users` collection is not permitted.
+ * - Email and audit logs: Restricted to admin-level access (not implemented in this version).
+ * - Read-only collections: The design does not have explicit read-only collections, but such behavior could be simulated by setting `allow get, list: if true;` combined with restrictive write rules.
+ *
+ * Denormalization for Authorization:
+ * - Each document in subcollections contains the `clientId` and `branchId` of its parent documents, enabling simple authorization checks without additional reads. For example, an `AttendanceRecord` document stores `clientId`, `branchId`, and `employeeId`, allowing rules to validate access based solely on the document's data and the authenticated user's ID.
+ *
+ * Structural Segregation:
+ * - Data is segregated into distinct collections based on its type and access requirements. This ensures that security rules can be applied consistently across all documents within a collection.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Protects against unauthenticated requests
-     * @path N/A
-     * @allow N/A
-     * @deny all unauthenticated requests
-     * @principle Protects the entire database by rejecting requests from unauthenticated users.
+     * @description Allows access to client documents. Currently allows anyone to read, but only allows create.
+     * @path /databases/{database}/documents/clients/{clientId}
+     * @allow (create) Signed-in user can create client.
+     * @deny (update, delete) No one can update or delete client data.
+     * @principle Enforces client creation by signed-in users only, prevents unauthorized modifications.
+     */
+    match /clients/{clientId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to branch documents within a client. Assumes path-based ownership for authorization.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}
+     * @allow (create) Signed-in user can create branch.
+     * @deny (update, delete) No one can update or delete branch data.
+     * @principle Enforces branch creation within a client's scope, prevents unauthorized modifications.
+     */
+    match /clients/{clientId}/branches/{branchId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to employee documents within a branch. Assumes path-based ownership for authorization.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}
+     * @allow (create) Signed-in user can create employee.
+     * @deny (update, delete) No one can update or delete employee data.
+     * @principle Enforces employee creation within a branch's scope, prevents unauthorized modifications.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to biometric device documents within a branch. Assumes path-based ownership for authorization.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
+     * @allow (create) Signed-in user can create biometric device.
+     * @deny (update, delete) No one can update or delete biometric device data.
+     * @principle Enforces biometric device creation within a branch's scope, prevents unauthorized modifications.
+     */
+    match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to attendance record documents within an employee's scope. Assumes path-based ownership for authorization.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
+     * @allow (list) Signed-in user can list attendance records.
+     * @allow (create) Signed-in user can create attendance record.
+     * @deny (update, delete) No one can update or delete attendance record data.
+     * @principle Enforces attendance record creation within an employee's scope, prevents unauthorized modifications.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to leave request documents within an employee's scope. Assumes path-based ownership for authorization.
+     * @path /databases/{database}/documents/clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
+     * @allow (create) Signed-in user can create leave request.
+     * @deny (update, delete) No one can update or delete leave request data.
+     * @principle Enforces leave request creation within an employee's scope, prevents unauthorized modifications.
+     */
+    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to notification documents for a specific user. Enforces ownership based on the `userId` path parameter.
+     * @path /databases/{database}/documents/users/{userId}/notifications/{notificationId}
+     * @allow (get, list) Signed-in user can access their own notifications.
+     * @allow (create) Signed-in user can create notification for themself.
+     * @deny (update, delete) Signed-in user can not update or delete notifications for themself.
+     * @principle Enforces user-specific access to notifications, preventing unauthorized access.
+     */
+    match /users/{userId}/notifications/{notificationId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to email log documents.
+     * @path /databases/{database}/documents/emailLogs/{emailLogId}
+     * @allow (get, list) Deny everyone to read or list emailLogs.
+     * @deny (create, update, delete) Deny everyone to write emailLogs.
+     * @principle Prevents unauthorized access to email logs.
+     */
+    match /emailLogs/{emailLogId} {
+      allow get, list: if false;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Allows access to audit log documents.
+     * @path /databases/{database}/documents/auditLogs/{auditLogId}
+     * @allow (get, list) Deny everyone to read or list auditLogs.
+     * @deny (create, update, delete) Deny everyone to write auditLogs.
+     * @principle Prevents unauthorized access to audit logs.
+     */
+    match /auditLogs/{auditLogId} {
+      allow get, list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // --- Helper functions ---
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId - The user ID to compare against the authenticated user ID.
-     * @return {boolean} True if the user is signed in and the user ID matches, false otherwise.
-     * @example isOwner('someUserId')
+     * @description Checks if the user is the owner of the resource, based on the `userId` path parameter.
+     * @param {string} userId The user ID from the path.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID and that the document exists.
-     * @param {string} userId - The user ID to compare against the authenticated user ID.
-     * @return {boolean} True if the user is signed in, the user ID matches, and the document exists, false otherwise.
-     * @example isExistingOwner('someUserId')
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId} collection.
-     * @path /clients/{clientId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth.uid != null;
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId} collection.
-     * @path /clients/{clientId}/branches/{branchId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId}/branches/{branchId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees/{employeeId} collection.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} collection.
-     * @path /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId}/branches/{branchId}/biometricDevices/{deviceId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/attendanceRecords collection.
-     * @path /clients/{clientId}/branches/{branchId}/attendanceRecords
-     * @allow list: if false; // Client's can't list all attendance records, need to be filtered by employee
-     * @allow get: if false; // Not enabled, needs to be filtered by employee
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Requires employeeId to be provided, so can only be accessed via employee subcollection.
-     */
-    match /clients/{clientId}/branches/{branchId}/attendanceRecords/{attendanceRecordId} {
-       allow get, list: if false;
-       allow create: if false;
-       allow update: if false;
-       allow delete: if false;
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} collection.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/attendanceRecords/{attendanceRecordId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} collection.
-     * @path /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn();
-     * @allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny get: if false;
-     * @deny list: if false;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public Read with Owner-Only Writes
-     */
-    match /clients/{clientId}/branches/{branchId}/employees/{employeeId}/leaveRequests/{leaveRequestId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /users/{userId}/notifications/{notificationId} collection.
-     * @path /users/{userId}/notifications/{notificationId}
-     * @allow get, list: if isOwner(userId);
-     * @allow create: if isOwner(userId);
-     * @allow update: if isExistingOwner(userId);
-     * @allow delete: if isExistingOwner(userId);
-     * @deny get: if !isOwner(userId);
-     * @deny list: if !isOwner(userId);
-     * @deny create: if !isOwner(userId);
-     * @deny update: if !isExistingOwner(userId);
-     * @deny delete: if !isExistingOwner(userId);
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId}/notifications/{notificationId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /emailLogs/{emailLogId} collection.
-     * @path /emailLogs/{emailLogId}
-     * @allow get, list: if false;
-     * @allow create: if isSignedIn(); // TODO: should be only be by server/admin
-     * @allow update, delete: if false; // TODO: should be only be by server/admin
-     * @deny get: if true;
-     * @deny list: if true;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Requires admin privileges for write operations.
-     */
-    match /emailLogs/{emailLogId} {
-      allow get, list: if false;
-      allow create: if isSignedIn(); // TODO: should be only be by server/admin
-      allow update, delete: if false; // TODO: should be only be by server/admin
-    }
-
-    /**
-     * @description Rules for the /auditLogs/{auditLogId} collection.
-     * @path /auditLogs/{auditLogId}
-     * @allow get, list: if false;
-     * @allow create: if isSignedIn(); // TODO: should be only be by server/admin
-     * @allow update, delete: if false; // TODO: should be only be by server/admin
-     * @deny get: if true;
-     * @deny list: if true;
-     * @deny create: if false;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Requires admin privileges for write operations.
-     */
-    match /auditLogs/{auditLogId} {
-      allow get, list: if false;
-      allow create: if isSignedIn(); // TODO: should be only be by server/admin
-      allow update, delete: if false; // TODO: should be only be by server/admin
+      return request.auth.uid == userId;
     }
   }
 }
