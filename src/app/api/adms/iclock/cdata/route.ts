@@ -50,8 +50,9 @@ export async function GET(request: NextRequest) {
     } else {
         // If no commands, you can send device options.
         // This tells the device how often to sync, etc.
-        const postInterval = searchParams.get('pushinterval') || '60';
-        responseBody = `GetFile /media/user.jpg\nGetDate\nPOST URL /api/adms/iclock/cdata\npushinterval=${postInterval}\n`;
+        // The registry value tells the device where our server is.
+        const host = request.headers.get('host');
+        responseBody = `GetDate\nPostInterval=60\nRegistry=http://${host}/api/adms/iclock/cdata\n`;
     }
     
     console.log(`[ADMS GET] SN: ${sn} | Response: \n${responseBody}`);
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     
     if (table === 'ATTLOG') {
         const logs = bodyText.trim().split('\n').map(line => {
-            const [userId, timestamp] = line.split('\t');
+            const [userId, timestamp] = line.trim().split('\t');
             if (!userId || !timestamp) return null;
             // The format is '2\t2025-01-01 10:00:00'
             return {

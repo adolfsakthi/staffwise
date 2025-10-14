@@ -4,6 +4,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
+import net from 'net';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -64,10 +65,36 @@ export async function removeDevice(deviceId: string): Promise<{ success: boolean
     }
 }
 
+export async function pingDevice(ip: string, port: number): Promise<{ success: boolean; message: string }> {
+  return new Promise((resolve) => {
+    const socket = new net.Socket();
+    const timeout = 2000; // 2 seconds
+
+    socket.setTimeout(timeout);
+
+    socket.on('connect', () => {
+      socket.destroy();
+      resolve({ success: true, message: 'Successfully connected to device.' });
+    });
+
+    socket.on('error', (err) => {
+      socket.destroy();
+      resolve({ success: false, message: `Connection failed: ${err.message}` });
+    });
+
+    socket.on('timeout', () => {
+      socket.destroy();
+      resolve({ success: false, message: 'Connection timed out.' });
+    });
+
+    socket.connect(port, ip);
+  });
+}
+
 
 export async function updateDeviceStatus(deviceId: string, status: 'online' | 'offline'): Promise<void> {
     const devices = await readDevices();
-    const deviceIndex = devices.findIndex(d => d.id === deviceId);
+    const deviceIndex = devices.findIndex(d => d.serialNumber === deviceId || d.id === deviceId);
     if (deviceIndex > -1) {
         devices[deviceIndex].status = status;
         await writeDevices(devices);
@@ -119,9 +146,9 @@ async function writeLiveLogs(logs: LiveLog[]): Promise<void> {
 }
 
 
-export async function processLogs(rawLogs: any[], propertyCode: string): Promise<{ success: boolean, message: string }> {
+export async function processLogs(rawLogs: any[], propertyCode: string): Promise<{ success: boolean, message: string, count: number }> {
     if (!rawLogs || rawLogs.length === 0) {
-        return { success: true, message: 'No new logs to process.' };
+        return { success: true, message: 'No new logs to process.', count: 0 };
     }
 
     let employees: Employee[] = [];
@@ -130,7 +157,7 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
         employees = JSON.parse(data);
     } catch (error) {
         console.error('Could not read employees file for log processing:', error);
-        return { success: false, message: 'Could not read employee data.' };
+        return { success: false, message: 'Could not read employee data.', count: 0 };
     }
     
     const existingLiveLogs = await getLiveLogs();
@@ -170,8 +197,48 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
         };
     }).filter((log): log is LiveLog => log !== null);
     
+    if (newLiveLogs.length === 0) {
+        return { success: true, message: 'No logs matched employees for this property.', count: 0 };
+    }
+
     const updatedLiveLogs = [...newLiveLogs, ...existingLiveLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     await writeLiveLogs(updatedLiveLogs);
 
-    return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.` };
+    return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: newLiveLogs.length };
+}
+
+// This action simulates a device pushing data by calling the ADMS endpoint internally.
+export async function syncLogs(device: Device): Promise<{ success: boolean; message: string; }> {
+    console.log(`[Manual Sync] Triggered for device: ${device.deviceName} (SN: ${device.serialNumber})`);
+    
+    // Simulate the raw log data that the device would push
+    const MOCK_RAW_LOG_BODY = 'EMP001\t2024-05-24 09:15:23\nEMP002\t2024-05-24 08:58:02';
+
+    // This is a mock internal call. In a real scenario with a public URL,
+    // you would use a fetch call to `http://<your-app-url>/api/adms/iclock/cdata?SN=${device.serialNumber}&table=ATTLOG`
+    // For this example, we'll directly call `processLogs` to simulate the data push being received.
+
+    try {
+        const logs = MOCK_RAW_LOG_BODY.trim().split('\n').map(line => {
+            const [userId, timestamp] = line.split('\t');
+            if (!userId || !timestamp) return null;
+            return {
+                userId,
+                attTime: new Date(timestamp),
+            };
+        }).filter(Boolean);
+
+        if (logs.length > 0 && device.property_code) {
+            const result = await processLogs(logs as any[], device.property_code);
+            if (result.success) {
+                 return { success: true, message: `Synced ${result.count} logs from device ${device.deviceName}.` };
+            } else {
+                 return { success: false, message: `Processing failed: ${result.message}` };
+            }
+        }
+        return { success: true, message: 'No new logs to sync.' };
+    } catch(e: any) {
+        console.error('[Manual Sync] Error:', e);
+        return { success: false, message: e.message || 'An unknown error occurred during manual sync.' };
+    }
 }

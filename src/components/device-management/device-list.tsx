@@ -36,9 +36,12 @@ import {
   Trash2,
   Edit,
   Info,
+  Activity,
+  FileText,
+  RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice } from '@/app/actions';
+import { removeDevice, pingDevice, syncLogs, updateDeviceStatus } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -48,6 +51,8 @@ interface DeviceListProps {
 
 type ActionState = {
     isDeleting?: boolean;
+    isPinging?: boolean;
+    isSyncing?: boolean;
 }
 
 export default function DeviceList({ initialDevices }: DeviceListProps) {
@@ -62,6 +67,44 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const setActionState = (deviceId: string, state: ActionState) => {
     setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
   };
+
+  const handlePingDevice = async (device: Device) => {
+    if (!device.ipAddress) {
+        toast({
+            variant: 'destructive',
+            title: 'IP Address Missing',
+            description: 'Cannot ping a device without an IP address.',
+        });
+        return;
+    }
+    setActionState(device.id, { isPinging: true });
+    
+    const result = await pingDevice(device.ipAddress, device.port);
+    
+    toast({
+        title: result.success ? 'Ping Successful' : 'Ping Failed',
+        description: result.message,
+        variant: result.success ? 'default' : 'destructive',
+    });
+
+    const newStatus = result.success ? 'online' : 'offline';
+    setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
+    await updateDeviceStatus(device.id, newStatus);
+    setActionState(device.id, { isPinging: false });
+    router.refresh();
+  }
+
+  const handleSyncLogs = async (device: Device) => {
+      setActionState(device.id, { isSyncing: true });
+      const result = await syncLogs(device);
+      toast({
+          title: result.success ? 'Sync complete' : 'Sync failed',
+          description: result.message,
+          variant: result.success ? 'default' : 'destructive'
+      });
+      setActionState(device.id, { isSyncing: false });
+      router.refresh();
+  }
 
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
@@ -107,10 +150,13 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
               {devices && devices.length > 0 ? (
                 devices.map((device) => {
                   const state = actionStates[device.id] || {};
-                  const isLoading = state.isDeleting;
+                  const isLoading = state.isDeleting || state.isPinging || state.isSyncing;
                   
                   let statusLabel = device.status;
                   if (state.isDeleting) statusLabel = 'Removing...';
+                  else if (state.isPinging) statusLabel = 'Pinging...';
+                  else if (state.isSyncing) statusLabel = 'Syncing...';
+
 
                   return (
                   <TableRow key={device.id}>
@@ -147,11 +193,19 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                           <DropdownMenuItem disabled>
-                            <Info className="mr-2 h-4 w-4" />
-                            View Info
+                          <DropdownMenuItem onClick={() => handlePingDevice(device)}>
+                            <Activity className="mr-2 h-4 w-4" />
+                            Ping Device
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSyncLogs(device)}>
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Sync Logs
                           </DropdownMenuItem>
                           <DropdownMenuItem disabled>
+                            <FileText className="mr-2 h-4 w-4" />
+                            View Logs
+                          </DropdownMenuItem>
+                           <DropdownMenuItem disabled>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
