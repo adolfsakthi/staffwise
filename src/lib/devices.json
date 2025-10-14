@@ -23,5 +23,18 @@
     "clientId": "default_client",
     "branchId": "default_branch",
     "id": "2"
+  },
+  {
+    "deviceName": "VM essl",
+    "branchName": "america",
+    "ipAddress": "209.38.125.241",
+    "serialNumber": "0987654321",
+    "port": 8080,
+    "connectionKey": "",
+    "property_code": "D001",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch",
+    "id": "3"
   }
 ]
