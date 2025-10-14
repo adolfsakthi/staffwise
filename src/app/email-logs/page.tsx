@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -26,22 +26,20 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Eye } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase';
 import type { EmailLog } from '@/lib/types';
 import { format } from 'date-fns';
-import { collection } from 'firebase/firestore';
+
+const MOCK_EMAIL_LOGS: EmailLog[] = [
+    { id: '1', recipient: 'manager@staffwise.com', subject: 'Late Arrival Notice', body: '<div>Employee John Doe arrived late.</div>', timestamp: new Date(), emailType: 'late_notice' },
+    { id: '2', recipient: 'admin@staffwise.com', subject: 'Daily Audit Report', body: '<div>Please find the daily audit report attached.</div>', timestamp: new Date(), emailType: 'admin_report' },
+]
 
 export default function EmailLogsPage() {
   const { isUserLoading } = useUser();
-  const firestore = useFirestore();
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
-
-  const emailLogsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'emailLogs');
-  }, [firestore]);
-
-  const { data: emailLogs, isLoading: isLoadingLogs, error } = useCollection<EmailLog>(emailLogsQuery);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>(MOCK_EMAIL_LOGS);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
@@ -76,12 +74,6 @@ export default function EmailLogsPage() {
                   <TableCell colSpan={6} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
                   </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-destructive">
-                        Error: {error.message}
-                    </TableCell>
                 </TableRow>
               ) : emailLogs && emailLogs.length > 0 ? (
                 emailLogs.map((log) => (
