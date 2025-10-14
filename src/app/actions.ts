@@ -5,7 +5,7 @@ import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
-import ZKLib from 'zklib-js';
+import ZKLib from 'zklib';
 import { format, differenceInMinutes, parse } from 'date-fns';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -215,46 +215,56 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     let zkInstance: ZKLib | null = null;
     try {
-        zkInstance = new ZKLib(device.ipAddress, device.port, 10000, 4000);
+        zkInstance = new ZKLib({
+            ip: device.ipAddress,
+            port: device.port,
+            inport: 5200, // Optional,
+            timeout: 5000,
+        });
+
+        // Connect to the device
+        await zkInstance.connect();
         
-        await zkInstance.createSocket();
-        
+        // Get all logs
         const logs = await zkInstance.getAttendances();
 
-        if (logs.data && logs.data.length > 0) {
+        if (logs && logs.length > 0) {
+            const transformedLogs = logs.map((log: any) => ({
+                id: log.userId,
+                timestamp: log.attTime,
+                type: log.attType, // You may need to map this to a more readable string
+            }));
+
             const existingLogs = await readLogs();
-            const updatedLogs = [...existingLogs, ...logs.data];
+            const updatedLogs = [...existingLogs, ...transformedLogs];
             await writeLogs(updatedLogs); // Persist raw logs
 
             // Process these new logs into the live log format
-            await processLogs(logs.data, device);
+            await processLogs(transformedLogs, device);
+             return {
+                success: true,
+                message: `Found ${logs.length} logs on device ${device.deviceName}. Data saved.`,
+                data: transformedLogs,
+            };
         }
 
         return {
             success: true,
-            message: `Found ${logs.data.length} logs on device ${device.deviceName}. Data saved.`,
-            data: logs.data, // Still return data for immediate preview
+            message: `No new logs found on device ${device.deviceName}.`,
+            data: [], 
         };
 
     } catch (e: any) {
         // Log the full complex error to the server console for debugging
-        console.error(`Error syncing with device ${device.deviceName}:`, e);
-
+        console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
+        
         // Create a simple, serializable message for the client
-        let errorMessage = 'An unknown error occurred during sync.';
-        if (e && typeof e === 'object') {
-            if ('err' in e && e.err instanceof Error) {
-                errorMessage = e.err.message;
-            } else if ('message' in e && typeof e.message === 'string') {
-                errorMessage = e.message;
-            }
-        } else if (typeof e === 'string') {
-            errorMessage = e;
-        }
-
+        const errorMessage = e.message || 'An unknown error occurred during sync. Check server logs.';
         return { success: false, message: errorMessage };
+
     } finally {
         if (zkInstance) {
+            // Disconnect from the device
             await zkInstance.disconnect();
         }
     }
