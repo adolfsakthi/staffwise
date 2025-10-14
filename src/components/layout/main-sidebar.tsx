@@ -26,6 +26,7 @@ import {
   Mail,
   UserPlus,
   ClipboardList,
+  Building,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
