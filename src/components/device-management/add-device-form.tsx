@@ -94,7 +94,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="device-name">Device Name</Label>
             <Input
@@ -130,6 +130,16 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
               value={port}
               onChange={(e) => setPort(Number(e.target.value))}
               placeholder="e.g., 4370"
+            />
+          </div>
+           <div className="space-y-2">
+            <Label htmlFor="connection-key">Connection Key</Label>
+            <Input
+              id="connection-key"
+              type="password"
+              value={connectionKey}
+              onChange={(e) => setConnectionKey(e.target.value)}
+              placeholder="Device password (e.g. 0)"
             />
           </div>
         </div>
