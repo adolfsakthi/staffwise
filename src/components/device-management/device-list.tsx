@@ -30,26 +30,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-} from '@/components/ui/dialog';
-import {
   MoreVertical,
   Wifi,
   WifiOff,
   Loader2,
-  Activity,
   Trash2,
   Edit,
   FileText,
-  UploadCloud,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, removeDevice, processLogs } from '@/app/actions';
+import { removeDevice } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -59,90 +49,12 @@ interface DeviceListProps {
 
 export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
-  const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
-  const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
-  const [showSyncDialog, setShowSyncDialog] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ logs: any[] | null, message: string } | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
-
-  const handlePingDevice = async (device: Device) => {
-    setPingingDeviceId(device.id);
-    const result = await pingDevice(device.ipAddress, device.port);
-    
-    const newStatus = result.success ? 'online' : 'offline';
-
-    if (result.success) {
-      toast({
-        title: 'Device Online',
-        description: `Successfully connected to ${device.deviceName}.`,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Device Offline',
-        description: result.message,
-      });
-    }
-    
-    try {
-        await updateDeviceStatus(device.id, newStatus);
-        setDevices(prev => prev.map(d => d.id === device.id ? {...d, status: newStatus} : d));
-        router.refresh();
-    } catch(error) {
-        console.error(error);
-        toast({ variant: 'destructive', title: 'Error updating status', description: 'Could not save device status.' });
-    }
-
-    setPingingDeviceId(null);
-  };
-  
-  const handleSyncDevice = async (device: Device) => {
-    setSyncingDeviceId(device.id);
-    setSyncResult(null); // Reset previous results
-
-    try {
-        const response = await fetch('/api/sync-device', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ip: device.ipAddress, port: device.port, connectionKey: device.connectionKey }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            toast({
-                variant: 'destructive',
-                title: 'Sync Failed',
-                description: result.message || 'An unknown error occurred during sync.',
-            });
-            setSyncingDeviceId(null);
-            return;
-        }
-
-        toast({
-            title: 'Sync Successful',
-            description: `Fetched ${result.logs.length} logs from ${device.deviceName}.`,
-        });
-
-        setSyncResult({ logs: result.logs, message: `Found ${result.logs.length} attendance logs.` });
-        setShowSyncDialog(true);
-        
-    } catch (error: any) {
-        console.error('Failed to sync with device:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Client Error',
-            description: error.message || 'Failed to connect to the sync service.',
-        });
-    } finally {
-        setSyncingDeviceId(null);
-    }
-};
 
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
@@ -171,49 +83,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setDeviceToDelete(null);
   };
 
-  const handleProcessAndSaveLogs = async () => {
-    if (!syncResult || !syncResult.logs) return;
-    const device = devices.find(d => d.id === (syncingDeviceId || deviceToDelete?.id)); // Find device that was synced
-    // The device which trigger sync is not available in current scope, we can get it from state `syncingDeviceId`
-    // However, syncingDeviceId is set to null in `handleSyncDevice` finally block, so this is a bug
-    // A quick fix is to find the device by ip, but multiple devices can have same IP.
-    // A better approach is to pass device to this function
-    const activeDevice = devices.find(d => d.status === 'online');
-    if (!activeDevice) {
-        toast({
-            variant: "destructive",
-            title: "Processing Failed",
-            description: "Could not find the device that was synced.",
-        });
-        return;
-    };
-
-    const result = await processLogs(syncResult.logs, activeDevice.property_code as string);
-    if (result.success) {
-        toast({
-            title: 'Logs Processed',
-            description: 'Live logs and attendance records have been updated.',
-        });
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Processing Failed',
-            description: result.message,
-        });
-    }
-    setShowSyncDialog(false);
-    setSyncResult(null);
-    router.refresh();
-  }
-
-
-  const isActionRunning = !!pingingDeviceId || !!deletingDeviceId || !!syncingDeviceId;
-  const getActionState = (deviceId: string) => {
-      if (pingingDeviceId === deviceId) return 'Pinging...';
-      if (deletingDeviceId === deviceId) return 'Removing...';
-      if (syncingDeviceId === deviceId) return 'Syncing...';
-      return null;
-  }
+  const isActionRunning = !!deletingDeviceId;
 
   return (
       <>
@@ -242,24 +112,24 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                     <TableCell>
                       <Badge
                         variant={
-                          device.status === 'online' ? 'secondary' : 'destructive'
+                          device.status === 'online' ? 'secondary' : 'outline'
                         }
                       >
-                        {getActionState(device.id) ? (
+                         {deletingDeviceId === device.id ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : device.status === 'online' ? (
+                         ) : device.status === 'online' ? (
                           <Wifi className="mr-2" />
                         ) : (
                           <WifiOff className="mr-2" />
                         )}
-                        {getActionState(device.id) || (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
+                        {deletingDeviceId === device.id ? 'Removing...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                            {isActionRunning && (pingingDeviceId === device.id || deletingDeviceId === device.id || syncingDeviceId === device.id) ? (
+                            {isActionRunning && deletingDeviceId === device.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <MoreVertical />
@@ -267,15 +137,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
-                            <Activity className="mr-2" />
-                            Ping Device
-                          </DropdownMenuItem>
-                           <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
-                            <UploadCloud className="mr-2" />
-                            Sync Logs
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem disabled>
                             <FileText className="mr-2" />
                             View Logs
@@ -323,26 +184,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
-        <Dialog open={showSyncDialog} onOpenChange={(isOpen) => { if (!isOpen) setSyncResult(null); setShowSyncDialog(isOpen); }}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Sync Complete</DialogTitle>
-                    <DialogDescription>
-                        {syncResult?.message || 'Successfully fetched logs from the device.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-60 overflow-y-auto rounded-md border bg-muted p-4">
-                    <pre className="text-xs">{JSON.stringify(syncResult?.logs, null, 2)}</pre>
-                </div>
-                <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowSyncDialog(false)}>Cancel</Button>
-                    <Button onClick={handleProcessAndSaveLogs} disabled={!syncResult?.logs || syncResult.logs.length === 0}>
-                        Process and Save Logs
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     </>
   );
 }

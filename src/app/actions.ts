@@ -1,6 +1,5 @@
 'use server';
 
-import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
@@ -74,34 +73,6 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
         await writeDevices(devices);
     }
 }
-
-export async function pingDevice(
-  ipAddress: string,
-  port: number
-): Promise<{ success: boolean; message: string }> {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    const timeout = 2000;
-
-    socket.setTimeout(timeout);
-
-    socket.connect(port, ipAddress, () => {
-      socket.destroy();
-      resolve({ success: true, message: `Successfully connected to ${ipAddress}:${port}` });
-    });
-
-    socket.on('error', (err) => {
-      socket.destroy();
-      resolve({ success: false, message: `Connection failed: ${err.message}` });
-    });
-
-    socket.on('timeout', () => {
-      socket.destroy();
-      resolve({ success: false, message: 'Connection timed out.' });
-    });
-  });
-}
-
 
 // --- Log Processing & Management ---
 
