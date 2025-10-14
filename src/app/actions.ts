@@ -127,7 +127,7 @@ async function writeLogs(logs: any[]): Promise<void> {
     }
 }
 
-async function readLiveLogs(): Promise<LiveLog[]> {
+export async function getLiveLogs(): Promise<LiveLog[]> {
     try {
         const data = await fs.readFile(liveLogsFilePath, 'utf-8');
         return JSON.parse(data);
@@ -163,7 +163,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
         return { success: false, message: 'Could not read employee data.' };
     }
     
-    const existingLiveLogs = await readLiveLogs();
+    const existingLiveLogs = await getLiveLogs();
 
     const newLiveLogs: LiveLog[] = rawLogs.map(log => {
         const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === device.property_code);
@@ -247,9 +247,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         };
 
     } catch (e: any) {
-        console.error(`[ZKLIB_JS_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        
-        // This handles the specific error object structure from the library
         let errorMessage = 'An unknown error occurred during sync.';
         if (e && typeof e === 'object' && 'err' in e && e.err instanceof Error) {
             errorMessage = e.err.message;
