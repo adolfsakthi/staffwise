@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Users,
@@ -5,53 +6,103 @@ import {
   AlarmClockOff,
   Building,
   Loader2,
+  Wifi,
+  UserCheck,
+  UserX,
+  Plane,
+  DoorOpen,
+  ChevronsRight,
+  TrendingUp,
+  TrendingDown,
 } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 type StatsCardsProps = {
   stats: {
-    totalEmployees: number;
-    lateCount: number;
-    totalOvertimeMinutes: number;
-    departmentCount: number;
+    totalEmployees?: number;
+    lateCount?: number;
+    totalOvertimeMinutes?: number;
+    departmentCount?: number;
+    activeDevices?: number;
+    presentCount?: number;
+    absentCount?: number;
+    leaveCount?: number;
+    earlyGoingCount?: number;
+    outDoorEntryCount?: number; // Assuming this is a stat
   };
   isLoading: boolean;
-  propertyCode: string | null;
 };
 
-export default function StatsCards({ stats, isLoading, propertyCode }: StatsCardsProps) {
+export default function StatsCards({ stats, isLoading }: StatsCardsProps) {
   const {
-    totalEmployees,
-    lateCount,
-    totalOvertimeMinutes,
-    departmentCount,
+    totalEmployees = 0,
+    lateCount = 0,
+    totalOvertimeMinutes = 0,
+    activeDevices = 0,
+    presentCount = 0,
+    absentCount = 0,
+    leaveCount = 0,
+    earlyGoingCount = 0,
+    outDoorEntryCount = 0,
   } = stats;
   const totalOvertimeHours = (totalOvertimeMinutes / 60).toFixed(1);
 
   const cardData = [
     {
-      title: `Total Employees`,
-      value: totalEmployees.toLocaleString(),
-      icon: Users,
-      color: 'text-blue-500',
+      title: `Active Devices`,
+      value: activeDevices,
+      icon: Wifi,
+      color: 'text-cyan-500',
+      bgColor: 'bg-cyan-50',
     },
     {
-      title: 'Late Entries Today',
-      value: lateCount.toLocaleString(),
-      icon: AlarmClockOff,
-      color: 'text-red-500',
-    },
-    {
-      title: 'Total Overtime Today',
-      value: `${totalOvertimeHours} hrs`,
-      icon: Clock,
+      title: 'Present Employee',
+      value: presentCount,
+      icon: UserCheck,
       color: 'text-green-500',
+      bgColor: 'bg-green-50',
     },
     {
-      title: 'Active Departments',
-      value: departmentCount.toLocaleString(),
-      icon: Building,
+      title: 'Absent Employee',
+      value: absentCount,
+      icon: UserX,
+      color: 'text-red-500',
+      bgColor: 'bg-red-50',
+    },
+    {
+      title: 'Leave',
+      value: leaveCount,
+      icon: Plane,
+      color: 'text-yellow-500',
+      bgColor: 'bg-yellow-50',
+    },
+    {
+      title: 'Out Door Entry',
+      value: outDoorEntryCount,
+      icon: DoorOpen,
       color: 'text-purple-500',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      title: 'Late Coming',
+      value: lateCount,
+      icon: TrendingDown,
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-50',
+    },
+     {
+      title: 'Early Going',
+      value: earlyGoingCount,
+      icon: ChevronsRight,
+      color: 'text-teal-500',
+      bgColor: 'bg-teal-50',
+    },
+    {
+      title: 'Over Time',
+      value: `${totalOvertimeHours} hrs`,
+      icon: TrendingUp,
+      color: 'text-indigo-500',
+      bgColor: 'bg-indigo-50',
     },
   ];
 
@@ -74,23 +125,28 @@ export default function StatsCards({ stats, isLoading, propertyCode }: StatsCard
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-4">
       {cardData.map((card, index) => (
         <Card
           key={index}
-          className="transition-all hover:shadow-lg hover:-translate-y-1"
+          className={cn('transition-all hover:shadow-lg hover:-translate-y-1', card.bgColor)}
         >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {card.title}
             </CardTitle>
-            <card.icon className={`h-5 w-5 ${card.color}`} />
+            <card.icon className={cn('h-5 w-5', card.color)} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{card.value}</div>
+            <div className="text-2xl font-bold">{card.value}</div>
           </CardContent>
         </Card>
       ))}
     </div>
   );
+}
+
+function cn(...inputs: any[]) {
+    // A simplified version of the real cn utility
+    return inputs.filter(Boolean).join(' ');
 }
