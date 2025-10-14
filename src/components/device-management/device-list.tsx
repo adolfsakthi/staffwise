@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -30,6 +29,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import {
   MoreVertical,
   Wifi,
   WifiOff,
@@ -38,9 +45,10 @@ import {
   Trash2,
   Edit,
   FileText,
+  UploadCloud,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { pingDevice, updateDeviceStatus, removeDevice } from '@/app/actions';
+import { pingDevice, updateDeviceStatus, removeDevice, processLogs } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -52,8 +60,12 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
   const [deletingDeviceId, setDeletingDeviceId] = useState<string | null>(null);
+  const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
+  const [showSyncDialog, setShowSyncDialog] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ logs: any[] | null, message: string } | null>(null);
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -113,12 +125,77 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     
     setDeletingDeviceId(null);
     setDeviceToDelete(null);
+  };
+
+  const handleSyncDevice = async (device: Device) => {
+    setSyncingDeviceId(device.id);
+    setSyncResult(null);
+
+    try {
+        const response = await fetch('/api/sync-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: device.ipAddress, port: device.port }),
+        });
+
+        if (!response.ok) {
+            const errorResult = await response.json();
+            throw new Error(errorResult.message || 'Sync failed with an unknown error.');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            setSyncResult({ logs: result.data, message: `Found ${result.data.length} logs.` });
+            setShowSyncDialog(true);
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: result.message,
+            });
+        }
+    } catch (error: any) {
+        console.error("Sync error in component:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Sync Error',
+            description: error.message || 'An unexpected error occurred.',
+        });
+    } finally {
+        setSyncingDeviceId(null);
+    }
+  };
+
+  const handleProcessAndSaveLogs = async () => {
+    if (!syncResult || !syncResult.logs) return;
+    const device = devices.find(d => d.id === syncingDeviceId);
+    if (!device) return;
+
+    const result = await processLogs(syncResult.logs, device.property_code as string);
+    if (result.success) {
+        toast({
+            title: 'Logs Processed',
+            description: 'Live logs and attendance records have been updated.',
+        });
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Processing Failed',
+            description: result.message,
+        });
+    }
+    setShowSyncDialog(false);
+    setSyncResult(null);
+    router.refresh();
   }
 
-  const isActionRunning = !!pingingDeviceId || !!deletingDeviceId;
+
+  const isActionRunning = !!pingingDeviceId || !!deletingDeviceId || !!syncingDeviceId;
   const getActionState = (deviceId: string) => {
       if (pingingDeviceId === deviceId) return 'Pinging...';
       if (deletingDeviceId === deviceId) return 'Removing...';
+      if (syncingDeviceId === deviceId) return 'Syncing...';
       return null;
   }
 
@@ -166,7 +243,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                            {isActionRunning && (pingingDeviceId === device.id || deletingDeviceId === device.id) ? (
+                            {isActionRunning && (pingingDeviceId === device.id || deletingDeviceId === device.id || syncingDeviceId === device.id) ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <MoreVertical />
@@ -174,6 +251,10 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                           <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
+                            <UploadCloud className="mr-2" />
+                            Sync Logs
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
                             <Activity className="mr-2" />
                             Ping Device
@@ -226,6 +307,26 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <Dialog open={showSyncDialog} onOpenChange={(isOpen) => { if (!isOpen) setSyncResult(null); setShowSyncDialog(isOpen); }}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Sync Complete</DialogTitle>
+                    <DialogDescription>
+                        {syncResult?.message || 'Successfully fetched logs from the device.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-60 overflow-y-auto rounded-md border bg-muted p-4">
+                    <pre className="text-xs">{JSON.stringify(syncResult?.logs, null, 2)}</pre>
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowSyncDialog(false)}>Cancel</Button>
+                    <Button onClick={handleProcessAndSaveLogs} disabled={!syncResult?.logs || syncResult.logs.length === 0}>
+                        Process and Save Logs
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </>
   );
 }
