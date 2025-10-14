@@ -250,8 +250,15 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`[ZKLIB_JS_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        // Return a simple, serializable error message
-        const errorMessage = e.message || 'An unknown error occurred during sync.';
+        
+        // This handles the specific error object structure from the library
+        let errorMessage = 'An unknown error occurred during sync.';
+        if (e && e.err && e.err.message) {
+            errorMessage = e.err.message;
+        } else if (e && e.message) {
+            errorMessage = e.message;
+        }
+        
         return { success: false, message: errorMessage };
     } finally {
         if (zkInstance) {
