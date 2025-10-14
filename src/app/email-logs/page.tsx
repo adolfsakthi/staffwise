@@ -53,10 +53,59 @@ const LATE_ENTRY_TEMPLATE = `
 </div>
 `;
 
+const ADMIN_REPORT_TEMPLATE = `
+<div style="font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;">
+  <div style="max-w: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+    <div style="background: linear-gradient(to right, #6d28d9, #a78bfa); color: #ffffff; padding: 20px; text-align: center;">
+      <h1 style="font-size: 24px; font-weight: bold; margin: 0;">Daily Audit Report</h1>
+      <p style="margin: 4px 0 0; opacity: 0.9;">October 14th, 2025</p>
+    </div>
+    <div style="padding: 30px 20px; color: #333;">
+      <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Engineering Department</h2>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+        <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Summary</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Count/Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Present</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">8</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Absent</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">1</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">2</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">45 mins</td></tr>
+        </tbody>
+      </table>
+      
+      <h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;">Housekeeping Department</h2>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Summary</th>
+            <th style="padding: 8px; text-align: left; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6;">Count/Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Present</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">12</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Absent</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Late</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">1</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">Overtime</td><td style="padding: 8px; border-bottom: 1px solid #e9ecef;">0 mins</td></tr>
+        </tbody>
+      </table>
+      
+      <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+      <p style="font-size: 12px; color: #9ca3af; text-align: center;">
+        This is an automated message from the HEZEE ACCESS System.
+      </p>
+    </div>
+  </div>
+</div>
+`;
+
 
 const MOCK_EMAIL_LOGS: EmailLog[] = [
     { id: '1', recipient: 'manager@staffwise.com', subject: 'Late Arrival Notice', body: LATE_ENTRY_TEMPLATE, timestamp: new Date(), emailType: 'late_notice' },
-    { id: '2', recipient: 'admin@staffwise.com', subject: 'Daily Audit Report', body: '<div>Please find the daily audit report attached.</div>', timestamp: new Date(), emailType: 'admin_report' },
+    { id: '2', recipient: 'admin@staffwise.com', subject: 'Daily Audit Report', body: ADMIN_REPORT_TEMPLATE, timestamp: new Date(), emailType: 'admin_report' },
 ]
 
 export default function EmailLogsPage() {
