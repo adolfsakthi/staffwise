@@ -40,7 +40,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, processLogs, updateDeviceStatus } from '@/app/actions';
+import { removeDevice, pingDevice, processLogs } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -80,9 +80,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     const newStatus = result.success ? 'online' : 'offline';
     setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
-    await updateDeviceStatus(device.id, newStatus);
+    // No need to call updateDeviceStatus here as ping is ephemeral. Status updates when device pushes data.
     setActionState(device.id, { isPinging: false });
-    router.refresh();
   }
   
   const handleSyncLogs = async (device: Device) => {
@@ -102,7 +101,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         // First, check if the response is ok, then check the content type.
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(result.message || `Sync failed: ${errorText}`);
+            throw new Error(`Sync failed: ${errorText}`);
         }
         
         const result = await response.json();
