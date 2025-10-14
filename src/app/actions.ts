@@ -149,11 +149,6 @@ async function writeLiveLogs(logs: LiveLog[]): Promise<void> {
 }
 
 
-export async function getLiveLogs(): Promise<LiveLog[]> {
-    return await readLiveLogs();
-}
-
-// This function processes raw logs and generates structured LiveLog entries
 export async function processLogs(rawLogs: any[], device: Device): Promise<{ success: boolean, message: string }> {
     if (!rawLogs || rawLogs.length === 0) {
         return { success: true, message: 'No new logs to process.' };
@@ -218,6 +213,10 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
     if (!device) {
         return { success: false, message: 'Device not found.' };
     }
+    
+    if (!device.ipAddress || !device.port) {
+        return { success: false, message: `Device "${device.deviceName}" is missing a valid IP Address or Port.` };
+    }
 
     let zkInstance: ZKLib | null = null;
     try {
@@ -237,7 +236,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             return {
                 success: true,
                 message: `Found ${rawLogs.length} logs on device ${device.deviceName}. Data saved.`,
-                // IMPORTANT: Serialize data to prevent crashes
                 data: JSON.stringify(rawLogs),
             };
         }
