@@ -226,14 +226,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             zkInstance.connect((err: any) => {
                 if (err) {
                     console.error(`[ZKLIB_CONNECT_ERROR] Error connecting to device ${device.deviceName}:`, err);
-                    // CRITICAL: Reject with a simple string message, not the raw error object
                     return reject(new Error(err.message || 'Connection failed'));
                 }
 
                 zkInstance.getAttendances((err: any, data: any) => {
                     if (err) {
                         console.error(`[ZKLIB_GET_ATTENDANCES_ERROR] Error getting logs from ${device.deviceName}:`, err);
-                        // CRITICAL: Reject with a simple string message
                         return reject(new Error(err.message || 'Failed to get attendances'));
                     }
                     resolve(data);
@@ -264,7 +262,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`[ZKLIB_ERROR] Error syncing with device ${device.deviceName}:`, e);
-        // CRITICAL: Ensure the returned message is always a simple string.
         const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred during sync.';
         return { success: false, message: errorMessage };
 
