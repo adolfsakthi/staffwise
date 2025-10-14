@@ -238,11 +238,11 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } catch (e: any) {
         console.error(`Error syncing with device ${device.deviceName}:`, e);
-        const errorMessage = typeof e === 'object' && e !== null && 'message' in e ? String(e.message) : String(e);
+        // Ensure we extract a simple string message from the error object.
+        const errorMessage = (typeof e === 'object' && e !== null && e.message) ? e.message : String(e);
         return { success: false, message: errorMessage || 'An unknown error occurred during sync.' };
     } finally {
         if (zkInstance) {
-            // In case of error, ensure disconnection is attempted.
             await zkInstance.disconnect();
         }
     }
