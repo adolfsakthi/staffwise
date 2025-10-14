@@ -5,7 +5,6 @@ import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
-// const ZKLib = require('zklib');
 import { format, differenceInMinutes, parse } from 'date-fns';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -164,10 +163,10 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
     const existingLiveLogs = await readLiveLogs();
 
     const newLiveLogs: LiveLog[] = rawLogs.map(log => {
-        const employee = employees.find(emp => emp.employeeCode === log.id && emp.property_code === device.property_code);
+        const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === device.property_code);
         if (!employee) return null;
 
-        const punchTime = new Date(log.timestamp);
+        const punchTime = new Date(log.attTime);
         const shiftStartTime = parse(employee.shiftStartTime, 'HH:mm', punchTime);
         
         const deviation = differenceInMinutes(punchTime, shiftStartTime);
@@ -183,7 +182,7 @@ export async function processLogs(rawLogs: any[], device: Device): Promise<{ suc
         }
 
         return {
-            id: `log-${Date.now()}-${log.id}`,
+            id: `log-${Date.now()}-${log.userId}`,
             employeeId: employee.id,
             type,
             message,
@@ -213,7 +212,8 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
     }
 
     const ZKLib = require('zklib');
-    let zkInstance: any | null = null;
+    let zkInstance: any = null;
+
     try {
         zkInstance = new ZKLib({
             ip: device.ipAddress,
@@ -222,36 +222,44 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             timeout: 5000,
         });
 
-        // Connect to the device
-        await zkInstance.connect();
-        
-        // Get all logs using the correct method name
-        const logs = await zkInstance.getAttendances();
+        // Wrap the callback-based methods in a Promise
+        const logs: any[] = await new Promise(async (resolve, reject) => {
+            try {
+                await zkInstance.connect();
 
-        if (logs && logs.data && logs.data.length > 0) {
-            const transformedLogs = logs.data.map((log: any) => ({
-                id: log.userId,
-                timestamp: log.attTime,
-                type: log.attType,
-            }));
+                zkInstance.getAttendances((err: Error | null, data: any[] | null) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve(data || []);
+                });
+            } catch(connectErr) {
+                reject(connectErr);
+            }
+        });
 
+        if (logs && logs.length > 0) {
+            // The data from zklib is already in a good format.
+            // Example item: { userId: '1', attTime: '2024-01-01 09:00:00', attType: 0 }
+            
             const existingLogs = await readLogs();
-            const updatedLogs = [...existingLogs, ...transformedLogs];
+            const updatedLogs = [...existingLogs, ...logs];
             await writeLogs(updatedLogs); // Persist raw logs
 
             // Process these new logs into the live log format
-            await processLogs(transformedLogs, device);
-             return {
+            await processLogs(logs, device);
+
+            return {
                 success: true,
-                message: `Found ${logs.data.length} logs on device ${device.deviceName}. Data saved.`,
-                data: transformedLogs,
+                message: `Found ${logs.length} logs on device ${device.deviceName}. Data saved.`,
+                data: logs,
             };
         }
 
         return {
             success: true,
             message: `No new logs found on device ${device.deviceName}.`,
-            data: [], 
+            data: [],
         };
 
     } catch (e: any) {
@@ -264,7 +272,6 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
 
     } finally {
         if (zkInstance) {
-            // Disconnect from the device
             await zkInstance.disconnect();
         }
     }
