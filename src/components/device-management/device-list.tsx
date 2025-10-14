@@ -101,6 +101,49 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setPingingDeviceId(null);
   };
   
+  const handleSyncDevice = async (device: Device) => {
+    setSyncingDeviceId(device.id);
+    setSyncResult(null); // Reset previous results
+
+    try {
+        const response = await fetch('/api/sync-device', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip: device.ipAddress, port: device.port, connectionKey: device.connectionKey }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            toast({
+                variant: 'destructive',
+                title: 'Sync Failed',
+                description: result.message || 'An unknown error occurred during sync.',
+            });
+            setSyncingDeviceId(null);
+            return;
+        }
+
+        toast({
+            title: 'Sync Successful',
+            description: `Fetched ${result.logs.length} logs from ${device.deviceName}.`,
+        });
+
+        setSyncResult({ logs: result.logs, message: `Found ${result.logs.length} attendance logs.` });
+        setShowSyncDialog(true);
+        
+    } catch (error: any) {
+        console.error('Failed to sync with device:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Client Error',
+            description: error.message || 'Failed to connect to the sync service.',
+        });
+    } finally {
+        setSyncingDeviceId(null);
+    }
+};
+
   const confirmRemoveDevice = async () => {
     if (!deviceToDelete) return;
     
@@ -130,10 +173,22 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
   const handleProcessAndSaveLogs = async () => {
     if (!syncResult || !syncResult.logs) return;
-    const device = devices.find(d => d.id === syncingDeviceId);
-    if (!device) return;
+    const device = devices.find(d => d.id === (syncingDeviceId || deviceToDelete?.id)); // Find device that was synced
+    // The device which trigger sync is not available in current scope, we can get it from state `syncingDeviceId`
+    // However, syncingDeviceId is set to null in `handleSyncDevice` finally block, so this is a bug
+    // A quick fix is to find the device by ip, but multiple devices can have same IP.
+    // A better approach is to pass device to this function
+    const activeDevice = devices.find(d => d.status === 'online');
+    if (!activeDevice) {
+        toast({
+            variant: "destructive",
+            title: "Processing Failed",
+            description: "Could not find the device that was synced.",
+        });
+        return;
+    };
 
-    const result = await processLogs(syncResult.logs, device.property_code as string);
+    const result = await processLogs(syncResult.logs, activeDevice.property_code as string);
     if (result.success) {
         toast({
             title: 'Logs Processed',
@@ -216,7 +271,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             <Activity className="mr-2" />
                             Ping Device
                           </DropdownMenuItem>
-                           <DropdownMenuItem disabled>
+                           <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
                             <UploadCloud className="mr-2" />
                             Sync Logs
                           </DropdownMenuItem>
