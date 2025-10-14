@@ -24,9 +24,15 @@ import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
 const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false },
-    { id: '2', employeeId: '2', deviceId: '1', punchInTime: '2024-05-23T08:58:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'Jane Smith', email: 'jane@example.com', department: 'Housekeeping', property_code: 'D001', entry_time: '08:58', exit_time: '17:30', is_late: false, overtime_minutes: 0, is_audited: true },
-    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: '2024-05-22', logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
+    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false },
+    { id: '2', employeeId: '2', deviceId: '1', punchInTime: '2024-05-23T08:58:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Jane Smith', email: 'jane@example.com', department: 'Housekeeping', property_code: 'D001', entry_time: '08:58', exit_time: '17:30', is_late: false, overtime_minutes: 0, is_audited: true },
+    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
+    { id: '4', employeeId: '4', deviceId: '2', punchInTime: '2024-05-23T08:55:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Sarah Lee', email: 'sarah@example.com', department: 'Sales', property_code: 'D001', entry_time: '08:55', exit_time: '18:15', is_late: false, overtime_minutes: 15, is_audited: true },
+    { id: '5', employeeId: '5', deviceId: '2', punchInTime: '2024-05-23T09:30:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Mike Brown', email: 'mike@example.com', department: 'Kitchen', property_code: 'D001', entry_time: '09:30', exit_time: '18:00', is_late: true, late_by_minutes: 30, overtime_minutes: 0, is_audited: false },
+    { id: '6', employeeId: '6', deviceId: '1', punchInTime: '2024-05-22T22:10:00Z', attendanceDate: format(new Date(new Date().setDate(new Date().getDate() - 1)), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Chris Green', email: 'chris@example.com', department: 'Security', property_code: 'D001', entry_time: '22:10', exit_time: '06:05', is_late: true, late_by_minutes: 10, overtime_minutes: 5, is_audited: false },
+    { id: '7', employeeId: '7', deviceId: '1', punchInTime: '2024-05-22T09:00:00Z', attendanceDate: format(new Date(new Date().setDate(new Date().getDate() - 1)), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Emily White', email: 'emily@example.com', department: 'Front Desk', property_code: 'D001', entry_time: '09:00', exit_time: '17:55', is_late: false, overtime_minutes: 0, is_audited: true },
+    { id: '8', employeeId: '8', deviceId: '3', punchInTime: '2024-05-23T09:02:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'David Black', email: 'david@example.com', department: 'Engineering', property_code: 'D002', entry_time: '09:02', exit_time: '18:00', is_late: true, late_by_minutes: 2, overtime_minutes: 0, is_audited: false },
+
 ];
 
 interface AttendanceTableProps {
@@ -42,7 +48,8 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
 
   const filteredRecords = useMemo(() => {
     return MOCK_RECORDS.filter(r => {
-        const dateMatch = r.attendanceDate === dateFilter;
+        const recordDate = format(new Date(r.attendanceDate), 'yyyy-MM-dd');
+        const dateMatch = recordDate === dateFilter;
         const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;
         const propertyMatch = r.property_code === propertyCode;
         return dateMatch && departmentMatch && propertyMatch;
