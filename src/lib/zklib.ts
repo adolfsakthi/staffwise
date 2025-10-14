@@ -31,7 +31,7 @@ export const getDeviceLogs = async (ipAddress: string, port: number): Promise<{ 
 
     } catch (e: any) {
         // Provide a specific error message
-        const errorMessage = e.message || 'An unknown error occurred during device communication.';
+        const errorMessage = e.message || String(e);
         return { success: false, message: errorMessage };
 
     } finally {
