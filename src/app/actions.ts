@@ -222,8 +222,8 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
             timeout: 5000,
         });
 
-        // Create socket connection
-        await zkInstance.createSocket();
+        // Establish connection
+        await zkInstance.connect();
         
         // Get attendance logs
         const logs = await zkInstance.getAttendances();
