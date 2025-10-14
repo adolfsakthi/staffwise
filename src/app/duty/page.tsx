@@ -65,6 +65,12 @@ export default function DutyPage() {
     setDepartment('');
   };
 
+  const handleDeleteDuty = (id: string) => {
+    if (confirm('Are you sure you want to delete this duty?')) {
+      setDuties(duties.filter(duty => duty.id !== id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -149,7 +155,7 @@ export default function DutyPage() {
                             <Button size="icon" variant="ghost">
                                 <Edit className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="ghost">
+                            <Button size="icon" variant="ghost" onClick={() => handleDeleteDuty(duty.id)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                         </div>
