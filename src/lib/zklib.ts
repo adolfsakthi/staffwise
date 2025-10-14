@@ -15,18 +15,15 @@ export const getDeviceLogs = async (ipAddress: string, port: number): Promise<{ 
             timeout: 5000,
         });
 
-        // Connect to the device
-        await zkInstance.connect();
-
-        // Get logs
+        // The library handles connection implicitly. No connect() call is needed.
         const logs = await zkInstance.getAttendances();
 
-        // The new library returns the array directly
-        if (logs && Array.isArray(logs)) {
+        // The library returns an object with a data property.
+        if (logs && Array.isArray(logs.data)) {
              return {
                 success: true,
-                message: `Found ${logs.length} logs.`,
-                logs: logs,
+                message: `Found ${logs.data.length} logs.`,
+                logs: logs.data,
             };
         }
         
@@ -38,14 +35,6 @@ export const getDeviceLogs = async (ipAddress: string, port: number): Promise<{ 
         return { success: false, message: errorMessage };
 
     } finally {
-        // Ensure disconnection in all cases
-        if (zkInstance) {
-            try {
-                await zkInstance.disconnect();
-            } catch (disconnectError: any) {
-                // Log disconnection error if necessary, but don't let it hide the main error
-                console.error("Error during device disconnection:", disconnectError.message);
-            }
-        }
+        // The library handles disconnection implicitly. No disconnect() call is needed.
     }
 };
