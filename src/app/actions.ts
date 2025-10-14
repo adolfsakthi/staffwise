@@ -253,10 +253,12 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         
         // This handles the specific error object structure from the library
         let errorMessage = 'An unknown error occurred during sync.';
-        if (e && e.err && e.err.message) {
+        if (e && typeof e === 'object' && 'err' in e && e.err instanceof Error) {
             errorMessage = e.err.message;
-        } else if (e && e.message) {
+        } else if (e instanceof Error) {
             errorMessage = e.message;
+        } else if (typeof e === 'string') {
+            errorMessage = e;
         }
         
         return { success: false, message: errorMessage };
