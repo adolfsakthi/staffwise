@@ -100,8 +100,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         // The response might not be JSON if an unexpected server error occurs.
         // First, check if the response is ok, then check the content type.
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Sync failed: ${errorText}`);
+            const errorBody = await response.json();
+            throw new Error(errorBody.message || `Sync failed with status ${response.status}`);
         }
         
         const result = await response.json();
