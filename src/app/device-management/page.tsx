@@ -29,9 +29,12 @@ import {
   Wifi,
   WifiOff,
   Loader2,
+  Activity,
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
 import AddDeviceForm from '@/components/device-management/add-device-form';
+import { pingDevice } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 const MOCK_DEVICES: Device[] = [
     { id: '1', deviceName: 'Main Entrance', branchName: 'Lobby', ipAddress: '192.168.1.101', status: 'online', property_code: 'D001', clientId: 'default_client', branchId: 'default_branch', port: 4370, connectionKey: 'key1' },
@@ -42,6 +45,8 @@ const MOCK_DEVICES: Device[] = [
 
 export default function DeviceManagementPage() {
   const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
+  const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const propertyCode = 'D001';
   
@@ -54,6 +59,27 @@ export default function DeviceManagementPage() {
         branchId: 'default_branch',
     }])
   }
+
+  const handlePingDevice = async (device: Device) => {
+    setPingingDeviceId(device.id);
+    const result = await pingDevice(device.ipAddress, device.port);
+    
+    if (result.success) {
+      toast({
+        title: 'Device Online',
+        description: `Successfully connected to ${device.deviceName}.`,
+      });
+      setDevices(prev => prev.map(d => d.id === device.id ? {...d, status: 'online'} : d));
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Device Offline',
+        description: result.message,
+      });
+      setDevices(prev => prev.map(d => d.id === device.id ? {...d, status: 'offline'} : d));
+    }
+    setPingingDeviceId(null);
+  };
 
   const filteredDevices = useMemo(() => {
     return devices.filter(d => d.property_code === propertyCode);
@@ -105,22 +131,28 @@ export default function DeviceManagementPage() {
                               : 'border-red-200 bg-red-50 text-red-500'
                           }
                         >
-                          {device.status === 'online' ? (
+                          {pingingDeviceId === device.id ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : device.status === 'online' ? (
                             <Wifi className="mr-2" />
                           ) : (
                             <WifiOff className="mr-2" />
                           )}
-                          {device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown'}
+                          {pingingDeviceId === device.id ? 'Pinging...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" disabled={!!pingingDeviceId}>
                               <MoreVertical />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => handlePingDevice(device)}>
+                              <Activity className="mr-2" />
+                              Ping Device
+                            </DropdownMenuItem>
                             <DropdownMenuItem>View Logs</DropdownMenuItem>
                             <DropdownMenuItem>Sync Device</DropdownMenuItem>
                             <DropdownMenuItem>Edit</DropdownMenuItem>
