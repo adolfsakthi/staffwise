@@ -19,6 +19,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
   MoreVertical,
   Wifi,
   WifiOff,
@@ -39,6 +46,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [pingingDeviceId, setPingingDeviceId] = useState<string | null>(null);
   const [syncingDeviceId, setSyncingDeviceId] = useState<string | null>(null);
+  const [syncedLogs, setSyncedLogs] = useState<any[] | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -76,12 +84,12 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setSyncingDeviceId(device.id);
     const result = await syncDevice(device.id);
     
-    if (result.success) {
+    if (result.success && result.data) {
       toast({
         title: 'Sync Successful',
         description: result.message,
       });
-      console.log('Synced Data:', result.data);
+      setSyncedLogs(result.data);
     } else {
         toast({
             variant: 'destructive',
@@ -95,88 +103,121 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const isActionRunning = !!pingingDeviceId || !!syncingDeviceId;
 
   return (
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Device Name</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>IP Address</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[50px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {devices && devices.length > 0 ? (
-              devices.map((device) => (
-                <TableRow key={device.id}>
-                  <TableCell className="font-medium">{device.deviceName}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {device.branchName || 'N/A'}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {device.ipAddress}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        device.status === 'online' ? 'secondary' : 'destructive'
-                      }
-                      className={
-                        device.status === 'online'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-500'
-                          : 'border-red-200 bg-red-50 text-red-500'
-                      }
-                    >
-                      {pingingDeviceId === device.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : device.status === 'online' ? (
-                        <Wifi className="mr-2" />
-                      ) : (
-                        <WifiOff className="mr-2" />
-                      )}
-                      {pingingDeviceId === device.id ? 'Pinging...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" disabled={isActionRunning}>
-                          <MoreVertical />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
-                          <Activity className="mr-2" />
-                          Ping Device
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
-                             {syncingDeviceId === device.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <RefreshCw className="mr-2" />
-                            )}
-                          Sync Device
-                        </DropdownMenuItem>
-                        <DropdownMenuItem disabled={isActionRunning}>View Logs</DropdownMenuItem>
-                        <DropdownMenuItem disabled={isActionRunning}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={isActionRunning}>
-                          Remove Device
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+      <>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Device Name</TableHead>
+                <TableHead>Branch</TableHead>
+                <TableHead>IP Address</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[50px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {devices && devices.length > 0 ? (
+                devices.map((device) => (
+                  <TableRow key={device.id}>
+                    <TableCell className="font-medium">{device.deviceName}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.branchName || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {device.ipAddress}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          device.status === 'online' ? 'secondary' : 'destructive'
+                        }
+                        className={
+                          device.status === 'online'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-500'
+                            : 'border-red-200 bg-red-50 text-red-500'
+                        }
+                      >
+                        {pingingDeviceId === device.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : device.status === 'online' ? (
+                          <Wifi className="mr-2" />
+                        ) : (
+                          <WifiOff className="mr-2" />
+                        )}
+                        {pingingDeviceId === device.id ? 'Pinging...' : (device.status ? device.status.charAt(0).toUpperCase() + device.status.slice(1) : 'Unknown')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" disabled={isActionRunning}>
+                            <MoreVertical />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handlePingDevice(device)} disabled={isActionRunning}>
+                            <Activity className="mr-2" />
+                            Ping Device
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSyncDevice(device)} disabled={isActionRunning}>
+                              {syncingDeviceId === device.id ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                  <RefreshCw className="mr-2" />
+                              )}
+                            Sync Device
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled={isActionRunning}>View Logs</DropdownMenuItem>
+                          <DropdownMenuItem disabled={isActionRunning}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" disabled={isActionRunning}>
+                            Remove Device
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No devices found for this property. Add one above to get started.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No devices found for this property. Add one above to get started.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <Dialog open={!!syncedLogs} onOpenChange={(isOpen) => !isOpen && setSyncedLogs(null)}>
+            <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Synced Attendance Logs</DialogTitle>
+                    <DialogDescription>
+                        The following raw logs were downloaded from the device.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[60vh] overflow-y-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>User ID</TableHead>
+                                <TableHead>Timestamp</TableHead>
+                                <TableHead>Punch Type</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {syncedLogs?.map((log, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>{log.id}</TableCell>
+                                    <TableCell>{log.timestamp}</TableCell>
+                                    <TableCell>{log.type}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            </DialogContent>
+        </Dialog>
+    </>
   );
 }
