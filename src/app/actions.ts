@@ -5,14 +5,13 @@ import net from 'net';
 import fs from 'fs/promises';
 import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
-import ZKLib from 'zklib';
+// const ZKLib = require('zklib');
 import { format, differenceInMinutes, parse } from 'date-fns';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 const employeesFilePath = path.join(process.cwd(), 'src', 'lib', 'employees.json');
 const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 const liveLogsFilePath = path.join(process.cwd(), 'src', 'lib', 'live-logs.json');
-
 
 // --- Device Management ---
 
@@ -213,7 +212,8 @@ export async function syncDevice(deviceId: string): Promise<{ success: boolean; 
         return { success: false, message: 'Device not found.' };
     }
 
-    let zkInstance: ZKLib | null = null;
+    const ZKLib = require('zklib');
+    let zkInstance: any | null = null;
     try {
         zkInstance = new ZKLib({
             ip: device.ipAddress,
