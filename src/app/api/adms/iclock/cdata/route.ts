@@ -108,18 +108,39 @@ export async function POST(request: NextRequest) {
     console.log(`[ADMS POST] SN: ${sn} | Table: ${table} | Body:\n${bodyText}`);
     
     if (table === 'ATTLOG') {
-        const logs = bodyText.trim().split('\n').map(line => {
-            const [userId, timestamp] = line.trim().split('\t');
-            if (!userId || !timestamp) return null;
-            return {
-                userId,
-                attTime: new Date(timestamp),
-            };
-        }).filter(Boolean);
+        let logs: { userId: string; attTime: Date; }[] = [];
+
+        // Try parsing as JSON first
+        try {
+            const jsonData = JSON.parse(bodyText);
+            if (Array.isArray(jsonData)) {
+                 logs = jsonData.map(log => ({
+                    userId: log.PIN || log.userId,
+                    attTime: new Date(log.AttTime || log.attTime || log.timestamp),
+                })).filter(log => log.userId && !isNaN(log.attTime.getTime()));
+                 console.log('Parsed logs as JSON array.');
+            }
+        } catch (e) {
+            console.log('Could not parse body as JSON, falling back to plain text.');
+            // Fallback to plain text parsing
+            logs = bodyText.trim().split('\n').map(line => {
+                // ZKTeco can use tab or comma delimiters
+                const parts = line.trim().split(/\s*,\s*|\s+/);
+                const [userId, timestamp] = parts;
+                if (!userId || !timestamp) return null;
+                // The timestamp format can vary, e.g., "2024-05-23 09:05:00"
+                return {
+                    userId,
+                    attTime: new Date(timestamp),
+                };
+            }).filter((log): log is { userId: string; attTime: Date; } => log !== null && !isNaN(log.attTime.getTime()));
+             console.log('Parsed logs as plain text.');
+        }
+
 
         if (logs.length > 0) {
             console.log(`Processing ${logs.length} attendance logs for property ${propertyCode}`);
-            const processResult = await processLogs(logs as any[], propertyCode);
+            const processResult = await processLogs(logs, propertyCode);
             
             // If a function is waiting for this response, resolve it
             if (responseWaiters[sn]) {
