@@ -100,25 +100,63 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   
   const handleSyncLogs = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
+
+    const initialLogCountResult = await getDeviceLogs(device.id);
+    const initialLogCount = initialLogCountResult.logs?.length || 0;
     
+    const { toast: syncToast } = toast({
+      title: 'Syncing...',
+      description: 'Waiting for device to respond. This may take a moment.',
+      duration: 120000, // 2 minutes
+    });
+
     // We need the host to construct the callback URL for the device
     const result = await requestLogSync(device.id, window.location.host);
 
-    if (result.success) {
-      toast({
-        title: 'Sync Triggered',
-        description: result.message,
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Sync Failed',
-        description: result.message,
-      });
+    if (!result.success) {
+        setActionState(device.id, { isSyncing: false });
+        syncToast.update({
+            id: syncToast.id,
+            variant: 'destructive',
+            title: 'Sync Failed',
+            description: result.message,
+        });
+        return;
     }
 
+    // Start polling to check for new logs
+    const pollInterval = setInterval(async () => {
+        const newLogsResult = await getDeviceLogs(device.id);
+        if (newLogsResult.success && newLogsResult.logs && newLogsResult.logs.length > initialLogCount) {
+            clearInterval(pollInterval);
+            
+            syncToast.update({
+                id: syncToast.id,
+                title: 'Sync Complete!',
+                description: `Received ${newLogsResult.logs.length - initialLogCount} new log(s).`,
+            });
+            
+            setActionState(device.id, { isSyncing: false });
+            // Show the new logs automatically
+            handleViewLogs(device);
+        }
+    }, 2000); // Poll every 2 seconds
 
-    setActionState(device.id, { isSyncing: false });
+    // Stop polling after 2 minutes to prevent infinite loops
+    setTimeout(() => {
+        clearInterval(pollInterval);
+        const state = actionStates[device.id] || {};
+        if (state.isSyncing) {
+             setActionState(device.id, { isSyncing: false });
+             syncToast.update({
+                id: syncToast.id,
+                variant: 'destructive',
+                title: 'Sync Timed Out',
+                description: 'The device did not respond in time.',
+            });
+        }
+    }, 120000);
+
   }
 
   const handleViewLogs = async (device: Device) => {
@@ -312,3 +350,5 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
+
+    
