@@ -108,27 +108,49 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     setActionState(device.id, { isSyncing: true });
     
-    const result = await requestLogSync(device.serialNumber);
+    const syncRequest = await requestLogSync(device.serialNumber);
 
-    if (result.success) {
-      toast({
-        title: "Sync Request Sent",
-        description: result.message
-      });
-    } else {
+    if (!syncRequest.success) {
        toast({
         variant: 'destructive',
         title: 'Sync Failed',
-        description: result.message,
+        description: syncRequest.message,
       });
+       setActionState(device.id, { isSyncing: false });
+       return;
+    }
+
+    // Start polling for the logs
+    const lastCheck = Date.now();
+    try {
+        const response = await fetch(`/api/fetch-mock-logs?since=${lastCheck}`);
+        const result = await response.json();
+
+        if (result.logs && result.logs.length > 0) {
+            toast({
+                title: "Sync Successful",
+                description: `Received ${result.logs.length} new log(s) from device.`,
+            });
+            // Optionally refresh live logs page data
+            router.refresh(); 
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Sync Timed Out",
+                description: "The device did not send logs within the time limit.",
+            });
+        }
+    } catch (e) {
+        console.error("Polling error", e);
+        toast({
+            variant: "destructive",
+            title: "Sync Error",
+            description: "An error occurred while waiting for logs.",
+        });
     }
 
 
-    // The action is quick, so we can just refresh the state after a short delay
-    setTimeout(() => {
-        setActionState(device.id, { isSyncing: false });
-        router.refresh();
-    }, 1000)
+    setActionState(device.id, { isSyncing: false });
   }
 
   const handleViewLogs = async (device: Device) => {

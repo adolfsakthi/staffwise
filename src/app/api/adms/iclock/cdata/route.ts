@@ -10,6 +10,7 @@ import path from 'path';
 const commandQueue: { [sn: string]: string[] } = {};
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
+const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 
 export function addCommandToQueue(sn: string, command: string) {
     if (!commandQueue[sn]) {
@@ -114,7 +115,14 @@ export async function POST(request: NextRequest) {
 
         if (logs.length > 0) {
             console.log(`Processing ${logs.length} attendance logs for property ${propertyCode}`);
-            const processResult = await processLogs(logs, propertyCode);
+            try {
+                // Write raw logs to logs.json for polling
+                await fs.writeFile(logsFilePath, JSON.stringify(logs, null, 2));
+            } catch (fsError) {
+                console.error("Error writing to logs.json", fsError);
+            }
+            // Process logs for live view
+            await processLogs(logs, propertyCode);
         }
     }
     return new NextResponse('OK', { status: 200 });
