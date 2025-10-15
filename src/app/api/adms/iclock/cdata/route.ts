@@ -3,6 +3,8 @@ import { updateDeviceStatus, processAndSaveLogs } from '@/app/actions';
 import { promises as fs } from 'fs';
 import path from 'path';
 
+export const auth = 'public';
+
 // A simple in-memory store for commands to be sent to the device.
 const commandQueue: { [sn: string]: string[] } = {};
 
