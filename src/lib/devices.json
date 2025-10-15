@@ -10,5 +10,17 @@
     "status": "online",
     "clientId": "default_client",
     "branchId": "default_branch"
+  },
+  {
+    "deviceName": "Hezee Office",
+    "serialNumber": "ADZV204362807",
+    "ipAddress": "192.168.1.3",
+    "port": 81,
+    "connectionKey": "0",
+    "property_code": "D001",
+    "id": "device-1760528646024",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch"
   }
 ]
