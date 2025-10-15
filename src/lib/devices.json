@@ -42,7 +42,7 @@
     "branchName": "Main Lobby",
     "ipAddress": "209.38.125.241",
     "serialNumber": "ESSL12345678",
-    "port":4370,
+    "port": 4370,
     "connectionKey": "",
     "property_code": "D001",
     "status": "offline",
