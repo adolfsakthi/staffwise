@@ -23,6 +23,11 @@ import {
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
+const MOCK_RECORDS: AttendanceRecord[] = [
+    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false, is_present: true },
+    { id: '2', employeeId: '2', deviceId: '1', punchInTime: '2024-05-23T08:58:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Jane Smith', email: 'jane@example.com', department: 'Housekeeping', property_code: 'D001', entry_time: '08:58', exit_time: '17:30', is_late: false, overtime_minutes: 0, is_audited: true, is_present: true },
+];
+
 interface AttendanceTableProps {
     propertyCode: string;
 }
@@ -36,30 +41,18 @@ export default function AttendanceTable({ propertyCode }: AttendanceTableProps) 
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchLogs() {
-        setIsLoading(true);
-        try {
-            const response = await fetch('/api/attendance/logs');
-            if (!response.ok) {
-                throw new Error('Failed to fetch logs');
-            }
-            const data: AttendanceRecord[] = await response.json();
-            setAllRecords(data);
-        } catch (error) {
-            console.error(error);
-            // In a real app, show a toast notification
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    fetchLogs();
+    setIsLoading(true);
+    // Simulate fetching logs
+    setTimeout(() => {
+        setAllRecords(MOCK_RECORDS);
+        setIsLoading(false);
+    }, 1000);
   }, []);
 
 
   const filteredRecords = useMemo(() => {
     if (isLoading) return [];
     return allRecords.filter(r => {
-        // Assuming attendanceDate is in 'YYYY-MM-DD' format from server
         const recordDate = r.attendanceDate;
         const dateMatch = recordDate === dateFilter;
         const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;

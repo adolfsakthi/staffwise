@@ -6,7 +6,6 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import ConditionalLayout from '@/components/layout/conditional-layout';
 import { Inter as FontSans } from 'next/font/google';
-import { FirebaseClientProvider } from '@/firebase';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -30,13 +29,11 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <FirebaseClientProvider>
-          <SidebarProvider>
-            <ConditionalLayout>
-              {children}
-            </ConditionalLayout>
-          </SidebarProvider>
-        </FirebaseClientProvider>
+        <SidebarProvider>
+          <ConditionalLayout>
+            {children}
+          </ConditionalLayout>
+        </SidebarProvider>
         <Toaster />
       </body>
     </html>

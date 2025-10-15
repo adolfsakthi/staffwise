@@ -47,7 +47,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -83,47 +82,25 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const handlePingDevice = async (device: Device) => {
     setActionState(device.id, { isPinging: true });
     
-    const result = await pingDevice(device.ipAddress, device.port);
-    
     toast({
-        title: result.success ? 'Ping Successful' : 'Ping Failed',
-        description: result.message,
-        variant: result.success ? 'default' : 'destructive',
+        title: 'Ping Successful (Mock)',
+        description: `Device ${device.deviceName} is online.`,
     });
 
-    const newStatus = result.success ? 'online' : 'offline';
+    const newStatus = 'online';
     setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
     setActionState(device.id, { isPinging: false });
   }
   
   const handleSyncLogs = async (device: Device) => {
-    if (!device.ipAddress) {
-        toast({
-            variant: 'destructive',
-            title: 'Sync Failed',
-            description: 'Device IP is missing.',
-        });
-        return;
-    }
-
     setActionState(device.id, { isSyncing: true });
     
-    const host = window.location.host;
-    const result = await requestLogSync(device.ipAddress, device.port, host);
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (result.success) {
-       toast({
-        title: 'Sync Triggered',
-        description: result.message,
-      });
-      router.refresh();
-    } else {
-        toast({
-            variant: "destructive",
-            title: "Sync Failed",
-            description: result.message,
-        });
-    }
+    toast({
+      title: 'Sync Triggered (Mock)',
+      description: `Log sync requested for ${device.deviceName}.`,
+    });
 
     setActionState(device.id, { isSyncing: false });
   }
@@ -135,23 +112,11 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setLogs(null);
     setLogError(null);
   
-    try {
-      const response = await fetch('/api/logs');
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch stored logs.');
-      }
-      
-      setLogs(data);
-  
-    } catch (error: any) {
-      console.error(error);
-      setLogError(error.message || 'An unknown error occurred while fetching logs.');
-      setLogs([]);
-    } finally {
-      setIsLoadingLogs(false);
-    }
+    // Mock fetching logs
+    setTimeout(() => {
+        setIsLoadingLogs(false);
+        setLogs([]);
+    }, 1000)
   };
 
   const confirmRemoveDevice = async () => {
@@ -160,25 +125,18 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setActionState(deviceToDelete.id, { isDeleting: true });
     setShowDeleteAlert(false);
 
-    const result = await removeDevice(deviceToDelete.id);
-
-    if (result.success) {
-        setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
-        toast({
-            title: 'Device Removed',
-            description: 'The device has been successfully removed.',
-        });
-        router.refresh();
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Removal Failed',
-            description: result.message || 'Could not remove the device.',
-        });
-    }
+    // Mock removing device
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
+    toast({
+        title: 'Device Removed (Mock)',
+        description: 'The device has been successfully removed.',
+    });
     
     setActionState(deviceToDelete.id, { isDeleting: false });
     setDeviceToDelete(null);
+    router.refresh();
   };
 
   return (
@@ -301,7 +259,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 <DialogHeader>
                     <DialogTitle>Stored Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
                     <DialogDescription>
-                       Displaying raw data from the server's stored logs (`/api/logs`).
+                       Displaying raw data from the server's stored logs.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">

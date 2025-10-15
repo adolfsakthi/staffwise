@@ -27,7 +27,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, Mail, Eye } from 'lucide-react';
-import { useUser } from '@/firebase';
 import type { EmailLog } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -170,7 +169,6 @@ const MOCK_EMAIL_LOGS: EmailLog[] = [
 ]
 
 export default function EmailLogsPage() {
-  const { isUserLoading } = useUser();
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(MOCK_EMAIL_LOGS);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -203,7 +201,7 @@ export default function EmailLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isUserLoading || isLoadingLogs ? (
+              {isLoadingLogs ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-24 text-center">
                     <Loader2 className="mx-auto h-8 w-8 animate-spin" />
@@ -269,5 +267,3 @@ export default function EmailLogsPage() {
     </Card>
   );
 }
-
-    

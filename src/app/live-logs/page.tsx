@@ -25,7 +25,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
-import { getLiveLogs } from '@/app/actions';
 import { format } from 'date-fns';
 
 const logConfig = {
@@ -35,6 +34,14 @@ const logConfig = {
     on_time: { icon: UserCheck, color: 'text-green-500', label: 'On Time', badge: 'secondary' },
     audit_summary: { icon: Activity, color: 'text-gray-500', label: 'Audit', badge: 'outline' },
 } as const;
+
+async function getLiveLogs(): Promise<LiveLog[]> {
+    // Mock data
+    return [
+        { id: '1', type: 'late', message: 'John Doe arrived late', employee: 'John Doe', department: 'Engineering', time: '09:05', deviation: 5, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false },
+        { id: '2', type: 'overtime', message: 'Jane Smith worked overtime', employee: 'Jane Smith', department: 'Housekeeping', time: '18:30', deviation: 30, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false }
+    ]
+}
 
 
 export default async function LiveLogsPage() {
