@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -29,7 +30,8 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
         e.preventDefault();
         setIsLoading(true);
 
-        const formData = new FormData(e.currentTarget);
+        const form = e.currentTarget;
+        const formData = new FormData(form);
         const deviceData = {
             deviceName: formData.get('device-name') as string,
             serialNumber: formData.get('serial-number') as string | undefined,
@@ -46,7 +48,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                 title: 'Device Added',
                 description: result.message,
             });
-            e.currentTarget.reset();
+            form.reset();
         } else {
             toast({
                 variant: 'destructive',

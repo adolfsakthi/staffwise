@@ -1,2 +1,14 @@
-
-[]
+[
+  {
+    "deviceName": "ESSL Droplet",
+    "serialNumber": "",
+    "ipAddress": "68.183.89.205",
+    "port": 8080,
+    "connectionKey": "0",
+    "property_code": "D001",
+    "id": "device-1760525595923",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch"
+  }
+]
