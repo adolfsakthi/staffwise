@@ -108,7 +108,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     setActionState(device.id, { isSyncing: true });
     
-    const result = await requestLogSync(device.ipAddress, device.port);
+    // Pass the host from the browser's location
+    const host = window.location.host;
+    const result = await requestLogSync(device.ipAddress, device.port, host);
 
     if (result.success) {
        toast({
