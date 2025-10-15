@@ -97,18 +97,17 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   }
   
   const handleSyncLogs = async (device: Device) => {
-    if (!device.serialNumber && !device.ipAddress) {
+    if (!device.ipAddress) {
         toast({
             variant: 'destructive',
             title: 'Sync Failed',
-            description: 'Device serial number or IP is missing.',
+            description: 'Device IP is missing.',
         });
         return;
     }
 
     setActionState(device.id, { isSyncing: true });
     
-    // Pass the host from the browser's location
     const host = window.location.host;
     const result = await requestLogSync(device.ipAddress, device.port, host);
 
@@ -117,7 +116,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         title: 'Sync Triggered',
         description: result.message,
       });
-      // Optionally refresh other parts of the UI
       router.refresh();
     } else {
         toast({
@@ -138,7 +136,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setLogError(null);
   
     try {
-      // Use the local API route that reads from logs.json
       const response = await fetch('/api/logs');
       const data = await response.json();
       

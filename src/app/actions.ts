@@ -109,16 +109,13 @@ export async function requestLogSync(deviceIp: string, devicePort: number, host:
     console.log('Device:', `${deviceIp}:${devicePort}`);
     console.log('Target URL for device push:', targetUrl);
 
-    // Trigger the device via its local HTTP endpoint
-    const deviceUrl = `http://${deviceIp}:${devicePort}/sync`;
-    
-    const response = await fetch(deviceUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_url: targetUrl,
-      }),
-      cache: 'no-store',
+    // This simulates telling the device to push to our endpoint.
+    // In a real scenario, this would be a command sent to the device.
+    const response = await fetch(`http://${deviceIp}:${devicePort}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_url: targetUrl }),
+        cache: 'no-store',
     });
 
     if (!response.ok) {
@@ -139,6 +136,7 @@ export async function requestLogSync(deviceIp: string, devicePort: number, host:
     return { success: false, message: e.message || 'Failed to trigger sync.' };
   }
 }
+
 
 // --- Log Processing & Management ---
 

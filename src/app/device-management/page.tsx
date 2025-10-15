@@ -2,7 +2,7 @@
 'use server';
 
 import AddDeviceForm from "@/components/device-management/add-device-form";
-import DeviceList from "@/components/device-management/device-list";
+import DeviceList from "@/app/device-management/device-list";
 import type { Device } from "@/lib/types";
 import { getDevices } from "@/app/actions";
 
