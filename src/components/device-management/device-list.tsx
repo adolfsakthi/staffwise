@@ -134,18 +134,18 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setIsLoadingLogs(true);
     setLogs(null);
     setLogError(null);
-
+  
     try {
-      // Use the proxy API route
-      const response = await fetch(`/api/fetch-mock-logs?ip=${device.ipAddress}&port=${device.port}`, { cache: 'no-store' });
-      const result = await response.json();
+      // Use the local API route that reads from logs.json
+      const response = await fetch('/api/logs');
+      const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch logs from device.');
+        throw new Error('Failed to fetch stored logs.');
       }
       
-      setLogs(result.logs);
-
+      setLogs(data);
+  
     } catch (error: any) {
       console.error(error);
       setLogError(error.message || 'An unknown error occurred while fetching logs.');
@@ -300,9 +300,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Mock Logs from {deviceForLogs?.deviceName}</DialogTitle>
+                    <DialogTitle>Stored Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
                     <DialogDescription>
-                       Displaying data from <code>{`http://${deviceForLogs?.ipAddress}:${deviceForLogs?.port}/mock/adms/logs`}</code>
+                       Displaying raw data from the server's stored logs (`/api/logs`).
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">
@@ -321,7 +321,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </pre>
                     ) : (
                         <div className="flex justify-center items-center h-48 text-muted-foreground">
-                            No logs found at the endpoint.
+                            No stored logs found on the server.
                         </div>
                     )}
                 </div>
