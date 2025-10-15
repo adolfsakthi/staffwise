@@ -100,10 +100,10 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
     }
 }
 
-export async function requestLogSync(deviceIp: string, devicePort: number): Promise<{ success: boolean; message: string; data?: any }> {
+export async function requestLogSync(deviceIp: string, devicePort: number, host: string): Promise<{ success: boolean; message: string; data?: any }> {
   try {
-    // This needs to be a full URL to the API route
-    const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/api/device/sync`;
+    // This needs to be a full URL to the API route, which is now determined by the client
+    const apiUrl = `http://${host}/api/device/sync`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -111,6 +111,7 @@ export async function requestLogSync(deviceIp: string, devicePort: number): Prom
       body: JSON.stringify({
         deviceIp,
         devicePort,
+        host, // Pass the host to the API route
       }),
       cache: 'no-store'
     });

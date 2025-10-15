@@ -4,22 +4,22 @@ import { NextRequest, NextResponse } from 'next/server';
 interface SyncRequest {
   deviceIp: string;
   devicePort: number;
+  host: string; // The host header from the client request
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SyncRequest = await request.json();
-    const { deviceIp, devicePort } = body;
+    const { deviceIp, devicePort, host } = body;
 
-    if (!deviceIp || !devicePort) {
+    if (!deviceIp || !devicePort || !host) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: deviceIp, devicePort, and host are required.' },
         { status: 400 }
       );
     }
 
-    // Get the current server URL dynamically
-    const host = request.headers.get('host') || 'localhost:9002';
+    // Determine protocol and construct the target URL using the provided host
     const protocol = host.includes('localhost') ? 'http' : 'https';
     const targetUrl = `${protocol}://${host}/api/adms/iclock/cdata`;
 
@@ -27,8 +27,7 @@ export async function POST(request: NextRequest) {
     console.log('Device:', `${deviceIp}:${devicePort}`);
     console.log('Target URL:', targetUrl);
 
-    // Trigger the device via HTTP
-    // This assumes the device has a `/sync` endpoint that accepts a POST request
+    // Trigger the device via its local HTTP endpoint
     const deviceUrl = `http://${deviceIp}:${devicePort}/sync`;
     
     const response = await fetch(deviceUrl, {
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         target_url: targetUrl,
       }),
-      cache: 'no-store',
+      cache: 'no-store', // Ensure we don't cache this request
     });
 
     if (!response.ok) {
@@ -54,6 +53,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Sync error:', error);
+    // More detailed error checking for network issues
+    if (error.cause?.code === 'ECONNREFUSED') {
+         return NextResponse.json(
+          { error: `Connection refused by device at ${error.cause.address}:${error.cause.port}. Check device IP and ensure it is on the same network.` },
+          { status: 500 }
+        );
+    }
     return NextResponse.json(
       { error: error.message || 'Failed to sync with device' },
       { status: 500 }
