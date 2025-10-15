@@ -36,5 +36,18 @@
     "clientId": "default_client",
     "branchId": "default_branch",
     "id": "3"
+  },
+  {
+    "deviceName": "essl mock",
+    "branchName": "Main Lobby",
+    "ipAddress": "209.38.125.241",
+    "serialNumber": "ESSL12345678",
+    "port":4370,
+    "connectionKey": "",
+    "property_code": "D001",
+    "status": "offline",
+    "clientId": "default_client",
+    "branchId": "default_branch",
+    "id": "4"
   }
 ]
