@@ -5,7 +5,6 @@ import path from 'path';
 import type { Device, Employee, LiveLog } from '@/lib/types';
 import { format, differenceInMinutes, parse } from 'date-fns';
 import net from 'net';
-import { addCommandToQueue } from './api/adms/iclock/cdata/route';
 
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
@@ -101,19 +100,38 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
     }
 }
 
-export async function requestLogSync(serialNumber: string): Promise<{ success: boolean; message: string }> {
+export async function requestLogSync(deviceIp: string, devicePort: number): Promise<{ success: boolean; message: string; data?: any }> {
   try {
-    // This command requests all attendance logs.
-    const command = 'DATA QUERY ATTLog StartTime=2000-01-01 00:00:00 EndTime=2099-12-31 23:59:59';
-    
-    // Queue the command for the device
-    addCommandToQueue(serialNumber, command);
-    console.log(`Sync command queued for ${serialNumber}.`);
+    // In a real production environment, you would get this from environment variables or a service discovery mechanism.
+    const targetIp = process.env.PUBLIC_SERVER_IP || '127.0.0.1'; 
+    const targetPort = parseInt(process.env.ADMS_PORT || '80', 10);
 
-    return { success: true, message: `Sync request sent to device ${serialNumber}. Logs will appear on the Live Logs page shortly.` };
+    // This needs to be a full URL to the API route
+    const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/api/device/sync`;
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceIp,
+        devicePort,
+        targetIp,
+        targetPort
+      }),
+      cache: 'no-store'
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || `API responded with status ${response.status}`);
+    }
+
+    return { success: true, message: result.message, data: result.data };
+
   } catch (e: any) {
-    console.error(`Error during log sync for ${serialNumber}:`, e);
-    return { success: false, message: e.message || 'Failed to queue sync logs command.' };
+    console.error(`Error during direct log sync for ${deviceIp}:`, e);
+    return { success: false, message: e.message || 'Failed to trigger sync.' };
   }
 }
 
@@ -129,14 +147,6 @@ async function readLogs(): Promise<any[]> {
         }
         console.error('Error reading logs file:', error);
         return [];
-    }
-}
-
-async function writeLogs(logs: any[]): Promise<void> {
-    try {
-        await fs.writeFile(logsFilePath, JSON.stringify(logs, null, 2), 'utf-8');
-    } catch (error) {
-        console.error('Error writing logs file:', error);
     }
 }
 
@@ -161,8 +171,7 @@ async function writeLiveLogs(logs: LiveLog[]): Promise<void> {
     }
 }
 
-
-export async function processLogs(rawLogs: any[], propertyCode: string): Promise<{ success: boolean, message: string, count: number }> {
+export async function processAndSaveLogs(rawLogs: any[], propertyCode: string): Promise<{ success: boolean, message: string, count: number }> {
     if (!rawLogs || rawLogs.length === 0) {
         return { success: true, message: 'No new logs to process.', count: 0 };
     }
@@ -179,7 +188,6 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
     const existingLiveLogs = await getLiveLogs();
 
     const newLiveLogs: LiveLog[] = rawLogs.map(log => {
-        // Find employee by employeeCode for the given property
         const employee = employees.find(emp => emp.employeeCode === log.userId && emp.property_code === propertyCode);
         if (!employee) return null;
 
@@ -190,10 +198,10 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
         let type: LiveLog['type'] = 'on_time';
         let message = `${employee.firstName} ${employee.lastName} punched on time.`;
 
-        if (deviation > 5) { // Assuming 5 minutes grace period
+        if (deviation > 5) {
             type = 'late';
             message = `${employee.firstName} ${employee.lastName} arrived late by ${deviation} minutes.`;
-        } else if (deviation < -15) { // Assuming more than 15 mins early is notable
+        } else if (deviation < -15) {
             type = 'early';
             message = `${employee.firstName} ${employee.lastName} arrived early by ${Math.abs(deviation)} minutes.`;
         }
@@ -219,6 +227,16 @@ export async function processLogs(rawLogs: any[], propertyCode: string): Promise
 
     const updatedLiveLogs = [...newLiveLogs, ...existingLiveLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     await writeLiveLogs(updatedLiveLogs);
+
+    // Also write the raw logs to the main logs file for the /logs endpoint
+    try {
+        const existingRawLogs = await readLogs();
+        const combinedRawLogs = [...rawLogs, ...existingRawLogs];
+        await fs.writeFile(logsFilePath, JSON.stringify(combinedRawLogs, null, 2), 'utf-8');
+    } catch (error) {
+        console.error("Failed to write to raw logs file", error);
+    }
+
 
     return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: newLiveLogs.length };
 }

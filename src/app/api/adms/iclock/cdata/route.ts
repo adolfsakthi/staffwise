@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateDeviceStatus, processLogs } from '@/app/actions';
+import { updateDeviceStatus, processAndSaveLogs } from '@/app/actions';
 import { promises as fs } from 'fs';
 import path from 'path';
-
-// /api/adms/iclock/cdata
-// This is the main endpoint for ADMS communication.
 
 // A simple in-memory store for commands to be sent to the device.
 const commandQueue: { [sn: string]: string[] } = {};
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
-const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 
 export function addCommandToQueue(sn: string, command: string) {
     if (!commandQueue[sn]) {
@@ -85,7 +81,7 @@ export async function POST(request: NextRequest) {
     if (table === 'ATTLOG') {
         let logs: { userId: string; attTime: Date; }[] = [];
 
-        // Try parsing as JSON first
+        // 1. Try parsing as JSON
         try {
             const jsonData = JSON.parse(bodyText);
             if (Array.isArray(jsonData)) {
@@ -96,33 +92,24 @@ export async function POST(request: NextRequest) {
                  console.log('Parsed logs as JSON array.');
             }
         } catch (e) {
-            console.log('Could not parse body as JSON, falling back to plain text.');
-            // Fallback to plain text parsing
-            logs = bodyText.trim().split('\n').map(line => {
-                // ZKTeco can use tab or comma delimiters
-                const parts = line.trim().split(/\s*,\s*|\s+/);
-                const [userId, timestamp] = parts;
-                if (!userId || !timestamp) return null;
-                // The timestamp format can vary, e.g., "2024-05-23 09:05:00"
-                return {
-                    userId,
-                    attTime: new Date(timestamp),
-                };
-            }).filter((log): log is { userId: string; attTime: Date; } => log !== null && !isNaN(log.attTime.getTime()));
-             console.log('Parsed logs as plain text.');
+            console.log('Could not parse body as JSON, trying plain text.');
+            // 2. Fallback to plain text parsing
+            try {
+                logs = bodyText.trim().split('\n').map(line => {
+                    const parts = line.trim().split(/\s*,\s*|\s+/);
+                    const [userId, timestamp] = parts;
+                    if (!userId || !timestamp) return null;
+                    return { userId, attTime: new Date(timestamp) };
+                }).filter((log): log is { userId: string; attTime: Date; } => log !== null && !isNaN(log.attTime.getTime()));
+                console.log('Parsed logs as plain text.');
+            } catch(textError) {
+                console.error("Failed to parse logs as plain text:", textError);
+            }
         }
-
 
         if (logs.length > 0) {
             console.log(`Processing ${logs.length} attendance logs for property ${propertyCode}`);
-            try {
-                // Write raw logs to logs.json for polling
-                await fs.writeFile(logsFilePath, JSON.stringify(logs, null, 2));
-            } catch (fsError) {
-                console.error("Error writing to logs.json", fsError);
-            }
-            // Process logs for live view
-            await processLogs(logs, propertyCode);
+            await processAndSaveLogs(logs, propertyCode);
         }
     }
     return new NextResponse('OK', { status: 200 });

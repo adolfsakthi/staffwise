@@ -70,6 +70,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [showLogsDialog, setShowLogsDialog] = useState(false);
   const [logs, setLogs] = useState<any[] | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
   const [deviceForLogs, setDeviceForLogs] = useState<Device | null>(null);
 
   const { toast } = useToast();
@@ -92,63 +93,37 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     const newStatus = result.success ? 'online' : 'offline';
     setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
-    // No need to call updateDeviceStatus here as ping is ephemeral. Status updates when device pushes data.
     setActionState(device.id, { isPinging: false });
   }
   
   const handleSyncLogs = async (device: Device) => {
-    if (!device.serialNumber) {
+    if (!device.serialNumber && !device.ipAddress) {
         toast({
             variant: 'destructive',
             title: 'Sync Failed',
-            description: 'Device serial number is missing. Cannot queue sync request.',
+            description: 'Device serial number or IP is missing.',
         });
         return;
     }
 
     setActionState(device.id, { isSyncing: true });
     
-    const syncRequest = await requestLogSync(device.serialNumber);
+    const result = await requestLogSync(device.ipAddress, device.port);
 
-    if (!syncRequest.success) {
+    if (result.success) {
        toast({
-        variant: 'destructive',
-        title: 'Sync Failed',
-        description: syncRequest.message,
+        title: 'Sync Triggered',
+        description: result.message,
       });
-       setActionState(device.id, { isSyncing: false });
-       return;
-    }
-
-    // Start polling for the logs
-    const lastCheck = Date.now();
-    try {
-        const response = await fetch(`/api/fetch-mock-logs?since=${lastCheck}`);
-        const result = await response.json();
-
-        if (result.logs && result.logs.length > 0) {
-            toast({
-                title: "Sync Successful",
-                description: `Received ${result.logs.length} new log(s) from device.`,
-            });
-            // Optionally refresh live logs page data
-            router.refresh(); 
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Sync Timed Out",
-                description: "The device did not send logs within the time limit.",
-            });
-        }
-    } catch (e) {
-        console.error("Polling error", e);
+      // Optionally refresh other parts of the UI
+      router.refresh();
+    } else {
         toast({
             variant: "destructive",
-            title: "Sync Error",
-            description: "An error occurred while waiting for logs.",
+            title: "Sync Failed",
+            description: result.message,
         });
     }
-
 
     setActionState(device.id, { isSyncing: false });
   }
@@ -158,25 +133,23 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setShowLogsDialog(true);
     setIsLoadingLogs(true);
     setLogs(null);
+    setLogError(null);
 
     try {
-      const response = await fetch(`/api/logs`);
+      // Use the proxy API route
+      const response = await fetch(`/api/fetch-mock-logs?ip=${device.ipAddress}&port=${device.port}`, { cache: 'no-store' });
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to fetch logs.');
+        throw new Error(result.error || 'Failed to fetch logs from device.');
       }
       
-      setLogs(result);
+      setLogs(result.logs);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-       toast({
-        variant: 'destructive',
-        title: 'Failed to View Logs',
-        description: 'Could not retrieve stored punch logs.',
-      });
-      setLogs([]); // show empty state instead of loading
+      setLogError(error.message || 'An unknown error occurred while fetching logs.');
+      setLogs([]);
     } finally {
       setIsLoadingLogs(false);
     }
@@ -327,9 +300,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Stored Punch Logs Sample</DialogTitle>
+                    <DialogTitle>Mock Logs from {deviceForLogs?.deviceName}</DialogTitle>
                     <DialogDescription>
-                        Displaying raw data from the server's stored log file.
+                       Displaying data from <code>{`http://${deviceForLogs?.ipAddress}:${deviceForLogs?.port}/mock/adms/logs`}</code>
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">
@@ -337,13 +310,18 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         <div className="flex justify-center items-center h-48">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
+                    ) : logError ? (
+                         <div className="flex flex-col justify-center items-center h-48 text-destructive-foreground bg-destructive/80 rounded-md p-4">
+                            <p className="font-bold">Failed to fetch logs</p>
+                            <p className="text-sm">{logError}</p>
+                        </div>
                     ) : logs && logs.length > 0 ? (
                         <pre className="text-sm whitespace-pre-wrap break-words">
                             {JSON.stringify(logs, null, 2)}
                         </pre>
                     ) : (
                         <div className="flex justify-center items-center h-48 text-muted-foreground">
-                            No stored logs found.
+                            No logs found at the endpoint.
                         </div>
                     )}
                 </div>

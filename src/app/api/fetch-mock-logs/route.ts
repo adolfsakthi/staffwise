@@ -1,38 +1,33 @@
-
 'use server';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
 
-const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
-
-// This endpoint polls for changes in the logs.json file.
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
-    const lastCheck = searchParams.get('since');
-    const timeout = 30000; // 30 seconds timeout
-    const pollInterval = 2000; // 2 seconds poll interval
+    const ip = searchParams.get('ip');
+    const port = searchParams.get('port');
 
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < timeout) {
-        try {
-            const stats = await fs.stat(logsFilePath);
-            const lastModified = stats.mtime.getTime();
-
-            if (lastCheck && lastModified > parseInt(lastCheck)) {
-                 const data = await fs.readFile(logsFilePath, 'utf-8');
-                 // Clear the file after reading
-                 await fs.writeFile(logsFilePath, '[]');
-                 return NextResponse.json({ logs: JSON.parse(data), timestamp: lastModified });
-            }
-        } catch (e) {
-            // File might not exist yet
-        }
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    if (!ip || !port) {
+        return NextResponse.json({ error: 'IP and Port are required' }, { status: 400 });
     }
 
-    // If timeout is reached, return empty response
-    return NextResponse.json({ logs: [], timestamp: Date.now() });
+    const url = `http://${ip}:${port}/mock/adms/logs`;
+
+    try {
+        const response = await fetch(url, { cache: 'no-store' });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error fetching mock logs from ${url}: ${response.status} ${errorText}`);
+            throw new Error(`Device endpoint responded with status ${response.status}.`);
+        }
+        
+        const logs = await response.json();
+        return NextResponse.json({ logs: logs, timestamp: Date.now() });
+
+    } catch (e: any) {
+        console.error(`Failed to fetch from ${url}:`, e);
+        // This will catch network errors like ECONNREFUSED
+        return NextResponse.json({ error: e.message || 'Could not retrieve mock logs from device.' }, { status: 500 });
+    }
 }
