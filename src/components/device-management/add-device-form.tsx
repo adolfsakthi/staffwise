@@ -11,9 +11,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, Server } from 'lucide-react';
+import { Loader2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { addDevice } from '@/app/actions';
 
 type AddDeviceFormProps = {
     propertyCode: string;
@@ -28,16 +29,33 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
         e.preventDefault();
         setIsLoading(true);
 
-        // Mock adding device
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        toast({
-            title: 'Device Added (Mock)',
-            description: 'The new device has been registered locally.',
-        });
+        const formData = new FormData(e.currentTarget);
+        const deviceData = {
+            deviceName: formData.get('device-name') as string,
+            serialNumber: formData.get('serial-number') as string | undefined,
+            ipAddress: formData.get('ip-address') as string,
+            port: Number(formData.get('port')),
+            connectionKey: '0', // Default value
+            property_code: propertyCode,
+        };
+
+        const result = await addDevice(deviceData);
+
+        if (result.success) {
+            toast({
+                title: 'Device Added',
+                description: result.message,
+            });
+            e.currentTarget.reset();
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Failed to Add Device',
+                description: result.message,
+            });
+        }
 
         setIsLoading(false);
-        router.refresh();
     }
 
     return (
@@ -53,19 +71,19 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                          <div className="space-y-2">
                             <Label htmlFor="device-name">Device Name</Label>
-                            <Input id="device-name" placeholder="e.g., Main Entrance" required />
+                            <Input name="device-name" id="device-name" placeholder="e.g., Main Entrance" required />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="serial-number">Serial Number</Label>
-                            <Input id="serial-number" placeholder="e.g., C072K12345" />
+                            <Label htmlFor="serial-number">Serial Number (Optional)</Label>
+                            <Input name="serial-number" id="serial-number" placeholder="e.g., C072K12345" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="ip-address">IP Address</Label>
-                            <Input id="ip-address" placeholder="e.g., 192.168.1.100" required />
+                            <Input name="ip-address" id="ip-address" placeholder="e.g., 192.168.1.100" required />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="port">Port</Label>
-                            <Input id="port" type="number" placeholder="e.g., 4370" required />
+                            <Input name="port" id="port" type="number" placeholder="e.g., 4370" required />
                         </div>
                     </div>
                      <Button type="submit" disabled={isLoading}>

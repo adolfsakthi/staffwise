@@ -49,6 +49,7 @@ import {
 import type { Device } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { pingDevice, removeDevice, getDeviceLogs, requestLogSync } from '@/app/actions';
 
 interface DeviceListProps {
     initialDevices: Device[];
@@ -82,25 +83,43 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const handlePingDevice = async (device: Device) => {
     setActionState(device.id, { isPinging: true });
     
-    toast({
-        title: 'Ping Successful (Mock)',
-        description: `Device ${device.deviceName} is online.`,
-    });
+    const result = await pingDevice(device.id);
 
-    const newStatus = 'online';
-    setDevices(prev => prev.map(d => d.id === device.id ? { ...d, status: newStatus } : d));
+    if (result.success) {
+        toast({
+            title: 'Ping Successful',
+            description: `Device ${device.deviceName} is ${result.status}.`,
+        });
+        // We let revalidatePath handle the UI update
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Ping Failed',
+            description: `Could not reach device ${device.deviceName}.`,
+        });
+    }
+
     setActionState(device.id, { isPinging: false });
   }
   
   const handleSyncLogs = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const result = await requestLogSync(device.id, window.location.host);
 
-    toast({
-      title: 'Sync Triggered (Mock)',
-      description: `Log sync requested for ${device.deviceName}.`,
-    });
+    if (result.success) {
+      toast({
+        title: 'Sync Triggered',
+        description: `Log sync requested for ${device.deviceName}.`,
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: result.message,
+      });
+    }
+
 
     setActionState(device.id, { isSyncing: false });
   }
@@ -112,11 +131,15 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setLogs(null);
     setLogError(null);
   
-    // Mock fetching logs
-    setTimeout(() => {
-        setIsLoadingLogs(false);
-        setLogs([]);
-    }, 1000)
+    const result = await getDeviceLogs(device.id);
+    
+    if (result.success) {
+        setLogs(result.logs || []);
+    } else {
+        setLogError(result.error || 'An unknown error occurred.');
+    }
+
+    setIsLoadingLogs(false);
   };
 
   const confirmRemoveDevice = async () => {
@@ -125,19 +148,37 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setActionState(deviceToDelete.id, { isDeleting: true });
     setShowDeleteAlert(false);
 
-    // Mock removing device
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await removeDevice(deviceToDelete.id);
     
-    setDevices(prev => prev.filter(d => d.id !== deviceToDelete.id));
-    toast({
-        title: 'Device Removed (Mock)',
-        description: 'The device has been successfully removed.',
-    });
+    if (result.success) {
+      toast({
+          title: 'Device Removed',
+          description: 'The device has been successfully removed.',
+      });
+    } else {
+      toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: result.message,
+      });
+    }
     
-    setActionState(deviceToDelete.id, { isDeleting: false });
     setDeviceToDelete(null);
-    router.refresh();
+    // The state will be updated by revalidatePath, no need for manual setDevices
   };
+
+  // The component receives initialDevices, but to reflect updates from server actions,
+  // we'll rely on the useRouter().refresh() or revalidatePath to refetch server component props.
+  // However, for immediate feedback on status changes (like ping), we can still manage a local state.
+  // A more robust solution might use a state management library or React context if prop drilling becomes an issue.
+  // For now, we will update local state for some actions and rely on revalidation for others.
+  
+  // This effect updates the local `devices` state when `initialDevices` prop changes.
+  // This is important for when Next.js re-renders the server component and passes new props.
+  useState(() => {
+      setDevices(initialDevices);
+  }, [initialDevices]);
+
 
   return (
       <>
