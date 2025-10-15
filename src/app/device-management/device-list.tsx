@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -87,7 +87,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
             title: 'Ping Successful',
             description: `Device ${device.deviceName} is ${result.status}.`,
         });
-        // We let revalidatePath handle the UI update
     } else {
         toast({
             variant: 'destructive',
@@ -96,19 +95,19 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         });
     }
 
-    // Resetting the loading state for this specific device action
     setActionState(device.id, { isPinging: false });
   }
   
   const handleSyncLogs = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
     
-    const result = await requestLogSync(device.id);
+    // We need the host to construct the callback URL for the device
+    const result = await requestLogSync(device.id, window.location.host);
 
     if (result.success) {
       toast({
         title: 'Sync Triggered',
-        description: `Log sync requested for ${device.deviceName}.`,
+        description: result.message,
       });
     } else {
       toast({
@@ -162,9 +161,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
     
     setDeviceToDelete(null);
-    // The state will be updated by revalidatePath, no need for manual state updates
-    // Once the action is done, we can clear the loading state.
-    setActionState(deviceToDelete.id, { isDeleting: false });
+    // No need to set isDeleting to false as the component will re-render
   };
   
   return (
@@ -315,4 +312,3 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     </>
   );
 }
-    
