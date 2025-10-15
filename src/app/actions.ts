@@ -10,6 +10,10 @@ const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 async function readDevices(): Promise<Device[]> {
     try {
         const data = await fs.readFile(devicesFilePath, 'utf-8');
+        // If file is empty, JSON.parse will fail. Return empty array.
+        if (!data) {
+            return [];
+        }
         return JSON.parse(data);
     } catch (error) {
         // If the file doesn't exist, return an empty array
@@ -101,9 +105,9 @@ export async function getDeviceLogs(deviceId: string): Promise<{ success: boolea
     }
 }
 
-export async function requestLogSync(deviceId: string, host: string) {
+export async function requestLogSync(deviceId: string) {
     // Placeholder for future implementation
     await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log(`Sync requested for device ${deviceId}. Callback host: ${host}`);
+    console.log(`Sync requested for device ${deviceId}`);
     return { success: true, message: 'Log sync requested.' };
 }

@@ -7,7 +7,7 @@
     "connectionKey": "0",
     "property_code": "D001",
     "id": "device-1760525595923",
-    "status": "offline",
+    "status": "online",
     "clientId": "default_client",
     "branchId": "default_branch"
   }

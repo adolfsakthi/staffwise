@@ -11,9 +11,18 @@ async function getDevices(): Promise<Device[]> {
     const filePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
     try {
         const data = await fs.readFile(filePath, 'utf-8');
+        // If file is empty, parsing will fail. Return empty array.
+        if (!data.trim()) {
+            return [];
+        }
         return JSON.parse(data) as Device[];
     } catch (error) {
         // If the file doesn't exist or is empty, return an empty array.
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            return [];
+        }
+        // For other errors, log and return empty.
+        console.error("Failed to read or parse devices.json:", error);
         return [];
     }
 }

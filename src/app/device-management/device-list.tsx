@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +48,6 @@ import {
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import { pingDevice, removeDevice, getDeviceLogs, requestLogSync } from '@/app/actions';
 
 interface DeviceListProps {
@@ -62,7 +61,6 @@ type ActionState = {
 }
 
 export default function DeviceList({ initialDevices }: DeviceListProps) {
-  const [devices, setDevices] = useState<Device[]>(initialDevices);
   const [actionStates, setActionStates] = useState<{[key: string]: ActionState}>({});
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
@@ -74,7 +72,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [deviceForLogs, setDeviceForLogs] = useState<Device | null>(null);
 
   const { toast } = useToast();
-  const router = useRouter();
 
   const setActionState = (deviceId: string, state: ActionState) => {
     setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
@@ -99,13 +96,14 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         });
     }
 
+    // Resetting the loading state for this specific device action
     setActionState(device.id, { isPinging: false });
   }
   
   const handleSyncLogs = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
     
-    const result = await requestLogSync(device.id, window.location.host);
+    const result = await requestLogSync(device.id);
 
     if (result.success) {
       toast({
@@ -164,22 +162,11 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     }
     
     setDeviceToDelete(null);
-    // The state will be updated by revalidatePath, no need for manual setDevices
+    // The state will be updated by revalidatePath, no need for manual state updates
+    // Once the action is done, we can clear the loading state.
+    setActionState(deviceToDelete.id, { isDeleting: false });
   };
-
-  // The component receives initialDevices, but to reflect updates from server actions,
-  // we'll rely on the useRouter().refresh() or revalidatePath to refetch server component props.
-  // However, for immediate feedback on status changes (like ping), we can still manage a local state.
-  // A more robust solution might use a state management library or React context if prop drilling becomes an issue.
-  // For now, we will update local state for some actions and rely on revalidation for others.
   
-  // This effect updates the local `devices` state when `initialDevices` prop changes.
-  // This is important for when Next.js re-renders the server component and passes new props.
-  useState(() => {
-      setDevices(initialDevices);
-  }, [initialDevices]);
-
-
   return (
       <>
         <div className="overflow-x-auto rounded-md border">
@@ -194,8 +181,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {devices && devices.length > 0 ? (
-                devices.map((device) => {
+              {initialDevices && initialDevices.length > 0 ? (
+                initialDevices.map((device) => {
                   const state = actionStates[device.id] || {};
                   const isLoading = state.isDeleting || state.isPinging || state.isSyncing;
                   
