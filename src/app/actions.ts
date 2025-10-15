@@ -102,10 +102,6 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
 
 export async function requestLogSync(deviceIp: string, devicePort: number): Promise<{ success: boolean; message: string; data?: any }> {
   try {
-    // In a real production environment, you would get this from environment variables or a service discovery mechanism.
-    const targetIp = process.env.PUBLIC_SERVER_IP || '127.0.0.1'; 
-    const targetPort = parseInt(process.env.ADMS_PORT || '80', 10);
-
     // This needs to be a full URL to the API route
     const apiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/api/device/sync`;
 
@@ -115,8 +111,6 @@ export async function requestLogSync(deviceIp: string, devicePort: number): Prom
       body: JSON.stringify({
         deviceIp,
         devicePort,
-        targetIp,
-        targetPort
       }),
       cache: 'no-store'
     });
@@ -130,7 +124,7 @@ export async function requestLogSync(deviceIp: string, devicePort: number): Prom
     return { success: true, message: result.message, data: result.data };
 
   } catch (e: any) {
-    console.error(`Error during direct log sync for ${deviceIp}:`, e);
+    console.error(`Error during log sync for ${deviceIp}:`, e);
     return { success: false, message: e.message || 'Failed to trigger sync.' };
   }
 }
@@ -238,5 +232,5 @@ export async function processAndSaveLogs(rawLogs: any[], propertyCode: string): 
     }
 
 
-    return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: newLiveLogs.length };
+    return { success: true, message: `Successfully processed ${newLiveLogs.length} logs.`, count: 0 };
 }
