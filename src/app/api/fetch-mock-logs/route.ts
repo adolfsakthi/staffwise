@@ -15,12 +15,10 @@ export async function GET(request: NextRequest) {
     const url = `http://${ipAddress}:${port}/mock/adms/logs`;
 
     try {
-        // Use { cache: 'no-store' } for Next.js App Router to prevent caching
-        const response = await fetch(url, { cache: 'no-store' });
+        const response = await fetch(url);
 
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to fetch logs from device: ${response.status} ${response.statusText}. ${errorText}`);
+            throw new Error(`Failed to fetch from ${url}. Status: ${response.status}`);
         }
 
         const data = await response.json();

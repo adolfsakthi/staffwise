@@ -9,10 +9,6 @@ import path from 'path';
 // A simple in-memory store for commands to be sent to the device.
 const commandQueue: { [sn: string]: string[] } = {};
 
-// In-memory store for response promises
-type ResponseResolver = (value: { success: boolean; message?: string, count: number }) => void;
-const responseWaiters: { [sn: string]: ResponseResolver } = {};
-
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 
 export function addCommandToQueue(sn: string, command: string) {
@@ -21,28 +17,6 @@ export function addCommandToQueue(sn: string, command: string) {
     }
     commandQueue[sn].push(command);
     console.log(`Command '${command}' queued for device ${sn}.`);
-}
-
-export function waitForDeviceResponse(sn: string, timeout: number): Promise<{ success: boolean; message?: string, count: number }> {
-    return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-            delete responseWaiters[sn];
-            resolve({ success: false, message: 'Device did not respond in time.', count: 0 });
-        }, timeout);
-
-        responseWaiters[sn] = (result) => {
-            clearTimeout(timer);
-            delete responseWaiters[sn];
-            resolve(result);
-        };
-    });
-}
-
-export function clearDeviceResponse(sn: string) {
-    if (responseWaiters[sn]) {
-        responseWaiters[sn]({ success: false, message: 'Sync request cancelled.', count: 0 });
-        delete responseWaiters[sn];
-    }
 }
 
 async function getDevicePropertyCode(sn: string): Promise<string | null> {
@@ -141,15 +115,6 @@ export async function POST(request: NextRequest) {
         if (logs.length > 0) {
             console.log(`Processing ${logs.length} attendance logs for property ${propertyCode}`);
             const processResult = await processLogs(logs, propertyCode);
-            
-            // If a function is waiting for this response, resolve it
-            if (responseWaiters[sn]) {
-                responseWaiters[sn]({ success: true, message: `Synced ${processResult.count} logs.`, count: processResult.count });
-            }
-        } else {
-             if (responseWaiters[sn]) {
-                responseWaiters[sn]({ success: true, message: `No new logs to sync.`, count: 0 });
-            }
         }
     }
     return new NextResponse('OK', { status: 200 });

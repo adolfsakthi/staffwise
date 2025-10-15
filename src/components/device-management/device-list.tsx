@@ -47,7 +47,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
-import { removeDevice, pingDevice } from '@/app/actions';
+import { removeDevice, pingDevice, requestLogSync } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
@@ -71,7 +71,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const [logs, setLogs] = useState<any[] | null>(null);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [deviceForLogs, setDeviceForLogs] = useState<Device | null>(null);
-  const [logError, setLogError] = useState<string | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -109,15 +108,27 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
     setActionState(device.id, { isSyncing: true });
     
-    toast({
-      title: "Sync Request Sent",
-      description: "A sync request has been sent to the device. New logs will appear on the Live Logs page shortly."
-    });
+    const result = await requestLogSync(device.serialNumber);
 
+    if (result.success) {
+      toast({
+        title: "Sync Request Sent",
+        description: result.message
+      });
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Sync Failed',
+        description: result.message,
+      });
+    }
+
+
+    // The action is quick, so we can just refresh the state after a short delay
     setTimeout(() => {
         setActionState(device.id, { isSyncing: false });
         router.refresh();
-    }, 1500)
+    }, 1000)
   }
 
   const handleViewLogs = async (device: Device) => {
@@ -125,26 +136,23 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
     setShowLogsDialog(true);
     setIsLoadingLogs(true);
     setLogs(null);
-    setLogError(null);
 
     try {
-      const response = await fetch(`/api/fetch-mock-logs?ip=${device.ipAddress}&port=${device.port}`);
+      const response = await fetch(`/api/logs`);
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.message || 'Failed to fetch logs from device.');
+        throw new Error(result.message || 'Failed to fetch logs.');
       }
       
       setLogs(result);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
-      const errorMessage = error.message || 'Could not retrieve mock logs.';
-      setLogError(errorMessage);
        toast({
         variant: 'destructive',
         title: 'Failed to View Logs',
-        description: errorMessage,
+        description: 'Could not retrieve stored punch logs.',
       });
       setLogs([]); // show empty state instead of loading
     } finally {
@@ -243,7 +251,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                             <Activity className="mr-2 h-4 w-4" />
                             Ping Device
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSyncLogs(device)} disabled>
+                          <DropdownMenuItem onClick={() => handleSyncLogs(device)}>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Sync Logs
                           </DropdownMenuItem>
@@ -297,9 +305,9 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
         <Dialog open={showLogsDialog} onOpenChange={setShowLogsDialog}>
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Mock Punch Logs for {deviceForLogs?.deviceName}</DialogTitle>
+                    <DialogTitle>Stored Punch Logs Sample</DialogTitle>
                     <DialogDescription>
-                        Displaying data from <code className='bg-muted text-muted-foreground rounded-sm px-1 py-0.5'>{`http://${deviceForLogs?.ipAddress}:${deviceForLogs?.port}/mock/adms/logs`}</code>
+                        Displaying raw data from the server's stored log file.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="mt-4 max-h-[500px] overflow-y-auto rounded-md border bg-muted p-4">
@@ -313,7 +321,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </pre>
                     ) : (
                         <div className="flex justify-center items-center h-48 text-muted-foreground">
-                            <p>{logError ? logError : "No logs found at the specified endpoint."}</p>
+                            No stored logs found.
                         </div>
                     )}
                 </div>
