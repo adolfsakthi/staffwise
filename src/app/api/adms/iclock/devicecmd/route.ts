@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processAndSaveLogs } from '@/app/actions';
 
+export const auth = 'public';
+
 // /api/adms/iclock/devicecmd
 // The device reports the result of a command execution to this endpoint.
-
 export async function POST(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const sn = searchParams.get('SN');

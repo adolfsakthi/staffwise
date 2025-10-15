@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const auth = 'public';
+
 // /api/adms/iclock/getrequest
 // This endpoint is polled by the device to see if the server has any new commands for it.
-
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const sn = searchParams.get('SN');
