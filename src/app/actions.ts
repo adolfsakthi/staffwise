@@ -4,6 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { Device } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import net from 'net';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
 
@@ -39,7 +40,7 @@ export async function addDevice(deviceData: Omit<Device, 'id' | 'status' | 'clie
     const newDevice: Device = {
         ...deviceData,
         id: `device-${Date.now()}`,
-        status: 'offline', // Default status
+        status: 'offline', // Default status for a new device is always offline
         clientId: 'default_client',
         branchId: 'default_branch',
     };
@@ -64,23 +65,49 @@ export async function removeDevice(deviceId: string) {
 }
 
 export async function pingDevice(deviceId: string): Promise<{ success: boolean; status: 'online' | 'offline' }> {
-    // Mock ping logic
-    await new Promise(resolve => setTimeout(resolve, 750));
-    // In a real app, you would try to connect to the device ip/port
-    const isOnline = Math.random() > 0.3; // 70% chance of being online
-    
     const devices = await readDevices();
     const deviceIndex = devices.findIndex(d => d.id === deviceId);
 
-    if (deviceIndex !== -1) {
-        devices[deviceIndex].status = isOnline ? 'online' : 'offline';
-        await writeDevices(devices);
-        revalidatePath('/device-management');
-        return { success: true, status: devices[deviceIndex].status };
+    if (deviceIndex === -1) {
+        return { success: false, status: 'offline' };
     }
 
-    return { success: false, status: 'offline' };
+    const device = devices[deviceIndex];
+
+    const checkConnection = new Promise<'online' | 'offline'>((resolve) => {
+        const socket = new net.Socket();
+        const connectionTimeout = 2000; // 2 seconds
+
+        socket.setTimeout(connectionTimeout);
+
+        socket.on('connect', () => {
+            socket.destroy();
+            resolve('online');
+        });
+
+        socket.on('error', (err) => {
+            socket.destroy();
+            console.error(`Socket error for ${device.ipAddress}:${device.port}:`, err.message);
+            resolve('offline');
+        });
+
+        socket.on('timeout', () => {
+            socket.destroy();
+            resolve('offline');
+        });
+
+        socket.connect(device.port, device.ipAddress);
+    });
+
+    const newStatus = await checkConnection;
+
+    devices[deviceIndex].status = newStatus;
+    await writeDevices(devices);
+    revalidatePath('/device-management');
+
+    return { success: true, status: newStatus };
 }
+
 
 export async function getDeviceLogs(deviceId: string): Promise<{ success: boolean; logs?: any[]; error?: string }> {
     // Mock log fetching
