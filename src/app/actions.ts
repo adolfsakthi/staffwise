@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import net from 'net';
 
 const devicesFilePath = path.join(process.cwd(), 'src', 'lib', 'devices.json');
-const commandsFilePath = path.join(process.cwd(), 'src', 'lib', 'commands.json');
+const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
 
 async function readDevices(): Promise<Device[]> {
     try {
@@ -111,15 +111,12 @@ export async function pingDevice(deviceId: string): Promise<{ success: boolean; 
 
 
 export async function getDeviceLogs(deviceId: string): Promise<{ success: boolean; logs?: any[]; error?: string }> {
-    const logsFilePath = path.join(process.cwd(), 'src', 'lib', 'logs.json');
     try {
         const data = await fs.readFile(logsFilePath, 'utf-8');
         if (!data) return { success: true, logs: [] };
 
         const allLogs = JSON.parse(data);
-        // This is a simplified filter. In a real app, you'd likely have a more direct way
-        // to associate logs with devices, perhaps by storing serial number in the log.
-        // For now, we just return all logs.
+        // This is a simplified filter. 
         return { success: true, logs: allLogs };
 
     } catch (error) {
@@ -132,38 +129,8 @@ export async function getDeviceLogs(deviceId: string): Promise<{ success: boolea
 }
 
 export async function requestLogSync(deviceId: string, host: string) {
-    const devices = await readDevices();
-    const device = devices.find(d => d.id === deviceId);
-    if (!device) {
-        return { success: false, message: 'Device not found.' };
-    }
-
-    // This is the URL the device will post data back to.
-    // It must be a publicly accessible URL.
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const targetUrl = `${protocol}://${host}/api/adms/iclock/cdata?SN=${device.serialNumber}`;
-
-    // The command to send to the device.
-    // C:[id]:DATA UPDATE [table name]
-    const command = `C:${device.id}:DATA QUERY ATTLog`;
-    
-    try {
-        // In a real ADMS system, we store this command and wait for the device to poll for it.
-        const commandData = {
-            id: device.id, // Or serial number
-            command,
-            timestamp: new Date().toISOString(),
-        };
-        // For this demo, we'll write it to a file that the getrequest endpoint will read.
-        await fs.writeFile(commandsFilePath, JSON.stringify(commandData, null, 2));
-
-        console.log(`HTTP Sync Request Queued for device ${deviceId}`);
-        console.log(`Device will be instructed to post to: ${targetUrl}`);
-
-        return { success: true, message: 'Log sync requested. The device will sync shortly.' };
-
-    } catch (error) {
-        console.error("Failed to queue sync command:", error);
-        return { success: false, message: 'Failed to queue sync command.' };
-    }
+    // This is a placeholder for a new, more direct sync method.
+    // The previous ADMS implementation was removed.
+    console.log(`Log sync requested for device ${deviceId}. New implementation needed.`);
+    return { success: false, message: 'Sync function is not implemented yet.' };
 }

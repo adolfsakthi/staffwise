@@ -101,21 +101,19 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
   const handleSyncLogs = async (device: Device) => {
     setActionState(device.id, { isSyncing: true });
 
-    // We need the host to construct the callback URL for the device
     const result = await requestLogSync(device.id, window.location.host);
 
     if (result.success) {
         toast({
-            title: 'Sync Requested',
+            title: 'Sync Started',
             description: result.message,
         });
-        // Immediately open the log viewer to show current state
         handleViewLogs(device);
     } else {
         toast({
             variant: 'destructive',
             title: 'Sync Failed',
-            description: result.message,
+            description: result.message || 'Could not start sync process.',
         });
     }
 
