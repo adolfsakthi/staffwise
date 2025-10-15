@@ -102,30 +102,40 @@ export async function updateDeviceStatus(deviceId: string, status: 'online' | 'o
 
 export async function requestLogSync(deviceIp: string, devicePort: number, host: string): Promise<{ success: boolean; message: string; data?: any }> {
   try {
-    // This needs to be a full URL to the API route, which is now determined by the client
-    const apiUrl = `http://${host}/api/device/sync`;
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const targetUrl = `${protocol}://${host}/api/adms/iclock/cdata`;
 
-    const response = await fetch(apiUrl, {
+    console.log('Triggering device sync via server action...');
+    console.log('Device:', `${deviceIp}:${devicePort}`);
+    console.log('Target URL for device push:', targetUrl);
+
+    // Trigger the device via its local HTTP endpoint
+    const deviceUrl = `http://${deviceIp}:${devicePort}/sync`;
+    
+    const response = await fetch(deviceUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        deviceIp,
-        devicePort,
-        host, // Pass the host to the API route
+        target_url: targetUrl,
       }),
-      cache: 'no-store'
+      cache: 'no-store',
     });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Device responded with status ${response.status}: ${errorText}`);
+    }
 
     const result = await response.json();
 
-    if (!response.ok) {
-      throw new Error(result.error || `API responded with status ${response.status}`);
-    }
-
-    return { success: true, message: result.message, data: result.data };
+    return { success: true, message: 'Sync triggered successfully', data: result };
 
   } catch (e: any) {
     console.error(`Error during log sync for ${deviceIp}:`, e);
+    // More detailed error checking for network issues
+    if (e.cause?.code === 'ECONNREFUSED') {
+         return { success: false, message: `Connection refused by device at ${e.cause.address}:${e.cause.port}. Check device IP and ensure it is on the same network.` };
+    }
     return { success: false, message: e.message || 'Failed to trigger sync.' };
   }
 }
