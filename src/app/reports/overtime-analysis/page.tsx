@@ -19,8 +19,10 @@ import {
 } from '@/components/ui/table';
 import { useMockData } from '@/lib/mock-data-store';
 import { format, getMonth, getYear } from 'date-fns';
-import { LineChart } from 'lucide-react';
+import { LineChart, ArrowLeft, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function OvertimeAnalysisPage() {
     const { attendanceRecords, employees } = useMockData();
@@ -53,10 +55,26 @@ export default function OvertimeAnalysisPage() {
 
     }, [attendanceRecords, employees, now]);
 
+    const handlePrint = () => {
+        window.print();
+    }
+
   return (
-    <Card>
+    <Card className="printable-content">
       <CardHeader>
-        <div className="flex items-center gap-3">
+        <div className="flex justify-between items-center no-print">
+            <Button asChild variant="outline">
+                <Link href="/reports">
+                    <ArrowLeft className="mr-2" />
+                    Back to Reports
+                </Link>
+            </Button>
+             <Button onClick={handlePrint}>
+                <Printer className="mr-2"/>
+                Print Report
+            </Button>
+        </div>
+        <div className="flex items-center gap-3 mt-4">
           <LineChart className="size-8 text-primary" />
           <div>
             <CardTitle>Overtime Analysis Report</CardTitle>

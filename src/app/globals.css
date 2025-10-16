@@ -90,3 +90,26 @@
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
+
+@media print {
+  body {
+    background: white;
+  }
+  /* Hide sidebar, header, and action buttons when printing */
+  [data-sidebar="sidebar"],
+  header,
+  .no-print {
+    display: none !important;
+  }
+  /* Ensure the main content takes up the full width */
+  main, [data-variant="inset"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .printable-content {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

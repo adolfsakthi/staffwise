@@ -29,8 +29,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMockData } from '@/lib/mock-data-store';
 import { format } from 'date-fns';
-import { User, Printer } from 'lucide-react';
+import { User, Printer, ArrowLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 export default function EmployeeHistoryPage() {
     const { attendanceRecords, employees } = useMockData();
@@ -59,7 +60,15 @@ export default function EmployeeHistoryPage() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 printable-content">
+        <div className="flex justify-between items-center no-print">
+             <Button asChild variant="outline">
+                <Link href="/reports">
+                    <ArrowLeft className="mr-2" />
+                    Back to Reports
+                </Link>
+            </Button>
+        </div>
         <Card>
             <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -72,13 +81,13 @@ export default function EmployeeHistoryPage() {
                             </CardDescription>
                         </div>
                     </div>
-                    <Button onClick={handlePrint}>
+                    <Button onClick={handlePrint} className="no-print">
                         <Printer className="mr-2"/>
                         Print Report
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="no-print">
                 <div className="flex flex-col sm:flex-row gap-4 mb-4">
                     <div className="flex-1">
                         <Label htmlFor="date-filter">Date</Label>

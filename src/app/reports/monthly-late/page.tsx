@@ -20,7 +20,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useMockData } from '@/lib/mock-data-store';
 import { format, getMonth, getYear } from 'date-fns';
-import { Clock } from 'lucide-react';
+import { Clock, ArrowLeft, Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function MonthlyLateReportPage() {
     const { attendanceRecords } = useMockData();
@@ -35,10 +37,26 @@ export default function MonthlyLateReportPage() {
         });
     }, [attendanceRecords, now]);
 
+    const handlePrint = () => {
+        window.print();
+    }
+
   return (
-    <Card>
+    <Card className="printable-content">
       <CardHeader>
-        <div className="flex items-center gap-3">
+        <div className="flex justify-between items-center no-print">
+            <Button asChild variant="outline">
+                <Link href="/reports">
+                    <ArrowLeft className="mr-2" />
+                    Back to Reports
+                </Link>
+            </Button>
+             <Button onClick={handlePrint}>
+                <Printer className="mr-2"/>
+                Print Report
+            </Button>
+        </div>
+        <div className="flex items-center gap-3 mt-4">
           <Clock className="size-8 text-destructive" />
           <div>
             <CardTitle>Monthly Late Report</CardTitle>

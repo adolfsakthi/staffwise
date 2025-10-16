@@ -18,8 +18,9 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Printer } from 'lucide-react';
+import { Printer, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 const reportData = {
   departments: [
@@ -60,22 +61,30 @@ export default function DepartmentConsolidatedReportPage() {
   }
 
   return (
-    <div className="bg-muted/20 p-4 sm:p-6 lg:p-8 rounded-xl">
+    <div className="bg-muted/20 p-4 sm:p-6 lg:p-8 rounded-xl printable-content">
       <div className="max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-4 no-print">
+            <Button asChild variant="outline">
+                <Link href="/reports">
+                    <ArrowLeft className="mr-2" />
+                    Back to Reports
+                </Link>
+            </Button>
+            <Button onClick={handlePrint} className="hidden sm:flex">
+                <Printer className="mr-2" /> Print Report
+            </Button>
+        </div>
         <div style={{ background: 'linear-gradient(to right, #6d28d9, #a78bfa)' }} className="rounded-t-lg p-6 text-white shadow-lg">
           <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold">Consolidated Audit Report</h1>
                 <p className="text-sm opacity-90">Department-wise Summary for {format(new Date(), 'MMMM do, yyyy')}</p>
             </div>
-            <Button variant="secondary" onClick={handlePrint} className="hidden sm:flex">
-                <Printer className="mr-2" /> Print Report
-            </Button>
           </div>
         </div>
 
         <div className="space-y-6 bg-card p-6 rounded-b-lg border border-t-0 shadow-lg">
-          <Button variant="secondary" onClick={handlePrint} className="w-full sm:hidden">
+          <Button onClick={handlePrint} className="w-full sm:hidden no-print">
               <Printer className="mr-2" /> Print Report
           </Button>
 
