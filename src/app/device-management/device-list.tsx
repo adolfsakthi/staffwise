@@ -48,20 +48,14 @@ import {
 } from 'lucide-react';
 import type { Device } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { pingDevice, removeDevice, getDeviceLogs, requestLogSync } from '@/app/actions';
 
 interface DeviceListProps {
-    initialDevices: Device[];
+    devices: Device[];
+    onRemoveDevice: (deviceId: string) => void;
+    onPingDevice: (deviceId: string) => void;
 }
 
-type ActionState = {
-    isDeleting?: boolean;
-    isPinging?: boolean;
-    isSyncing?: boolean;
-}
-
-export default function DeviceList({ initialDevices }: DeviceListProps) {
-  const [actionStates, setActionStates] = useState<{[key: string]: ActionState}>({});
+export default function DeviceList({ devices, onRemoveDevice, onPingDevice }: DeviceListProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [deviceToDelete, setDeviceToDelete] = useState<Device | null>(null);
 
@@ -73,94 +67,44 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
 
   const { toast } = useToast();
 
-  const setActionState = (deviceId: string, state: ActionState) => {
-    setActionStates(prev => ({ ...prev, [deviceId]: { ...prev[deviceId], ...state }}));
-  };
-
-  const handlePingDevice = async (device: Device) => {
-    setActionState(device.id, { isPinging: true });
-    
-    const result = await pingDevice(device.id);
-
-    if (result.success) {
-        toast({
-            title: 'Ping Successful',
-            description: `Device ${device.deviceName} is ${result.status}.`,
-        });
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Ping Failed',
-            description: `Could not reach device ${device.deviceName}.`,
-        });
-    }
-
-    setActionState(device.id, { isPinging: false });
+  const handlePingDevice = (device: Device) => {
+    onPingDevice(device.id);
+    toast({
+      title: 'Pinging Device...',
+      description: `Sending a ping to ${device.deviceName}.`,
+    });
   }
   
-  const handleSyncLogs = async (device: Device) => {
-    setActionState(device.id, { isSyncing: true });
-
-    const result = await requestLogSync(device.id, window.location.host);
-
-    if (result.success) {
-        toast({
-            title: 'Sync Started',
-            description: result.message,
-        });
-        handleViewLogs(device);
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Sync Failed',
-            description: result.message || 'Could not start sync process.',
-        });
-    }
-
-    setActionState(device.id, { isSyncing: false });
+  const handleSyncLogs = (device: Device) => {
+    toast({
+        title: 'Sync Mocked',
+        description: `Log sync would be initiated for ${device.deviceName}.`,
+    });
   }
 
-  const handleViewLogs = async (device: Device) => {
+  const handleViewLogs = (device: Device) => {
     setDeviceForLogs(device);
     setShowLogsDialog(true);
     setIsLoadingLogs(true);
     setLogs(null);
     setLogError(null);
   
-    const result = await getDeviceLogs(device.id);
-    
-    if (result.success) {
-        setLogs(result.logs || []);
-    } else {
-        setLogError(result.error || 'An unknown error occurred.');
-    }
-
-    setIsLoadingLogs(false);
+    // Mock log fetching
+    setTimeout(() => {
+        setLogs([]);
+        setIsLoadingLogs(false);
+    }, 1000);
   };
 
-  const confirmRemoveDevice = async () => {
+  const confirmRemoveDevice = () => {
     if (!deviceToDelete) return;
-    
-    setActionState(deviceToDelete.id, { isDeleting: true });
+    onRemoveDevice(deviceToDelete.id);
     setShowDeleteAlert(false);
-
-    const result = await removeDevice(deviceToDelete.id);
-    
-    if (result.success) {
-      toast({
-          title: 'Device Removed',
-          description: 'The device has been successfully removed.',
-      });
-    } else {
-      toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: result.message,
-      });
-    }
-    
+    toast({
+      title: 'Device Removed',
+      description: `Device ${deviceToDelete.deviceName} has been removed.`,
+    });
     setDeviceToDelete(null);
-    // No need to set isDeleting to false as the component will re-render
   };
   
   return (
@@ -177,17 +121,8 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialDevices && initialDevices.length > 0 ? (
-                initialDevices.map((device) => {
-                  const state = actionStates[device.id] || {};
-                  const isLoading = state.isDeleting || state.isPinging || state.isSyncing;
-                  
-                  let statusLabel = device.status;
-                  if (state.isDeleting) statusLabel = 'Removing...';
-                  else if (state.isPinging) statusLabel = 'Pinging...';
-                  else if (state.isSyncing) statusLabel = 'Syncing...';
-
-
+              {devices && devices.length > 0 ? (
+                devices.map((device) => {
                   return (
                   <TableRow key={device.id}>
                     <TableCell className="font-medium">{device.deviceName}</TableCell>
@@ -201,25 +136,19 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                           device.status === 'online' ? 'secondary' : 'outline'
                         }
                       >
-                         {isLoading ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                         ) : device.status === 'online' ? (
+                         {device.status === 'online' ? (
                           <Wifi className="mr-2 text-green-500" />
                         ) : (
                           <WifiOff className="mr-2 text-red-500" />
                         )}
-                        {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
+                        {device.status.charAt(0).toUpperCase() + device.status.slice(1)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" disabled={isLoading}>
-                            {isLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <MoreVertical />
-                            )}
+                          <Button variant="ghost" size="icon">
+                             <MoreVertical />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
@@ -252,7 +181,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-24 text-center">
-                    No devices found for this property. Add one above to get started.
+                    No devices found. Add one to get started.
                   </TableCell>
                 </TableRow>
               )}
@@ -272,7 +201,6 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => setDeviceToDelete(null)}>Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={confirmRemoveDevice}>
-                        {actionStates[deviceToDelete?.id || '']?.isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Continue
                     </AlertDialogAction>
                 </AlertDialogFooter>
@@ -302,7 +230,7 @@ export default function DeviceList({ initialDevices }: DeviceListProps) {
                         </pre>
                     ) : (
                         <div className="flex justify-center items-center h-48 text-muted-foreground">
-                            No stored logs found on the server.
+                            No stored logs found.
                         </div>
                     )}
                 </div>

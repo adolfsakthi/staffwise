@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,16 +13,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { addDevice } from '@/app/actions';
+import type { Device } from '@/lib/types';
 
 type AddDeviceFormProps = {
     propertyCode: string;
+    onAddDevice: (device: Omit<Device, 'id' | 'status' | 'clientId' | 'branchId'>) => void;
 }
 
-export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
+export default function AddDeviceForm({ propertyCode, onAddDevice }: AddDeviceFormProps) {
     const { toast } = useToast();
-    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,23 +38,18 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             connectionKey: '0', // Default value
             property_code: propertyCode,
         };
+        
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        const result = await addDevice(deviceData);
+        onAddDevice(deviceData);
 
-        if (result.success) {
-            toast({
-                title: 'Device Added',
-                description: result.message,
-            });
-            form.reset();
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Failed to Add Device',
-                description: result.message,
-            });
-        }
-
+        toast({
+            title: 'Device Added',
+            description: 'The new device has been added to the list.',
+        });
+        
+        form.reset();
         setIsLoading(false);
     }
 
@@ -65,7 +58,7 @@ export default function AddDeviceForm({ propertyCode }: AddDeviceFormProps) {
             <CardHeader>
             <CardTitle>Register New Biometric Device</CardTitle>
             <CardDescription>
-                Add a new ADMS / Push Protocol compatible device to this property.
+                Add a new device to this property.
             </CardDescription>
             </CardHeader>
             <CardContent>
