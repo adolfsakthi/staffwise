@@ -1,7 +1,8 @@
+
 [
   {
     "deviceName": "ESSL Droplet",
-    "serialNumber": "",
+    "serialNumber": "CKUH211960123",
     "ipAddress": "68.183.89.205",
     "port": 8080,
     "connectionKey": "0",

@@ -1,0 +1,19 @@
+
+[
+    { 
+        "id": "1", 
+        "recipient": "manager@staffwise.com", 
+        "subject": "Late Arrival Notice", 
+        "body": "<div style=\"font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;\"><div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);\"><div style=\"background: linear-gradient(to right, #6d28d9, #a78bfa); color: #ffffff; padding: 20px; text-align: center; font-size: 24px; font-weight: bold;\">⏰ Late Entry Notice</div><div style=\"padding: 30px 20px; color: #333;\"><p style=\"margin-bottom: 20px;\">Dear Test User,</p><p style=\"margin-bottom: 20px;\">This is to inform you that you were late by <strong style=\"color: #ef4444;\">15 minutes</strong> on <strong style=\"color: #333;\">2024-07-29</strong>.</p><p style=\"margin-bottom: 30px;\">Please ensure timely attendance going forward.</p><hr style=\"border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;\"><p style=\"font-size: 12px; color: #9ca3af; text-align: center;\">This is an automated message from the Attendance Management System.</p></div></div></div>", 
+        "timestamp": "2024-07-29T10:00:00.000Z", 
+        "emailType": "late_notice" 
+    },
+    { 
+        "id": "2", 
+        "recipient": "admin@staffwise.com", 
+        "subject": "Daily Audit Report", 
+        "body": "<div style=\"font-family: Arial, sans-serif; background-color: #f4f4f9; padding: 20px;\"><div style=\"max-width: 700px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.1);\"><div style=\"background: linear-gradient(to right, #6d28d9, #a78bfa); color: #ffffff; padding: 20px; text-align: center;\"><h1 style=\"font-size: 24px; font-weight: bold; margin: 0;\">Daily Audit Report</h1><p style=\"margin: 4px 0 0; opacity: 0.9;\">July 29th, 2024</p></div><div style=\"padding: 30px 20px; color: #333;\"><h2 style=\"font-size: 18px; font-weight: bold; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px;\">Summary</h2><p>Report body...</p><hr style=\"border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;\"><p style=\"font-size: 12px; color: #9ca3af; text-align: center;\">This is an automated message from the HEZEE ACCESS System.</p></div></div></div>", 
+        "timestamp": "2024-07-29T11:00:00.000Z", 
+        "emailType": "admin_report"
+    }
+]

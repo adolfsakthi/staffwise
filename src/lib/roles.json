@@ -1,0 +1,7 @@
+
+[
+    { "id": "1", "name": "Admin", "permissions": ["read", "write", "delete", "manage_users"], "property_code": "D001", "clientId": "default_client" },
+    { "id": "2", "name": "Manager", "permissions": ["read", "write"], "property_code": "D001", "clientId": "default_client" },
+    { "id": "3", "name": "Auditor", "permissions": ["read", "run_audit"], "property_code": "D001", "clientId": "default_client" },
+    { "id": "4", "name": "Manager", "permissions": ["read", "write"], "property_code": "D002", "clientId": "default_client" }
+]
