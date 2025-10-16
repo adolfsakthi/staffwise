@@ -37,19 +37,33 @@ export function MockDataStoreProvider({ children }: { children: React.ReactNode 
     const [employees, setEmployees] = useState<Employee[]>(initialEmployees as Employee[]);
     const [devices, setDevices] = useState<Device[]>(initialDevices as Device[]);
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-    const [liveLogs, setLiveLogs] = useState<LiveLog[]>(initialLiveLogs as LiveLog[]);
+    const [liveLogs, setLiveLogs] = useState<LiveLog[]>([]);
     const [users, setUsers] = useState<UserProfile[]>(initialUsers as UserProfile[]);
     const [roles, setRoles] = useState<Role[]>(initialRoles as Role[]);
-    const [emailLogs, setEmailLogs] = useState<EmailLog[]>(initialEmailLogs as EmailLog[]);
+    const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
 
     useEffect(() => {
         // Set the attendance date to today for all records on initial load
         const today = format(new Date(), 'yyyy-MM-dd');
+        
         const updatedAttendance = (initialAttendance as AttendanceRecord[]).map(rec => ({
             ...rec,
             attendanceDate: today,
         }));
         setAttendanceRecords(updatedAttendance);
+
+        const updatedLiveLogs = (initialLiveLogs as LiveLog[]).map(log => ({
+            ...log,
+            timestamp: new Date(log.timestamp),
+        }));
+        setLiveLogs(updatedLiveLogs);
+        
+        const updatedEmailLogs = (initialEmailLogs as EmailLog[]).map(log => ({
+            ...log,
+            timestamp: new Date(log.timestamp),
+        }));
+        setEmailLogs(updatedEmailLogs);
+
     }, []);
 
     const value = {

@@ -37,9 +37,8 @@ export default function EmailLogsPage() {
   const { emailLogs } = useMockData();
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
-  const formatDate = (timestamp: any) => {
-    if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const formatDate = (date: any) => {
+    if (!date || !(date instanceof Date)) return 'N/A';
     return format(date, 'PPP p');
   };
 
