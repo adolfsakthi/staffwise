@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -23,6 +24,8 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useMockData } from '@/lib/mock-data-store';
 import type { AttendanceRecord } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type DepartmentReport = {
     name: string;
@@ -38,12 +41,12 @@ type DepartmentReport = {
 
 export default function DepartmentConsolidatedReportPage() {
   const { attendanceRecords } = useMockData();
+  const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const reportData = useMemo(() => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const todayRecords = attendanceRecords.filter(r => r.attendanceDate === today);
+    const selectedDateRecords = attendanceRecords.filter(r => r.attendanceDate === dateFilter);
 
-    const departments = todayRecords.reduce((acc, record) => {
+    const departments = selectedDateRecords.reduce((acc, record) => {
         if (!record.department) return acc;
         if (!acc[record.department]) {
             acc[record.department] = {
@@ -72,11 +75,13 @@ export default function DepartmentConsolidatedReportPage() {
         }
     }));
 
-  }, [attendanceRecords]);
+  }, [attendanceRecords, dateFilter]);
     
   const handlePrint = () => {
     window.print();
   }
+  
+  const reportDate = dateFilter ? new Date(dateFilter.replace(/-/g, '/')) : new Date();
 
   return (
     <div className="bg-muted/20 p-4 sm:p-6 lg:p-8 rounded-xl printable-content">
@@ -92,11 +97,23 @@ export default function DepartmentConsolidatedReportPage() {
                 <Printer className="mr-2" /> Print Report
             </Button>
         </div>
+
+        <div className="mb-4 no-print">
+            <Label htmlFor="date-filter">Select Report Date</Label>
+            <Input 
+                id="date-filter"
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="w-full sm:w-auto"
+            />
+        </div>
+
         <div style={{ background: 'linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary)/0.8))' }} className="rounded-t-lg p-6 text-white shadow-lg">
           <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold">Consolidated Audit Report</h1>
-                <p className="text-sm opacity-90">Department-wise Summary for {format(new Date(), 'MMMM do, yyyy')}</p>
+                <p className="text-sm opacity-90">Department-wise Summary for {format(reportDate, 'MMMM do, yyyy')}</p>
             </div>
           </div>
         </div>
@@ -106,7 +123,7 @@ export default function DepartmentConsolidatedReportPage() {
               <Printer className="mr-2" /> Print Report
           </Button>
 
-          {reportData.map((dept) => (
+          {reportData.length > 0 ? reportData.map((dept) => (
             <Card key={dept.name} className="overflow-hidden">
               <CardHeader className="bg-muted/50 border-b">
                 <CardTitle className="text-xl">{dept.name} Department</CardTitle>
@@ -163,7 +180,11 @@ export default function DepartmentConsolidatedReportPage() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )) : (
+            <div className="text-center py-12 text-muted-foreground">
+                No attendance data found for the selected date.
+            </div>
+          )}
         </div>
       </div>
     </div>
