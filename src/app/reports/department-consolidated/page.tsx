@@ -19,9 +19,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
+import { format } from 'date-fns';
 
 const reportData = {
-  date: 'October 11, 2025',
   departments: [
     {
       name: 'Engineering',
@@ -66,7 +66,7 @@ export default function DepartmentConsolidatedReportPage() {
           <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold">Consolidated Audit Report</h1>
-                <p className="text-sm opacity-90">Department-wise Summary for {reportData.date}</p>
+                <p className="text-sm opacity-90">Department-wise Summary for {format(new Date(), 'MMMM do, yyyy')}</p>
             </div>
             <Button variant="secondary" onClick={handlePrint} className="hidden sm:flex">
                 <Printer className="mr-2" /> Print Report

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -43,9 +44,10 @@ export function MockDataStoreProvider({ children }: { children: React.ReactNode 
     const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
 
     useEffect(() => {
-        // Set the attendance date to today for all records on initial load
-        const today = format(new Date(), 'yyyy-MM-dd');
-        
+        const now = new Date();
+        const today = format(now, 'yyyy-MM-dd');
+        const todayLong = format(now, 'MMMM do, yyyy');
+
         const updatedAttendance = (initialAttendance as AttendanceRecord[]).map(rec => ({
             ...rec,
             attendanceDate: today,
@@ -54,13 +56,16 @@ export function MockDataStoreProvider({ children }: { children: React.ReactNode 
 
         const updatedLiveLogs = (initialLiveLogs as LiveLog[]).map(log => ({
             ...log,
-            timestamp: new Date(log.timestamp),
+            timestamp: new Date(log.timestamp.replace('2024-07-30', today)),
         }));
         setLiveLogs(updatedLiveLogs);
         
         const updatedEmailLogs = (initialEmailLogs as EmailLog[]).map(log => ({
             ...log,
-            timestamp: new Date(log.timestamp),
+            timestamp: new Date(log.timestamp.replace('2024-07-30', today)),
+            body: log.body
+                     .replace(/{{current_date_long}}/g, todayLong)
+                     .replace(/{{current_date}}/g, today)
         }));
         setEmailLogs(updatedEmailLogs);
 
