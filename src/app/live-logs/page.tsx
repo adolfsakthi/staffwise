@@ -1,5 +1,5 @@
 
-'use server';
+'use client';
 
 import {
     Card,
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/table';
 import type { LiveLog } from '@/lib/types';
 import { format } from 'date-fns';
+import { useMockData } from '@/lib/mock-data-store';
+import { useMemo } from 'react';
 
 const logConfig = {
     late: { icon: AlertTriangle, color: 'text-red-500', label: 'Late Arrival', badge: 'destructive' },
@@ -35,19 +37,13 @@ const logConfig = {
     audit_summary: { icon: Activity, color: 'text-gray-500', label: 'Audit', badge: 'outline' },
 } as const;
 
-async function getLiveLogs(): Promise<LiveLog[]> {
-    // Mock data
-    return [
-        { id: '1', type: 'late', message: 'John Doe arrived late', employee: 'John Doe', department: 'Engineering', time: '09:05', deviation: 5, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false },
-        { id: '2', type: 'overtime', message: 'Jane Smith worked overtime', employee: 'Jane Smith', department: 'Housekeeping', time: '18:30', deviation: 30, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false }
-    ]
-}
 
-
-export default async function LiveLogsPage() {
+export default function LiveLogsPage() {
     const propertyCode = 'D001';
-    const allLogs: LiveLog[] = await getLiveLogs();
-    const filteredLogs = allLogs.filter(l => l.property_code === propertyCode);
+    const { liveLogs } = useMockData();
+    const filteredLogs = useMemo(() => {
+        return liveLogs.filter(l => l.property_code === propertyCode);
+    }, [liveLogs, propertyCode]);
 
 
   return (

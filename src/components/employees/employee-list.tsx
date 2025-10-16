@@ -26,13 +26,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 type EmployeeListProps = {
-    initialEmployees: Employee[];
+    employees: Employee[];
     propertyCode: string;
+    onRemoveEmployee: (employeeId: string) => void;
 }
 
-export default function EmployeeList({ initialEmployees, propertyCode }: EmployeeListProps) {
+export default function EmployeeList({ employees, propertyCode, onRemoveEmployee }: EmployeeListProps) {
   const { toast } = useToast();
-  const [employees, setEmployees] = useState(initialEmployees);
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredEmployees = useMemo(() => {
@@ -46,8 +46,8 @@ export default function EmployeeList({ initialEmployees, propertyCode }: Employe
         );
   }, [employees, propertyCode, searchTerm]);
 
-  const handleRemoveEmployee = (employeeId: string) => {
-    setEmployees(prev => prev.filter(e => e.id !== employeeId));
+  const handleRemove = (employeeId: string) => {
+    onRemoveEmployee(employeeId);
     toast({
         title: 'Employee Removed (Mock)',
         description: 'The employee has been removed from the list.',
@@ -115,7 +115,7 @@ export default function EmployeeList({ initialEmployees, propertyCode }: Employe
                                 <DropdownMenuItem disabled>
                                     <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleRemoveEmployee(employee.id)} className="text-destructive focus:text-destructive">
+                                <DropdownMenuItem onClick={() => handleRemove(employee.id)} className="text-destructive focus:text-destructive">
                                     <Trash2 className="mr-2 h-4 w-4" /> Remove
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

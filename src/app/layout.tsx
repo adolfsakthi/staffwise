@@ -6,6 +6,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import ConditionalLayout from '@/components/layout/conditional-layout';
 import { Inter as FontSans } from 'next/font/google';
+import { MockDataStoreProvider } from '@/lib/mock-data-store';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -29,12 +30,14 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <SidebarProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
-        </SidebarProvider>
-        <Toaster />
+        <MockDataStoreProvider>
+            <SidebarProvider>
+            <ConditionalLayout>
+                {children}
+            </ConditionalLayout>
+            </SidebarProvider>
+            <Toaster />
+        </MockDataStoreProvider>
       </body>
     </html>
   );

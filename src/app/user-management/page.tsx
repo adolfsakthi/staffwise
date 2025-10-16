@@ -15,51 +15,36 @@ import {
 import UserList from '@/components/user-management/user-list';
 import RoleManagement from '@/components/user-management/role-management';
 import type { Role, UserProfile } from '@/lib/types';
-import { useMemo, useState } from 'react';
-
-const MOCK_ROLES: Role[] = [
-    { id: '1', name: 'Admin', permissions: ['read', 'write', 'delete', 'manage_users'], property_code: 'D001', clientId: 'default_client' },
-    { id: '2', name: 'Manager', permissions: ['read', 'write'], property_code: 'D001', clientId: 'default_client' },
-    { id: '3', name: 'Auditor', permissions: ['read', 'run_audit'], property_code: 'D001', clientId: 'default_client' },
-    { id: '4', name: 'Manager', permissions: ['read', 'write'], property_code: 'D002', clientId: 'default_client' },
-];
-
-const MOCK_USERS: UserProfile[] = [
-    { id: '1', uid: 'user1', displayName: 'Admin User', email: 'admin@staffwise.com', role: 'Admin', property_code: 'D001', clientId: 'default_client' },
-    { id: '2', uid: 'user2', displayName: 'Manager User', email: 'manager@staffwise.com', role: 'Manager', property_code: 'D001', clientId: 'default_client' },
-    { id: '3', uid: 'user3', displayName: 'Hotel B Manager', email: 'manager@hotelb.com', role: 'Manager', property_code: 'D002', clientId: 'default_client' },
-];
+import { useMemo } from 'react';
+import { useMockData } from '@/lib/mock-data-store';
 
 
 export default function UserManagementPage() {
     const propertyCode = 'D001';
 
-    const [rolesData, setRolesData] = useState(MOCK_ROLES);
-    const [usersData, setUsersData] = useState(MOCK_USERS);
+    const { roles, setRoles, users, setUsers } = useMockData();
 
-    const roles = useMemo(() => {
-      if (!rolesData || !propertyCode) return [];
-      return rolesData.filter(r => r.property_code === propertyCode);
-    }, [rolesData, propertyCode]);
+    const filteredRoles = useMemo(() => {
+      if (!roles || !propertyCode) return [];
+      return roles.filter(r => r.property_code === propertyCode);
+    }, [roles, propertyCode]);
     
-    const users = useMemo(() => {
-      if (!usersData || !propertyCode) return [];
-      return usersData.filter(u => u.property_code === propertyCode);
-    }, [usersData, propertyCode]);
+    const filteredUsers = useMemo(() => {
+      if (!users || !propertyCode) return [];
+      return users.filter(u => u.property_code === propertyCode);
+    }, [users, propertyCode]);
     
     const handleUpdateUserRole = (userId: string, newRole: string) => {
-        setUsersData(prev => prev.map(u => u.id === userId ? {...u, role: newRole} : u));
+        setUsers(prev => prev.map(u => u.id === userId ? {...u, role: newRole} : u));
     }
     
     const handleUpdateRoles = (updatedRoles: Role[]) => {
-        // This is a bit tricky as roles could be added/deleted/edited.
-        // For simplicity, we'll just replace the roles for the current property.
-        const otherPropertyRoles = rolesData.filter(r => r.property_code !== propertyCode);
-        setRolesData([...otherPropertyRoles, ...updatedRoles]);
+        const otherPropertyRoles = roles.filter(r => r.property_code !== propertyCode);
+        setRoles([...otherPropertyRoles, ...updatedRoles]);
     }
     
     const handleAddUser = (newUser: UserProfile) => {
-        setUsersData(prev => [...prev, newUser]);
+        setUsers(prev => [...prev, newUser]);
     }
 
     return (
@@ -78,8 +63,8 @@ export default function UserManagementPage() {
             </TabsList>
             <TabsContent value="users" className="pt-6">
                 <UserList 
-                    roles={roles || []} 
-                    users={users || []} 
+                    roles={filteredRoles || []} 
+                    users={filteredUsers || []} 
                     propertyCode={propertyCode || ''}
                     onUpdateUserRole={handleUpdateUserRole}
                     onAddUser={handleAddUser}
@@ -87,7 +72,7 @@ export default function UserManagementPage() {
             </TabsContent>
             <TabsContent value="roles" className="pt-6">
                 <RoleManagement 
-                    initialRoles={roles || []} 
+                    initialRoles={filteredRoles || []} 
                     propertyCode={propertyCode || ''}
                     onRolesChange={handleUpdateRoles}
                 />

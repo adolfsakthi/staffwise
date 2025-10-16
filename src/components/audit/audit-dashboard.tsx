@@ -26,126 +26,21 @@ import type { AttendanceRecord } from '@/lib/types';
 import { FileCheck2, Loader2, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
-const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false },
-    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: '2024-05-22', logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
-    { id: '5', employeeId: '5', deviceId: '2', punchInTime: '2024-05-23T09:08:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'Emily White', email: 'emily@example.com', department: 'Sales', property_code: 'D002', entry_time: '09:08', exit_time: '18:00', is_late: true, late_by_minutes: 8, overtime_minutes: 0, is_audited: false },
-    // Adding 50 more latecomers
-    ...Array.from({ length: 10 }, (_, i) => ({
-        id: `eng-${i + 1}`,
-        employeeId: `E${100 + i}`,
-        deviceId: '1',
-        punchInTime: `2024-05-23T09:${String(10 + i).padStart(2, '0')}:00Z`,
-        attendanceDate: '2024-05-23',
-        logType: 'Biometric',
-        employee_name: `Engineer ${i + 1}`,
-        email: `engineer${i + 1}@example.com`,
-        department: 'Engineering',
-        property_code: 'D001',
-        entry_time: `09:${String(10 + i).padStart(2, '0')}`,
-        exit_time: '18:00',
-        is_late: true,
-        late_by_minutes: 10 + i,
-        overtime_minutes: 0,
-        is_audited: false,
-    })),
-    ...Array.from({ length: 15 }, (_, i) => ({
-        id: `house-${i + 1}`,
-        employeeId: `H${100 + i}`,
-        deviceId: '1',
-        punchInTime: `2024-05-23T09:${String(5 + i).padStart(2, '0')}:00Z`,
-        attendanceDate: '2024-05-23',
-        logType: 'Biometric',
-        employee_name: `Housekeeper ${i + 1}`,
-        email: `housekeeper${i + 1}@example.com`,
-        department: 'Housekeeping',
-        property_code: 'D001',
-        entry_time: `09:${String(5 + i).padStart(2, '0')}`,
-        exit_time: '17:30',
-        is_late: true,
-        late_by_minutes: 5 + i,
-        overtime_minutes: 0,
-        is_audited: false,
-    })),
-    ...Array.from({ length: 5 }, (_, i) => ({
-        id: `sec-${i + 1}`,
-        employeeId: `S${100 + i}`,
-        deviceId: '1',
-        punchInTime: `2024-05-23T22:${String(3 + i).padStart(2, '0')}:00Z`,
-        attendanceDate: '2024-05-23',
-        logType: 'Biometric',
-        employee_name: `Security ${i + 1}`,
-        email: `security${i + 1}@example.com`,
-        department: 'Security',
-        property_code: 'D001',
-        entry_time: `22:${String(3 + i).padStart(2, '0')}`,
-        exit_time: '06:00',
-        is_late: true,
-        late_by_minutes: 3 + i,
-        overtime_minutes: 0,
-        is_audited: false,
-    })),
-    ...Array.from({ length: 12 }, (_, i) => ({
-        id: `front-${i + 1}`,
-        employeeId: `F${100 + i}`,
-        deviceId: '2',
-        punchInTime: `2024-05-23T09:${String(2 + i).padStart(2, '0')}:00Z`,
-        attendanceDate: '2024-05-23',
-        logType: 'Biometric',
-        employee_name: `Front Desk ${i + 1}`,
-        email: `frontdesk${i + 1}@example.com`,
-        department: 'Front Desk',
-        property_code: 'D001',
-        entry_time: `09:${String(2 + i).padStart(2, '0')}`,
-        exit_time: '18:10',
-        is_late: true,
-        late_by_minutes: 2 + i,
-        overtime_minutes: 0,
-        is_audited: false,
-    })),
-    ...Array.from({ length: 8 }, (_, i) => ({
-        id: `kitch-${i + 1}`,
-        employeeId: `K${100 + i}`,
-        deviceId: '2',
-        punchInTime: `2024-05-23T08:${String(6 + i).padStart(2, '0')}:00Z`,
-        attendanceDate: '2024-05-23',
-        logType: 'Biometric',
-        employee_name: `Kitchen Staff ${i + 1}`,
-        email: `kitchen${i + 1}@example.com`,
-        department: 'Kitchen',
-        property_code: 'D001',
-        entry_time: `08:${String(6 + i).padStart(2, '0')}`,
-        exit_time: '17:00',
-        is_late: true,
-        late_by_minutes: 6 + i,
-        overtime_minutes: 0,
-        is_audited: false,
-    })),
-];
-
-
 interface AuditDashboardProps {
     propertyCode: string;
+    allRecords: AttendanceRecord[];
+    setAllRecords: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
 }
 
-export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
+export default function AuditDashboard({ propertyCode, allRecords, setAllRecords }: AuditDashboardProps) {
   const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
   const [auditNotes, setAuditNotes] = useState('');
   const [isAuditing, setIsAuditing] = useState(false);
   const { toast } = useToast();
-  const [isFetching, setIsFetching] = useState(false);
   
-  const [unauditedRecords, setUnauditedRecords] = useState<AttendanceRecord[]>([]);
-
-  useEffect(() => {
-    setIsFetching(true);
-    // Simulating a fetch
-    setTimeout(() => {
-        const records = MOCK_RECORDS.filter(r => r.property_code === propertyCode && !r.is_audited);
-        setUnauditedRecords(records);
-        setIsFetching(false);
-    }, 500);
-  }, [propertyCode]);
+  const unauditedRecords = useMemo(() => {
+    return allRecords.filter(r => r.property_code === propertyCode && !r.is_audited);
+  }, [allRecords, propertyCode]);
 
 
   useEffect(() => {
@@ -183,9 +78,9 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
     // Mock audit
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Update local state
-    const updatedRecords = unauditedRecords.filter(r => !selectedRecords.includes(r.id));
-    setUnauditedRecords(updatedRecords);
+    setAllRecords(prev => 
+        prev.map(r => selectedRecords.includes(r.id) ? { ...r, is_audited: true } : r)
+    );
 
     toast({
         title: 'Audit Complete',
@@ -225,13 +120,7 @@ export default function AuditDashboard({ propertyCode }: AuditDashboardProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isFetching ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                    </TableCell>
-                  </TableRow>
-                ) : unauditedRecords && unauditedRecords.length > 0 ? (
+                {unauditedRecords && unauditedRecords.length > 0 ? (
                   unauditedRecords.map((record) => (
                     <TableRow
                       key={record.id}

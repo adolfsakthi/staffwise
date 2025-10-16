@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import type { AttendanceRecord } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,49 +22,35 @@ import {
 } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
-
-const MOCK_RECORDS: AttendanceRecord[] = [
-    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false, is_present: true },
-    { id: '2', employeeId: '2', deviceId: '1', punchInTime: '2024-05-23T08:58:00Z', attendanceDate: format(new Date(), 'yyyy-MM-dd'), logType: 'Biometric', employee_name: 'Jane Smith', email: 'jane@example.com', department: 'Housekeeping', property_code: 'D001', entry_time: '08:58', exit_time: '17:30', is_late: false, overtime_minutes: 0, is_audited: true, is_present: true },
-];
+import { useMockData } from '@/lib/mock-data-store';
 
 interface AttendanceTableProps {
     propertyCode: string;
 }
 
 export default function AttendanceTable({ propertyCode }: AttendanceTableProps) {
-  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const { attendanceRecords, employees } = useMockData();
   const [dateFilter, setDateFilter] = useState<string>(
     format(new Date(), 'yyyy-MM-dd')
   );
   const [departmentFilter, setDepartmentFilter] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(true);
-    // Simulate fetching logs
-    setTimeout(() => {
-        setAllRecords(MOCK_RECORDS);
-        setIsLoading(false);
-    }, 1000);
-  }, []);
-
+  const isLoading = false; // Data is loaded from context, so it's never loading here
 
   const filteredRecords = useMemo(() => {
     if (isLoading) return [];
-    return allRecords.filter(r => {
+    return attendanceRecords.filter(r => {
         const recordDate = r.attendanceDate;
         const dateMatch = recordDate === dateFilter;
         const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;
         const propertyMatch = r.property_code === propertyCode;
         return dateMatch && departmentMatch && propertyMatch;
     });
-  }, [dateFilter, departmentFilter, propertyCode, allRecords, isLoading]);
+  }, [dateFilter, departmentFilter, propertyCode, attendanceRecords, isLoading]);
 
   const departments = useMemo(() => {
-    const depts = new Set(allRecords.filter(r => r.property_code === propertyCode).map(r => r.department || ''));
+    const depts = new Set(employees.filter(r => r.property_code === propertyCode).map(r => r.department || ''));
     return Array.from(depts).filter(Boolean);
-  }, [propertyCode, allRecords]);
+  }, [propertyCode, employees]);
 
 
   return (
