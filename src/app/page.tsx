@@ -8,8 +8,8 @@ export default function LoginPage() {
       <div className="grid min-h-screen w-full lg:grid-cols-2">
         <div className="relative hidden bg-gray-100 lg:block">
             <Image
-                src="https://picsum.photos/seed/4/1200/1600"
-                alt="Abstract image representing attendance tracking"
+                src="https://picsum.photos/seed/5/1200/1600"
+                alt="Abstract image representing attendance and employee tracking"
                 data-ai-hint="attendance tracking"
                 fill
                 priority
