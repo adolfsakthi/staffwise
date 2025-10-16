@@ -60,18 +60,10 @@ export default function EmployeeHistoryPage() {
 
 
   return (
-    <div className="space-y-6 printable-content">
-        <div className="flex justify-between items-center no-print">
-             <Button asChild variant="outline">
-                <Link href="/reports">
-                    <ArrowLeft className="mr-2" />
-                    Back to Reports
-                </Link>
-            </Button>
-        </div>
-        <Card>
+    <div className="space-y-6">
+        <Card className="no-print">
             <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div className="flex items-center gap-3">
                         <User className="size-8 text-primary" />
                         <div>
@@ -81,28 +73,30 @@ export default function EmployeeHistoryPage() {
                             </CardDescription>
                         </div>
                     </div>
-                    <Button onClick={handlePrint} className="no-print">
-                        <Printer className="mr-2"/>
-                        Print Report
+                     <Button asChild variant="outline" className="w-full sm:w-auto">
+                        <Link href="/reports">
+                            <ArrowLeft className="mr-2" />
+                            Back to Reports
+                        </Link>
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="no-print">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                    <div className="flex-1">
+            <CardContent>
+                <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1 space-y-2">
                         <Label htmlFor="date-filter">Date</Label>
                         <Input
                             id="date-filter"
                             type="date"
                             value={dateFilter}
                             onChange={(e) => setDateFilter(e.target.value)}
-                            className="w-full sm:w-auto"
+                            className="w-full"
                         />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 space-y-2">
                         <Label htmlFor="dept-filter">Department</Label>
                         <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                            <SelectTrigger id="dept-filter" className="w-full sm:w-[200px]">
+                            <SelectTrigger id="dept-filter" className="w-full">
                                 <SelectValue placeholder="Filter by department" />
                             </SelectTrigger>
                             <SelectContent>
@@ -115,13 +109,20 @@ export default function EmployeeHistoryPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                     <div className="flex-1 flex items-end">
+                        <Button onClick={handlePrint} className="w-full">
+                            <Printer className="mr-2"/>
+                            Print Report
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
         </Card>
         
-        <Card>
+        <Card className="printable-content">
             <CardHeader>
                 <CardTitle>Filtered Results ({filteredRecords.length})</CardTitle>
+                <CardDescription>Displaying records for {format(new Date(dateFilter.replace(/-/g, '/')), 'PPP')} {departmentFilter !== 'all' && `in ${departmentFilter}`}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="overflow-x-auto rounded-md border">

@@ -53,35 +53,29 @@ export default function MonthlyLateReportPage() {
     const reportDate = setYear(setMonth(new Date(), parseInt(selectedMonth)), parseInt(selectedYear));
 
   return (
-    <div className="space-y-6 printable-content">
-        <div className="flex justify-between items-center no-print">
-             <Button asChild variant="outline">
-                <Link href="/reports">
-                    <ArrowLeft className="mr-2" />
-                    Back to Reports
-                </Link>
-            </Button>
-        </div>
-        <Card>
+    <div className="space-y-6">
+        <Card className="no-print">
             <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                     <div className="flex items-center gap-3">
                         <Clock className="size-8 text-destructive" />
                         <div>
                             <CardTitle>Monthly Late Report</CardTitle>
                             <CardDescription>
-                              Detailed list of all late entries for {format(reportDate, 'MMMM yyyy')}.
+                              Detailed list of all late entries.
                             </CardDescription>
                         </div>
                     </div>
-                    <Button onClick={handlePrint} className="no-print">
-                        <Printer className="mr-2"/>
-                        Print Report
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                        <Link href="/reports">
+                            <ArrowLeft className="mr-2" />
+                            Back to Reports
+                        </Link>
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="no-print">
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <CardContent>
+                <div className="flex flex-col sm:flex-row items-end gap-4">
                     <div className="flex-1 space-y-2">
                         <Label htmlFor="month-filter">Month</Label>
                          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
@@ -104,13 +98,19 @@ export default function MonthlyLateReportPage() {
                             </SelectContent>
                         </Select>
                     </div>
+                    <div className="flex-1 sm:flex-none">
+                         <Button onClick={handlePrint} className="w-full">
+                            <Printer className="mr-2"/>
+                            Print Report
+                        </Button>
+                    </div>
                 </div>
             </CardContent>
         </Card>
         
-        <Card>
+        <Card className="printable-content">
             <CardHeader>
-                <CardTitle>Late Entries ({lateRecords.length})</CardTitle>
+                <CardTitle>Late Entries for {format(reportDate, 'MMMM yyyy')} ({lateRecords.length})</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="overflow-x-auto rounded-md border">
