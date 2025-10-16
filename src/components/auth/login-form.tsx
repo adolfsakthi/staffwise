@@ -28,7 +28,7 @@ export default function LoginForm() {
       title: 'Signed in successfully!',
       description: "Welcome back!",
     });
-    router.push('/');
+    router.push('/dashboard');
     
     setIsLoading(false);
   };

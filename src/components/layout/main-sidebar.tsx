@@ -36,7 +36,7 @@ import { Button } from '../ui/button';
 
 const navItems = [
   {
-    href: '/',
+    href: '/dashboard',
     icon: LayoutDashboard,
     label: 'Dashboard',
   },
@@ -111,7 +111,7 @@ export default function MainSidebar() {
   }
 
   const handleSignOut = () => {
-    router.push('/login');
+    router.push('/');
   }
 
   const displayName = 'Demo User';

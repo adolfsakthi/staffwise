@@ -10,15 +10,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import Link from 'next/link';
 
 export default function Header() {
   const pathname = usePathname();
-  const pageTitle =
-    pathname.split('/').pop()?.replace('-', ' ') || 'Dashboard';
-  const capitalizedTitle =
-    pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
-
-  const isDashboard = pathname === '/';
+  const segments = pathname.split('/').filter(Boolean);
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
@@ -27,20 +23,32 @@ export default function Header() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              {isDashboard ? (
-                <BreadcrumbPage>Dashboard</BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
-              )}
+              <BreadcrumbLink asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </BreadcrumbLink>
             </BreadcrumbItem>
-            {!isDashboard && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{capitalizedTitle}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
+            {segments.map((segment, index) => {
+              const isLast = index === segments.length - 1;
+              const capitalizedSegment = segment.charAt(0).toUpperCase() + segment.slice(1).replace('-', ' ');
+              if (segment === 'dashboard') return null;
+              
+              return (
+                <React.Fragment key={segment}>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    {isLast ? (
+                       <BreadcrumbPage>{capitalizedSegment}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link href={`/${segments.slice(0, index + 1).join('/')}`}>
+                          {capitalizedSegment}
+                        </Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                </React.Fragment>
+              )
+            })}
           </BreadcrumbList>
         </Breadcrumb>
       </div>

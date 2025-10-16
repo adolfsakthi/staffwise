@@ -9,7 +9,7 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   const pathname = usePathname();
 
   // Don't render the main layout on the login page.
-  if (pathname === '/login') {
+  if (pathname === '/') {
     return <>{children}</>;
   }
 
