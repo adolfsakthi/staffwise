@@ -18,6 +18,8 @@ export default function Header() {
   const capitalizedTitle =
     pageTitle.charAt(0).toUpperCase() + pageTitle.slice(1);
 
+  const isDashboard = pathname === '/';
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
       <SidebarTrigger className="md:hidden" />
@@ -25,12 +27,20 @@ export default function Header() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/">HEZEE ACCESS</BreadcrumbLink>
+              {isDashboard ? (
+                <BreadcrumbPage>Dashboard</BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink href="/">Dashboard</BreadcrumbLink>
+              )}
             </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{capitalizedTitle}</BreadcrumbPage>
-            </BreadcrumbItem>
+            {!isDashboard && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{capitalizedTitle}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
