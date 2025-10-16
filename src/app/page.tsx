@@ -8,9 +8,9 @@ export default function LoginPage() {
       <div className="grid min-h-screen w-full lg:grid-cols-2">
         <div className="relative hidden bg-gray-100 lg:block">
             <Image
-                src="https://picsum.photos/seed/456/1200/1600"
-                alt="A modern and welcoming hotel lobby, representing the hospitality industry."
-                data-ai-hint="hospitality"
+                src="https://picsum.photos/seed/987/1200/1600"
+                alt="A futuristic interface for an attendance tracking system, conveying security and precision."
+                data-ai-hint="attendance security"
                 fill
                 priority
                 className="object-cover"
