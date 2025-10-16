@@ -29,7 +29,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMockData } from '@/lib/mock-data-store';
 import { format } from 'date-fns';
-import { User, Printer, Calendar } from 'lucide-react';
+import { User, Printer } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 export default function EmployeeHistoryPage() {
     const { attendanceRecords, employees } = useMockData();
