@@ -76,7 +76,7 @@ export default function OvertimeAnalysisPage() {
      <div className="space-y-6">
         <Card className="no-print">
             <CardHeader>
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                     <div className="flex items-center gap-3">
                         <LineChart className="size-8 text-primary" />
                         <div>
@@ -95,7 +95,7 @@ export default function OvertimeAnalysisPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col sm:flex-row items-end gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                     <div className="flex-1 space-y-2">
                         <Label htmlFor="month-filter">Month</Label>
                          <Select value={selectedMonth} onValueChange={setSelectedMonth}>

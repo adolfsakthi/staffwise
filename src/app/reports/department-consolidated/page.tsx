@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useMockData } from '@/lib/mock-data-store';
@@ -85,29 +85,46 @@ export default function DepartmentConsolidatedReportPage() {
 
   return (
     <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 no-print">
-            <Button asChild variant="outline">
-                <Link href="/reports">
-                    <ArrowLeft className="mr-2" />
-                    Back to Reports
-                </Link>
-            </Button>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="space-y-1">
-                    <Label htmlFor="date-filter" className="text-sm">Select Report Date</Label>
-                    <Input 
-                        id="date-filter"
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="w-full sm:w-auto"
-                    />
+        <Card className="no-print">
+            <CardHeader>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                    <div className="flex items-center gap-3">
+                        <Building className="size-8 text-primary" />
+                        <div>
+                            <CardTitle>Department-wise Consolidated Report</CardTitle>
+                            <CardDescription>
+                                Consolidated audit report for each department.
+                            </CardDescription>
+                        </div>
+                    </div>
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                        <Link href="/reports">
+                            <ArrowLeft className="mr-2" />
+                            Back to Reports
+                        </Link>
+                    </Button>
                 </div>
-                <Button onClick={handlePrint} className="w-full sm:w-auto">
-                    <Printer className="mr-2" /> Print Report
-                </Button>
-            </div>
-        </div>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                    <div className="flex-1 space-y-2">
+                        <Label htmlFor="date-filter">Select Report Date</Label>
+                        <Input 
+                            id="date-filter"
+                            type="date"
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex-1 sm:flex-none">
+                        <Button onClick={handlePrint} className="w-full">
+                            <Printer className="mr-2" /> Print Report
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
 
         <div className="bg-muted/20 p-4 sm:p-6 lg:p-8 rounded-xl printable-content">
             <div className="max-w-4xl mx-auto">

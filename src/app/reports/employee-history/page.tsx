@@ -63,7 +63,7 @@ export default function EmployeeHistoryPage() {
     <div className="space-y-6">
         <Card className="no-print">
             <CardHeader>
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
                     <div className="flex items-center gap-3">
                         <User className="size-8 text-primary" />
                         <div>
@@ -82,7 +82,7 @@ export default function EmployeeHistoryPage() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
                     <div className="flex-1 space-y-2">
                         <Label htmlFor="date-filter">Date</Label>
                         <Input
@@ -109,7 +109,7 @@ export default function EmployeeHistoryPage() {
                             </SelectContent>
                         </Select>
                     </div>
-                     <div className="flex-1 flex items-end">
+                     <div className="flex-1 sm:flex-none">
                         <Button onClick={handlePrint} className="w-full">
                             <Printer className="mr-2"/>
                             Print Report
