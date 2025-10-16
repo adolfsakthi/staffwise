@@ -1,6 +1,6 @@
-
 'use client';
 
+import { useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -21,40 +21,58 @@ import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useMockData } from '@/lib/mock-data-store';
+import type { AttendanceRecord } from '@/lib/types';
 
-const reportData = {
-  departments: [
-    {
-      name: 'Engineering',
-      summary: {
-        present: 8,
-        absent: 1,
-        late: 2,
-        overtime: '45 mins',
-      },
-      records: [
-        { name: 'John Doe', status: 'Late (5m)', entry: '09:05', exit: '18:02' },
-        { name: 'Peter Jones', status: 'Late (15m)', entry: '09:15', exit: '18:00' },
-        { name: 'Emily White', status: 'On Time', entry: '08:55', exit: '17:50' },
-      ],
-    },
-    {
-      name: 'Housekeeping',
-      summary: {
-        present: 12,
-        absent: 0,
-        late: 1,
-        overtime: '0 mins',
-      },
-      records: [
-        { name: 'Jane Smith', status: 'On Time', entry: '08:58', exit: '17:30' },
-        { name: 'Maria Garcia', status: 'Late (2m)', entry: '09:02', exit: '17:35' },
-      ],
-    },
-  ],
-};
+type DepartmentReport = {
+    name: string;
+    summary: {
+        present: number;
+        absent: number;
+        late: number;
+        overtime: string;
+    };
+    records: AttendanceRecord[];
+}
+
 
 export default function DepartmentConsolidatedReportPage() {
+  const { attendanceRecords } = useMockData();
+
+  const reportData = useMemo(() => {
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const todayRecords = attendanceRecords.filter(r => r.attendanceDate === today);
+
+    const departments = todayRecords.reduce((acc, record) => {
+        if (!record.department) return acc;
+        if (!acc[record.department]) {
+            acc[record.department] = {
+                name: record.department,
+                summary: { present: 0, absent: 0, late: 0, overtime: 0 },
+                records: [],
+            };
+        }
+
+        if (record.is_present) acc[record.department].summary.present++;
+        if (record.is_absent) acc[record.department].summary.absent++;
+        if (record.is_late) acc[record.department].summary.late++;
+        if (record.overtime_minutes) acc[record.department].summary.overtime += record.overtime_minutes;
+        
+        acc[record.department].records.push(record);
+        
+        return acc;
+    }, {} as Record<string, any>);
+
+
+    return Object.values(departments).map(dept => ({
+        ...dept,
+        summary: {
+            ...dept.summary,
+            overtime: `${dept.summary.overtime} mins`
+        }
+    }));
+
+  }, [attendanceRecords]);
     
   const handlePrint = () => {
     window.print();
@@ -74,7 +92,7 @@ export default function DepartmentConsolidatedReportPage() {
                 <Printer className="mr-2" /> Print Report
             </Button>
         </div>
-        <div style={{ background: 'linear-gradient(to right, #6d28d9, #a78bfa)' }} className="rounded-t-lg p-6 text-white shadow-lg">
+        <div style={{ background: 'linear-gradient(to right, hsl(var(--primary)), hsl(var(--primary)/0.8))' }} className="rounded-t-lg p-6 text-white shadow-lg">
           <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold">Consolidated Audit Report</h1>
@@ -88,7 +106,7 @@ export default function DepartmentConsolidatedReportPage() {
               <Printer className="mr-2" /> Print Report
           </Button>
 
-          {reportData.departments.map((dept) => (
+          {reportData.map((dept) => (
             <Card key={dept.name} className="overflow-hidden">
               <CardHeader className="bg-muted/50 border-b">
                 <CardTitle className="text-xl">{dept.name} Department</CardTitle>
@@ -125,16 +143,18 @@ export default function DepartmentConsolidatedReportPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {dept.records.map((rec, i) => (
-                                <TableRow key={i}>
-                                    <TableCell className="font-medium">{rec.name}</TableCell>
+                            {dept.records.map((rec) => (
+                                <TableRow key={rec.id}>
+                                    <TableCell className="font-medium">{rec.employee_name}</TableCell>
                                     <TableCell>
-                                        <Badge variant={rec.status.startsWith('Late') ? 'destructive' : 'secondary'}>
-                                            {rec.status}
-                                        </Badge>
+                                        {rec.is_absent ? <Badge variant="destructive">Absent</Badge> : 
+                                         rec.is_on_leave ? <Badge variant="outline">On Leave</Badge> :
+                                         rec.is_late ? <Badge variant="destructive">Late ({rec.late_by_minutes}m)</Badge> :
+                                         <Badge variant="secondary">On Time</Badge>
+                                        }
                                     </TableCell>
-                                    <TableCell>{rec.entry}</TableCell>
-                                    <TableCell>{rec.exit}</TableCell>
+                                    <TableCell>{rec.entry_time || 'N/A'}</TableCell>
+                                    <TableCell>{rec.exit_time || 'N/A'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
