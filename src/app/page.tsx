@@ -8,9 +8,9 @@ export default function LoginPage() {
       <div className="grid min-h-screen w-full lg:grid-cols-2">
         <div className="relative hidden bg-gray-100 lg:block">
             <Image
-                src="https://picsum.photos/seed/987/1200/1600"
-                alt="A futuristic interface for an attendance tracking system, conveying security and precision."
-                data-ai-hint="attendance security"
+                src="https://picsum.photos/seed/432/1200/1600"
+                alt="A stylized illustration of a person with an ID badge, representing employee access and identity."
+                data-ai-hint="employee identity"
                 fill
                 priority
                 className="object-cover"
