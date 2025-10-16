@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
     Card,
     CardContent,
@@ -9,6 +11,9 @@ import {
   import { Button } from '@/components/ui/button';
   import { Download, FileText, CalendarRange, Building } from 'lucide-react';
   import Link from 'next/link';
+  import { useMockData } from '@/lib/mock-data-store';
+  import * as XLSX from 'xlsx';
+  import { format } from 'date-fns';
   
   const reportTypes = [
     { title: 'Daily Attendance Summary', description: 'A summary of attendance for all employees for a specific day.', icon: FileText, href: '#' },
@@ -19,6 +24,35 @@ import {
   ]
   
   export default function ReportsPage() {
+    const { attendanceRecords } = useMockData();
+
+    const handleDownload = () => {
+        const dataToExport = attendanceRecords.map(record => ({
+            'Date': record.attendanceDate,
+            'Employee Name': record.employee_name,
+            'Employee Email': record.email,
+            'Department': record.department,
+            'Status': record.is_absent ? 'Absent' : (record.is_on_leave ? 'On Leave' : 'Present'),
+            'Entry Time': record.entry_time || 'N/A',
+            'Exit Time': record.exit_time || 'N/A',
+            'Is Late': record.is_late ? `Yes (${record.late_by_minutes} min)` : 'No',
+            'Overtime': record.overtime_minutes ? `${record.overtime_minutes} min` : '0 min',
+            'Early Going': record.early_going_minutes ? `${record.early_going_minutes} min` : '0 min',
+            'Audited': record.is_audited ? 'Yes' : 'No',
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+        
+        // Auto-size columns
+        const objectMaxLength = Object.keys(dataToExport[0] || {}).map(key => key.length);
+        const wscols = objectMaxLength.map((w, i) => ({ width: Math.max(w, ...dataToExport.map(r => r[Object.keys(r)[i] as keyof typeof r]?.toString().length || 0)) + 2 }));
+        worksheet['!cols'] = wscols;
+
+        XLSX.writeFile(workbook, `AttendanceReport_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    }
+
     return (
         <div className="space-y-8">
             <Card>
@@ -32,11 +66,11 @@ import {
                     {/* In a real app, these would be interactive components */}
                     <div className="flex items-center gap-2 rounded-md border p-2 text-muted-foreground">
                         <CalendarRange/>
-                        <span>Date Range: Last 30 Days</span>
+                        <span>Date Range: Today</span>
                     </div>
-                     <Button>
+                     <Button onClick={handleDownload}>
                         <Download className="mr-2" />
-                        Generate & Download CSV
+                        Generate & Download Excel
                     </Button>
                 </CardContent>
             </Card>
