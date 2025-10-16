@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState } from 'react';
 import type { Employee, Device, AttendanceRecord, LiveLog, UserProfile, Role, EmailLog } from './types';
-import { format } from 'date-fns';
+import { format, addMinutes, subMinutes, setHours, setMinutes, parse } from 'date-fns';
 
 
 const LATE_ENTRY_TEMPLATE = `
@@ -140,12 +140,126 @@ const ADMIN_REPORT_TEMPLATE = `
 
 // --- INITIAL MOCK DATA ---
 
-const INITIAL_EMPLOYEES: Employee[] = [
-    { id: '1', clientId: 'default_client', branchId: 'default_branch', property_code: 'D001', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com', department: 'Engineering', employeeCode: 'EMP001', shiftStartTime: '09:00', shiftEndTime: '18:00' },
-    { id: '2', clientId: 'default_client', branchId: 'default_branch', property_code: 'D001', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com', department: 'Housekeeping', employeeCode: 'EMP002', shiftStartTime: '09:00', shiftEndTime: '18:00' },
-    { id: '3', clientId: 'default_client', branchId: 'default_branch', property_code: 'D002', firstName: 'Peter', lastName: 'Jones', email: 'peter.jones@example.com', department: 'Security', employeeCode: 'EMP003', shiftStartTime: '22:00', shiftEndTime: '06:00' },
-    { id: '4', property_code: 'D001', department: 'Engineering', firstName: 'Test', lastName: 'Person', email: 'test@test.com', employeeCode: 'EMP004', shiftStartTime: '09:00', shiftEndTime: '17:00' },
-];
+const firstNames = ['Aisha', 'Bruno', 'Chloe', 'David', 'Eva', 'Frank', 'Grace', 'Henry', 'Isla', 'Jack', 'Kara', 'Leo', 'Mia', 'Noah', 'Olivia', 'Paul', 'Quinn', 'Ruby', 'Sam', 'Tara', 'Uma', 'Vince', 'Willow', 'Xavi', 'Yara', 'Zane', 'Ben', 'Clara', 'Daniel', 'Emma'];
+const lastNames = ['Khan', 'Fernandez', 'Kim', 'Garcia', 'Wang', 'Smith', 'Jones', 'Williams', 'Brown', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Green', 'Baker', 'Adams', 'Nelson'];
+const departments = ['Housekeeping', 'Front Desk', 'Engineering', 'Kitchen', 'Security', 'Sales'];
+
+const generateEmployees = (count: number): Employee[] => {
+    const employees: Employee[] = [];
+    for (let i = 0; i < count; i++) {
+        const firstName = firstNames[i % firstNames.length];
+        const lastName = lastNames[i % lastNames.length];
+        employees.push({
+            id: `${i + 1}`,
+            clientId: 'default_client',
+            branchId: 'default_branch',
+            property_code: 'D001',
+            firstName: firstName,
+            lastName: lastName,
+            email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
+            department: departments[i % departments.length],
+            employeeCode: `EMP${String(i + 1).padStart(3, '0')}`,
+            shiftStartTime: '09:00',
+            shiftEndTime: '18:00',
+        });
+    }
+    return employees;
+};
+
+const INITIAL_EMPLOYEES: Employee[] = generateEmployees(30);
+
+const generateAttendance = (employees: Employee[]): AttendanceRecord[] => {
+    const records: AttendanceRecord[] = [];
+    const today = new Date();
+    const attendanceDate = format(today, 'yyyy-MM-dd');
+
+    employees.forEach((emp, index) => {
+        const base = {
+            id: `rec-${emp.id}`,
+            employeeId: emp.id,
+            deviceId: 'device-1760525595923',
+            logType: 'Biometric',
+            employee_name: `${emp.firstName} ${emp.lastName}`,
+            email: emp.email,
+            department: emp.department,
+            property_code: emp.property_code,
+            attendanceDate: attendanceDate,
+            is_audited: false,
+        };
+
+        const shiftStart = parse(emp.shiftStartTime, 'HH:mm', new Date());
+        const shiftEnd = parse(emp.shiftEndTime, 'HH:mm', new Date());
+
+        // Scenario 1: Absent (2 employees)
+        if (index < 2) {
+            records.push({
+                ...base,
+                is_present: false,
+                is_absent: true,
+                is_on_leave: false,
+            });
+            return;
+        }
+
+        // Scenario 2: On Leave (1 employee)
+        if (index === 2) {
+            records.push({
+                ...base,
+                is_present: false,
+                is_absent: false,
+                is_on_leave: true,
+            });
+            return;
+        }
+
+        let punchInTime: Date;
+        let punchOutTime: Date;
+        let is_late = false;
+        let late_by_minutes = 0;
+        let overtime_minutes = 0;
+        
+        // Scenario 3: Late (5 employees)
+        if (index >= 3 && index < 8) {
+            is_late = true;
+            late_by_minutes = Math.floor(Math.random() * 25) + 5; // 5 to 30 mins late
+            punchInTime = addMinutes(shiftStart, late_by_minutes);
+        } else {
+        // On time
+            const onTimeOffset = Math.floor(Math.random() * 10); // 0 to 10 mins early
+            punchInTime = subMinutes(shiftStart, onTimeOffset);
+        }
+
+        // Scenario 4: Overtime (4 employees)
+        if (index >= 8 && index < 12) {
+            overtime_minutes = Math.floor(Math.random() * 50) + 10; // 10 to 60 mins overtime
+            punchOutTime = addMinutes(shiftEnd, overtime_minutes);
+        } else {
+        // Normal exit
+            const exitTimeOffset = Math.floor(Math.random() * 15); // exit 0-15 mins before/after shift end
+            punchOutTime = addMinutes(shiftEnd, exitTimeOffset - 5);
+        }
+
+        records.push({
+            ...base,
+            punchInTime: punchInTime.toISOString(),
+            punchOutTime: punchOutTime.toISOString(),
+            entry_time: format(punchInTime, 'HH:mm'),
+            exit_time: format(punchOutTime, 'HH:mm'),
+            is_late: is_late,
+            late_by_minutes: late_by_minutes,
+            overtime_minutes: overtime_minutes,
+            is_present: true,
+            is_absent: false,
+            is_on_leave: false,
+            early_going_minutes: Math.max(0, (shiftEnd.getTime() - punchOutTime.getTime()) / 60000),
+        });
+    });
+
+    return records;
+};
+
+const INITIAL_RECORDS = generateAttendance(INITIAL_EMPLOYEES);
+
 
 const INITIAL_DEVICES: Device[] = [
     {
@@ -174,17 +288,9 @@ const INITIAL_DEVICES: Device[] = [
     }
 ];
 
-const INITIAL_RECORDS: AttendanceRecord[] = [
-    { id: '1', employeeId: '1', deviceId: '1', punchInTime: '2024-05-23T09:05:00Z', attendanceDate: '2024-05-23', logType: 'Biometric', employee_name: 'John Doe', email: 'john@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:05', exit_time: '18:02', is_late: true, late_by_minutes: 5, overtime_minutes: 2, is_audited: false, is_present: true },
-    { id: 'rec2', employeeId: '2', attendanceDate: format(new Date(), 'yyyy-MM-dd'), is_late: false, is_present: true, is_absent: false, is_on_leave: false, early_going_minutes: 0, overtime_minutes: 30, department: 'Front Desk', property_code: 'D001', punchInTime: '2024-05-23T08:58:00Z', deviceId: '1', logType: 'Biometric' },
-    { id: '3', employeeId: '3', deviceId: '1', punchInTime: '2024-05-22T09:15:00Z', attendanceDate: '2024-05-22', logType: 'Manual', employee_name: 'Peter Jones', email: 'peter@example.com', department: 'Engineering', property_code: 'D001', entry_time: '09:15', exit_time: '18:00', is_late: true, late_by_minutes: 15, overtime_minutes: 0, is_audited: false },
-    { id: 'rec4', employeeId: '4', attendanceDate: format(new Date(), 'yyyy-MM-dd'), is_late: false, is_present: false, is_absent: true, is_on_leave: false, early_going_minutes: 0, overtime_minutes: 0, department: 'Engineering', property_code: 'D001', punchInTime: '2024-05-23T09:00:00Z', deviceId: '1', logType: 'Biometric' },
-    { id: 'rec5', employeeId: '4', attendanceDate: format(new Date(), 'yyyy-MM-dd'), is_late: false, is_present: false, is_absent: false, is_on_leave: true, early_going_minutes: 0, overtime_minutes: 0, department: 'Engineering', property_code: 'D001', punchInTime: '2024-05-23T09:00:00Z', deviceId: '1', logType: 'Biometric'  },
-];
-
 const INITIAL_LIVE_LOGS: LiveLog[] = [
-    { id: '1', type: 'late', message: 'John Doe arrived late', employee: 'John Doe', department: 'Engineering', time: '09:05', deviation: 5, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false },
-    { id: '2', type: 'overtime', message: 'Jane Smith worked overtime', employee: 'Jane Smith', department: 'Housekeeping', time: '18:30', deviation: 30, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false }
+    { id: '1', type: 'late', message: 'Bruno Fernandez arrived late', employee: 'Bruno Fernandez', department: 'Front Desk', time: '09:15', deviation: 15, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false },
+    { id: '2', type: 'overtime', message: 'Isla Williams worked overtime', employee: 'Isla Williams', department: 'Engineering', time: '18:45', deviation: 45, property_code: 'D001', timestamp: new Date().toISOString(), isRead: false }
 ];
 
 const INITIAL_USERS: UserProfile[] = [
