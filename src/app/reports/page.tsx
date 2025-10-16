@@ -9,19 +9,11 @@ import {
     CardTitle,
   } from '@/components/ui/card';
   import { Button } from '@/components/ui/button';
-  import { Download, FileText, CalendarRange, Building } from 'lucide-react';
+  import { Download, FileText, CalendarRange, Building, User, Clock, LineChart } from 'lucide-react';
   import Link from 'next/link';
   import { useMockData } from '@/lib/mock-data-store';
   import * as XLSX from 'xlsx';
   import { format } from 'date-fns';
-  
-  const reportTypes = [
-    { title: 'Daily Attendance Summary', description: 'A summary of attendance for all employees for a specific day.', icon: FileText, href: '#' },
-    { title: 'Monthly Late Report', description: 'Detailed report of all late entries for a selected month.', icon: FileText, href: '#' },
-    { title: 'Overtime Analysis', description: 'Breakdown of overtime hours by department and employee.', icon: FileText, href: '#' },
-    { title: 'Department-wise Consolidated Report', description: 'Consolidated audit report for each department.', icon: Building, href: '/reports/department-consolidated' },
-    { title: 'Employee Attendance History', description: 'Complete attendance history for a single employee.', icon: FileText, href: '#' },
-  ]
   
   export default function ReportsPage() {
     const { attendanceRecords } = useMockData();
@@ -46,12 +38,20 @@ import {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
         
         // Auto-size columns
-        const objectMaxLength = Object.keys(dataToExport[0] || {}).map(key => key.length);
+        const objectMaxLength = dataToExport.length > 0 ? Object.keys(dataToExport[0] || {}).map(key => key.length) : [];
         const wscols = objectMaxLength.map((w, i) => ({ width: Math.max(w, ...dataToExport.map(r => r[Object.keys(r)[i] as keyof typeof r]?.toString().length || 0)) + 2 }));
         worksheet['!cols'] = wscols;
 
         XLSX.writeFile(workbook, `AttendanceReport_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
     }
+
+    const reportTypes = [
+        { title: 'Daily Attendance Summary', description: 'Download a summary of attendance for all employees for a specific day.', icon: Download, onClick: handleDownload, href: '#' },
+        { title: 'Monthly Late Report', description: 'Detailed report of all late entries for the selected month.', icon: Clock, href: '/reports/monthly-late' },
+        { title: 'Overtime Analysis', description: 'Breakdown of overtime hours by department and employee.', icon: LineChart, href: '/reports/overtime-analysis' },
+        { title: 'Department-wise Consolidated Report', description: 'Consolidated audit report for each department.', icon: Building, href: '/reports/department-consolidated' },
+        { title: 'Employee Attendance History', description: 'Complete attendance history for a single employee.', icon: User, href: '/reports/employee-history' },
+    ]
 
     return (
         <div className="space-y-8">
@@ -59,25 +59,24 @@ import {
                 <CardHeader>
                     <CardTitle>Generate Reports</CardTitle>
                     <CardDescription>
-                        Select a report type and date range to generate and download attendance data.
+                        Select a report type or generate a full Excel export of the attendance data.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4 sm:flex-row">
-                    {/* In a real app, these would be interactive components */}
                     <div className="flex items-center gap-2 rounded-md border p-2 text-muted-foreground">
                         <CalendarRange/>
-                        <span>Date Range: Today</span>
+                        <span>Date Range: Current Month</span>
                     </div>
                      <Button onClick={handleDownload}>
                         <Download className="mr-2" />
-                        Generate & Download Excel
+                        Download Full Report (Excel)
                     </Button>
                 </CardContent>
             </Card>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {reportTypes.map(report => (
-                    <Link key={report.title} href={report.href} className="block hover:shadow-lg hover:-translate-y-1 transition-transform">
+                {reportTypes.map(report => {
+                    const CardComponent = (
                         <Card className="h-full">
                             <CardHeader className="flex flex-row items-start gap-4">
                                 <report.icon className="size-8 text-primary" />
@@ -87,8 +86,22 @@ import {
                                 </div>
                             </CardHeader>
                         </Card>
-                    </Link>
-                ))}
+                    );
+
+                    if (report.onClick) {
+                        return (
+                             <button key={report.title} onClick={report.onClick} className="block text-left hover:shadow-lg hover:-translate-y-1 transition-transform w-full">
+                                {CardComponent}
+                            </button>
+                        );
+                    }
+                    
+                    return (
+                        <Link key={report.title} href={report.href} className="block hover:shadow-lg hover:-translate-y-1 transition-transform">
+                            {CardComponent}
+                        </Link>
+                    );
+                })}
             </div>
       </div>
     );
