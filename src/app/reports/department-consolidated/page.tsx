@@ -23,7 +23,7 @@ import { Printer, ArrowLeft, Building } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useMockData } from '@/lib/mock-data-store';
-import type { AttendanceRecord } from '@/lib/types';
+import type { AttendanceRecord, Employee } from '@/lib/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -35,16 +35,17 @@ type DepartmentReport = {
         late: number;
         overtime: string;
     };
-    records: AttendanceRecord[];
+    records: (AttendanceRecord & { employeeCode?: string })[];
 }
 
 
 export default function DepartmentConsolidatedReportPage() {
-  const { attendanceRecords } = useMockData();
+  const { attendanceRecords, employees } = useMockData();
   const [dateFilter, setDateFilter] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const reportData = useMemo(() => {
     const selectedDateRecords = attendanceRecords.filter(r => r.attendanceDate === dateFilter);
+    const employeeMap = new Map(employees.map(e => [e.id, e]));
 
     const departments = selectedDateRecords.reduce((acc, record) => {
         if (!record.department) return acc;
@@ -61,7 +62,11 @@ export default function DepartmentConsolidatedReportPage() {
         if (record.is_late) acc[record.department].summary.late++;
         if (record.overtime_minutes) acc[record.department].summary.overtime += record.overtime_minutes;
         
-        acc[record.department].records.push(record);
+        const employee = employeeMap.get(record.employeeId);
+        acc[record.department].records.push({
+            ...record,
+            employeeCode: employee?.employeeCode,
+        });
         
         return acc;
     }, {} as Record<string, any>);
@@ -75,7 +80,7 @@ export default function DepartmentConsolidatedReportPage() {
         }
     }));
 
-  }, [attendanceRecords, dateFilter]);
+  }, [attendanceRecords, dateFilter, employees]);
     
   const handlePrint = () => {
     window.print();
@@ -170,6 +175,7 @@ export default function DepartmentConsolidatedReportPage() {
                                 <TableHeader>
                                     <TableRow>
                                     <TableHead>Employee</TableHead>
+                                    <TableHead>Emp. Code</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Entry</TableHead>
                                     <TableHead>Exit</TableHead>
@@ -179,6 +185,7 @@ export default function DepartmentConsolidatedReportPage() {
                                     {dept.records.map((rec) => (
                                         <TableRow key={rec.id}>
                                             <TableCell className="font-medium">{rec.employee_name}</TableCell>
+                                            <TableCell>{rec.employeeCode || 'N/A'}</TableCell>
                                             <TableCell>
                                                 {rec.is_absent ? <Badge variant="destructive">Absent</Badge> : 
                                                 rec.is_on_leave ? <Badge variant="outline">On Leave</Badge> :

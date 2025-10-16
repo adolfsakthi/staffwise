@@ -52,6 +52,7 @@ export default function OvertimeAnalysisPage() {
                 const employee = employees.find(e => e.id === record.employeeId);
                 acc[record.employeeId] = {
                     name: employee ? `${employee.firstName} ${employee.lastName}` : record.employee_name || 'Unknown',
+                    employeeCode: employee?.employeeCode,
                     department: employee?.department,
                     totalMinutes: 0,
                     count: 0,
@@ -60,7 +61,7 @@ export default function OvertimeAnalysisPage() {
             acc[record.employeeId].totalMinutes += record.overtime_minutes || 0;
             acc[record.employeeId].count += 1;
             return acc;
-        }, {} as Record<string, {name: string, department?: string, totalMinutes: number, count: number}>);
+        }, {} as Record<string, {name: string; employeeCode?: string; department?: string; totalMinutes: number; count: number}>);
 
         return Object.values(byEmployee).sort((a,b) => b.totalMinutes - a.totalMinutes);
 
@@ -138,6 +139,7 @@ export default function OvertimeAnalysisPage() {
                     <TableHeader>
                     <TableRow>
                         <TableHead>Employee</TableHead>
+                        <TableHead>Emp. Code</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Total Overtime</TableHead>
                         <TableHead># of Instances</TableHead>
@@ -148,6 +150,7 @@ export default function OvertimeAnalysisPage() {
                         overtimeRecords.map((record) => (
                         <TableRow key={record.name}>
                             <TableCell className="font-medium">{record.name}</TableCell>
+                            <TableCell className="text-muted-foreground">{record.employeeCode || 'N/A'}</TableCell>
                             <TableCell className="text-muted-foreground">{record.department}</TableCell>
                             <TableCell>
                                 <Badge variant="secondary">
@@ -161,7 +164,7 @@ export default function OvertimeAnalysisPage() {
                         ))
                     ) : (
                         <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                             No overtime records found for this month.
                         </TableCell>
                         </TableRow>

@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { AttendanceRecord } from '@/lib/types';
 
 const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString());
 const months = Array.from({ length: 12 }, (_, i) => ({
@@ -32,19 +33,27 @@ const months = Array.from({ length: 12 }, (_, i) => ({
   label: format(new Date(0, i), 'MMMM'),
 }));
 
+type EnrichedRecord = AttendanceRecord & { employeeCode?: string };
+
 export default function MonthlyLateReportPage() {
-    const { attendanceRecords } = useMockData();
+    const { attendanceRecords, employees } = useMockData();
     const [selectedMonth, setSelectedMonth] = useState<string>(getMonth(new Date()).toString());
     const [selectedYear, setSelectedYear] = useState<string>(getYear(new Date()).toString());
 
-    const lateRecords = useMemo(() => {
-        return attendanceRecords.filter(r => {
-            const recordDate = new Date(r.attendanceDate);
-            return r.is_late && 
-                   getMonth(recordDate).toString() === selectedMonth &&
-                   getYear(recordDate).toString() === selectedYear;
-        });
-    }, [attendanceRecords, selectedMonth, selectedYear]);
+    const lateRecords: EnrichedRecord[] = useMemo(() => {
+        const employeeMap = new Map(employees.map(e => [e.id, e]));
+        return attendanceRecords
+            .map(r => ({
+                ...r,
+                employeeCode: employeeMap.get(r.employeeId)?.employeeCode
+            }))
+            .filter(r => {
+                const recordDate = new Date(r.attendanceDate);
+                return r.is_late && 
+                    getMonth(recordDate).toString() === selectedMonth &&
+                    getYear(recordDate).toString() === selectedYear;
+            });
+    }, [attendanceRecords, employees, selectedMonth, selectedYear]);
 
     const handlePrint = () => {
         window.print();
@@ -119,6 +128,7 @@ export default function MonthlyLateReportPage() {
                     <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Employee</TableHead>
+                        <TableHead>Emp. Code</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Punch In Time</TableHead>
                         <TableHead>Late By</TableHead>
@@ -130,6 +140,7 @@ export default function MonthlyLateReportPage() {
                         <TableRow key={record.id}>
                             <TableCell className="font-medium">{format(new Date(record.attendanceDate), 'PPP')}</TableCell>
                             <TableCell>{record.employee_name}</TableCell>
+                            <TableCell className="text-muted-foreground">{record.employeeCode || 'N/A'}</TableCell>
                             <TableCell className="text-muted-foreground">{record.department}</TableCell>
                             <TableCell>{record.entry_time}</TableCell>
                             <TableCell>
@@ -139,7 +150,7 @@ export default function MonthlyLateReportPage() {
                         ))
                     ) : (
                         <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center">
                             No late records found for the selected month and year.
                         </TableCell>
                         </TableRow>

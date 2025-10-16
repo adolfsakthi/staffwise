@@ -32,6 +32,9 @@ import { format } from 'date-fns';
 import { User, Printer, ArrowLeft } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { AttendanceRecord } from '@/lib/types';
+
+type EnrichedRecord = AttendanceRecord & { employeeCode?: string };
 
 export default function EmployeeHistoryPage() {
     const { attendanceRecords, employees } = useMockData();
@@ -45,14 +48,21 @@ export default function EmployeeHistoryPage() {
         return Array.from(depts).filter(Boolean);
     }, [propertyCode, employees]);
 
-    const filteredRecords = useMemo(() => {
-        return attendanceRecords.filter(r => {
-            const dateMatch = !dateFilter || r.attendanceDate === dateFilter;
-            const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;
-            const propertyMatch = r.property_code === propertyCode;
-            return dateMatch && departmentMatch && propertyMatch;
-        }).sort((a,b) => (a.employee_name || '').localeCompare(b.employee_name || ''));
-    }, [attendanceRecords, dateFilter, departmentFilter, propertyCode]);
+    const filteredRecords: EnrichedRecord[] = useMemo(() => {
+        const employeeMap = new Map(employees.map(e => [e.id, e]));
+        return attendanceRecords
+            .map(r => ({
+                ...r,
+                employeeCode: employeeMap.get(r.employeeId)?.employeeCode
+            }))
+            .filter(r => {
+                const dateMatch = !dateFilter || r.attendanceDate === dateFilter;
+                const departmentMatch = departmentFilter === 'all' || r.department === departmentFilter;
+                const propertyMatch = r.property_code === propertyCode;
+                return dateMatch && departmentMatch && propertyMatch;
+            })
+            .sort((a,b) => (a.employee_name || '').localeCompare(b.employee_name || ''));
+    }, [attendanceRecords, employees, dateFilter, departmentFilter, propertyCode]);
     
     const handlePrint = () => {
         window.print();
@@ -130,6 +140,7 @@ export default function EmployeeHistoryPage() {
                     <TableHeader>
                     <TableRow>
                         <TableHead>Employee</TableHead>
+                        <TableHead>Emp. Code</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Date</TableHead>
                         <TableHead>Status</TableHead>
@@ -142,6 +153,7 @@ export default function EmployeeHistoryPage() {
                         filteredRecords.map((record) => (
                         <TableRow key={record.id}>
                             <TableCell className="font-medium">{record.employee_name}</TableCell>
+                            <TableCell className="text-muted-foreground">{record.employeeCode || 'N/A'}</TableCell>
                             <TableCell className="text-muted-foreground">{record.department}</TableCell>
                             <TableCell>{format(new Date(record.attendanceDate), 'PPP')}</TableCell>
                             <TableCell>
@@ -167,7 +179,7 @@ export default function EmployeeHistoryPage() {
                         ))
                     ) : (
                         <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                             No attendance history found for the selected criteria.
                         </TableCell>
                         </TableRow>
